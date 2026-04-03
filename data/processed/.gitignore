@@ -1,6 +1,0 @@
-# Ignore everything in this directory
-*
-# Except this file
-!*.dvc
-/feature_columns.json
-/schema_report.json
