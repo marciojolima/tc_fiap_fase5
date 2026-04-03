@@ -95,10 +95,10 @@ def build_features(
         stratify=stratify,
     )
 
-    train_df = X_train.copy()
+    train_df = X_train.reset_index(drop=True)
     train_df[target_col] = y_train.reset_index(drop=True)
 
-    test_df = X_test.copy()
+    test_df = X_test.reset_index(drop=True)
     test_df[target_col] = y_test.reset_index(drop=True)
 
     logger.info("Split realizado — Train: %d | Test: %d", len(train_df), len(test_df))
