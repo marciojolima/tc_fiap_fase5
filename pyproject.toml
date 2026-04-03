@@ -6,12 +6,12 @@ authors = [
     {name = "Márcio Lima",email = "marciocad@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<4"
 dependencies = [
     "pandas>=2.2.0",
     "numpy>=1.26.0",
     "scikit-learn>=1.4.2",
-    "mlflow>=2.13.0",
+    "mlflow==3.10.1",
     "pandera>=0.19.3",
     "pyarrow>=16.0.0",
     "pyyaml>=6.0.1",
@@ -20,6 +20,9 @@ dependencies = [
     "pytest>=8.2.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
+    "graphene==3.4.3",
+    "graphql-core==3.2.6",
+    "graphql-relay==3.2.0",
 ]
 
 [tool.poetry]
