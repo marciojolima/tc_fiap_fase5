@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -53,17 +53,17 @@ def build_features(
     )
 
     # 4) Novas features
-    df_feat["BalancePerProduct"] = (
-        df_feat["Balance"] / df_feat["NumOfProducts"].replace(0, 1)
-    )
+    df_feat["BalancePerProduct"] = df_feat["Balance"] / df_feat[
+        "NumOfProducts"
+    ].replace(0, 1)
     logger.info(
         "Feature criada: BalancePerProduct — media=%.2f | std=%.2f",
         df_feat["BalancePerProduct"].mean(),
         df_feat["BalancePerProduct"].std(),
     )
 
-    df_feat["PointsPerSalary"] = (
-        df_feat["Point Earned"] / (df_feat["EstimatedSalary"] + 1)
+    df_feat["PointsPerSalary"] = df_feat["Point Earned"] / (
+        df_feat["EstimatedSalary"] + 1
     )
     logger.info(
         "Feature criada: PointsPerSalary — media=%.6f | std=%.6f",

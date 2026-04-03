@@ -1,2 +1,1 @@
 """Drift detection placeholder."""
-

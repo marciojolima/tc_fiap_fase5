@@ -1,2 +1,1 @@
 """ReAct agent placeholder."""
-

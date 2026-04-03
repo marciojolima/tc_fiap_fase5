@@ -19,6 +19,8 @@ def load_raw_data() -> pd.DataFrame:
     logger.info("Arquivo carregado: %s", raw_path)
     logger.info("df_raw shape: %s", df_raw.shape)
     logger.info("df shape após remoção de identificadores: %s", df.shape)
-    logger.info("Distribuição do target:\n%s", df[target_col].value_counts().to_string())
+    logger.info(
+        "Distribuição do target:\n%s", df[target_col].value_counts().to_string()
+    )
 
     return df
