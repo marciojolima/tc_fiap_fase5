@@ -1,4 +1,0 @@
-poetry shell
-
-poetry run python -m src.features.feature_engineering
-python -m src.features.feature_engineering

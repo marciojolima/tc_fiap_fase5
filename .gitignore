@@ -1,0 +1,135 @@
+# =============================================================
+# PYTHON
+# =============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Poetry
+# poetry.lock é versionado — não ignorar
+
+# =============================================================
+# DVC
+# =============================================================
+# O DVC gerencia os dados — o Git só versiona os .dvc pointers
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+artifacts/*
+
+# Cache interno do DVC
+.dvc/cache/
+.dvc/tmp/
+
+# Arquivos de lock temporários do DVC
+.dvc/.gitignore
+
+# Mas MANTER no Git:
+# dvc.yaml        ← pipeline definition
+# dvc.lock        ← snapshot dos stages (commitar!)
+# *.dvc           ← pointers dos datasets
+# .dvc/config     ← configuração do remote
+
+# =============================================================
+# MLFLOW
+# =============================================================
+mlruns/
+mlartifacts/
+
+# =============================================================
+# DADOS E MODELOS (não rastreados pelo DVC)
+# =============================================================
+*.parquet
+*.csv
+*.json
+# Exceções — schemas e configs leves que fazem sentido versionar
+!data/processed/feature_columns.json
+!data/processed/schema_report.json
+!configs/*.yaml
+
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.onnx
+
+# =============================================================
+# ARTIFACTS E OUTPUTS
+# =============================================================
+artifacts/
+reports/figures/
+evaluation/results/
+
+# =============================================================
+# NOTEBOOKS
+# =============================================================
+# Outputs de células (mantém o .ipynb limpo no Git)
+notebooks/**/*.ipynb
+
+# Se quiser versionar os notebooks sem outputs, use nbstripout
+# e então re-adicione: !notebooks/
+
+# =============================================================
+# DOCKER
+# =============================================================
+# Volumes locais montados
+docker-volumes/
+
+# =============================================================
+# TESTES E COBERTURA
+# =============================================================
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# =============================================================
+# IDEs E EDITORES
+# =============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# =============================================================
+# VARIÁVEIS DE AMBIENTE E SECRETS
+# =============================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# =============================================================
+# MISC
+# =============================================================
+*.tmp
+*.bak
+.hypothesis/
+
+
+# =============================================================
+# LOGS
+# =============================================================
+*.log
+logs/
+history.txt
