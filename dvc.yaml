@@ -1,0 +1,34 @@
+stages:
+  featurize:
+    cmd: python -m src.features.feature_engineering
+    deps:
+      - src/common/config.py
+      - src/common/data_load.py
+      - src/common/logger.py
+      - src/common/seed.py
+      - src/features/validate.py
+      - src/features/feature_engineering.py
+      - configs/model_config.yaml
+      - data/raw/Customer-Churn-Records.csv
+    outs:
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+      - data/processed/feature_columns.json
+      - data/processed/schema_report.json
+
+  train:
+    cmd: python -m src.models.train
+    deps:
+      - src/common/config.py
+      - src/common/logger.py
+      - src/common/seed.py
+      - src/models/baseline.py
+      - src/models/train.py
+      - configs/model_config.yaml
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+    outs:
+      - src/artifacts/baseline_model.pkl
+      - src/artifacts/challenger_model.pkl
+      - src/artifacts/metrics.json
+      
