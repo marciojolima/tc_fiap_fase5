@@ -1,0 +1,43 @@
+seed: 42
+
+data:
+  raw_path: data/raw/Customer-Churn-Records.csv
+  target_col: Exited
+  drop_columns:
+    - RowNumber
+    - CustomerId
+    - Surname
+
+features:
+  leakage_columns:
+    - Exited
+    - Complain
+    - Satisfaction Score
+
+split:
+  test_size: 0.2
+  random_state: 42
+  stratify: true
+
+models:
+  baseline:
+    name: random_forest_baseline
+    n_estimators: 100
+    max_depth: 10
+    random_state: 42
+    class_weight: balanced
+
+  challenger:
+    name: random_forest_challenger
+    n_estimators: 200
+    max_depth: 15
+    random_state: 42
+    class_weight: balanced
+    min_samples_leaf: 5
+
+mlflow:
+  tracking_uri: file:./mlruns
+  experiment_name: datathon-churn-baseline
+  owner: datathon-grupo
+  phase: datathon-fase05
+  dataset_name: bank-customer-churn
