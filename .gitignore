@@ -27,10 +27,10 @@ ENV/
 # =============================================================
 # O DVC gerencia os dados — o Git só versiona os .dvc pointers
 data/raw/*
+!data/raw/*.dvc
 data/interim/*
 data/processed/*
 data/external/*
-artifacts/*
 
 # Cache interno do DVC
 .dvc/cache/
