@@ -23,6 +23,7 @@ dependencies = [
     "graphene==3.4.3",
     "graphql-core==3.2.6",
     "graphql-relay==3.2.0",
+    "taskipy (>=1.14.1,<2.0.0)",
 ]
 
 [tool.poetry]
@@ -52,3 +53,12 @@ select = ['I', 'F', 'E', 'W', 'PL', 'PT', 'FAST']
 [tool.pytest.ini_options]
 pythonpath = "."
 addopts = '-p no:warnings'
+
+[tool.taskipy.tasks]
+lint = 'ruff check'
+pre_format = 'ruff check --fix'
+format = 'ruff format'
+run = 'python -m src.features.feature_engineering'
+pre_test = 'task lint'
+test = 'pytest -s -x --cov=src -vv'
+post_test = 'coverage html'
