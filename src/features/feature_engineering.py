@@ -1,4 +1,4 @@
-"""Pipeline de feature engineering para o dataset Bank Customer Churn.
+"""Pipeline de engenharia de atributos para o conjunto de dados Bank Customer Churn.
 
 Responsabilidades deste módulo:
     1. Criação de features derivadas
@@ -40,7 +40,7 @@ OHE_COLUMNS: list[str] = ["Geography"]
 
 
 class PipelineArtifacts(NamedTuple):
-    """Artefatos produzidos pela etapa de feature engineering."""
+    """Artefatos produzidos pela etapa de engenharia de atributos."""
 
     train_df: pd.DataFrame
     test_df: pd.DataFrame
@@ -49,7 +49,7 @@ class PipelineArtifacts(NamedTuple):
 
 
 class FeatureEngineeringConfig(NamedTuple):
-    """Configuração usada no pipeline de feature engineering."""
+    """Configuração usada no pipeline de engenharia de atributos."""
 
     seed: int
     target_col: str
@@ -114,7 +114,7 @@ def split_train_test(
     random_state: int,
     stratify: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Separa treino e teste antes do pré-processamento para evitar leakage."""
+    """Separa treino e teste antes do pré-processamento para evitar vazamento."""
 
     if target_col not in df.columns:
         raise KeyError(
@@ -201,7 +201,7 @@ def _assemble_dataframe(
     y: pd.Series,
     target_col: str,
 ) -> pd.DataFrame:
-    """Reconstrói DataFrame processado com features e target."""
+    """Reconstrói um DataFrame processado com atributos e variável alvo."""
 
     df_out = pd.DataFrame(X_array, columns=feature_cols)
     df_out[target_col] = y.reset_index(drop=True)
@@ -232,7 +232,7 @@ def drop_leakage_from_features(
     leakage_columns: list[str],
     target_col: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Remove colunas de leakage apenas do espaço de features."""
+    """Remove colunas com vazamento apenas do espaço de atributos."""
 
     leakage_in_features = [c for c in leakage_columns if c != target_col]
     existing_leakage = [c for c in leakage_in_features if c in X_train.columns]
@@ -285,7 +285,7 @@ def build_features(df: pd.DataFrame) -> PipelineArtifacts:
     set_global_seed(cfg.seed)
 
     logger.info(
-        "Target: %s | Excluídas por leakage em X: %s",
+        "Target: %s | Excluídas por vazamento em X: %s",
         cfg.target_col,
         cfg.leakage_columns,
     )
@@ -293,7 +293,7 @@ def build_features(df: pd.DataFrame) -> PipelineArtifacts:
     # Roteiro do pipeline:
     # 1. criar features
     # 2. split
-    # 3. limpar leakage em X
+    # 3. limpar vazamento em X
     # 4. preprocessar
     # 5. montar artefatos
     df_feat = create_features(df)
@@ -368,9 +368,9 @@ def save_artifacts(
 
 
 def main() -> None:
-    """Executa o pipeline completo de feature engineering."""
+    """Executa o pipeline completo de engenharia de atributos."""
 
-    logger.info("Iniciando pipeline de feature engineering")
+    logger.info("Iniciando pipeline de engenharia de atributos")
 
     df = load_raw_data()
     validate_schema(df)
@@ -378,7 +378,7 @@ def main() -> None:
     artifacts = build_features(df)
     save_artifacts(artifacts)
 
-    logger.info("Pipeline de feature engineering concluído com sucesso")
+    logger.info("Pipeline de engenharia de atributos concluído com sucesso")
 
 
 if __name__ == "__main__":

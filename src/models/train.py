@@ -38,7 +38,7 @@ class TrainingConfig(NamedTuple):
 
 
 class DatasetSplits(NamedTuple):
-    """Conjuntos de treino e teste já separados em X e y."""
+    """Conjuntos de treino e teste já separados em atributos e alvo."""
 
     X_train: pd.DataFrame
     y_train: pd.Series
@@ -71,7 +71,7 @@ def load_training_config() -> TrainingConfig:
 
 
 def load_training_data(target_col: str) -> DatasetSplits:
-    """Carrega os dados processados e separa features e target."""
+    """Carrega os dados processados e separa atributos e variável alvo."""
 
     train_df = pd.read_parquet("data/processed/train.parquet")
     test_df = pd.read_parquet("data/processed/test.parquet")
