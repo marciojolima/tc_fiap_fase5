@@ -25,10 +25,12 @@ class DummyClassifier:
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         self.was_fit = True
 
-    def predict(self, X: pd.DataFrame):
+    @staticmethod
+    def predict(X: pd.DataFrame):
         return [0, 1, 0, 1]
 
-    def predict_proba(self, X: pd.DataFrame):
+    @staticmethod
+    def predict_proba(X: pd.DataFrame):
         return np.array(
             [
                 [0.9, 0.1],
@@ -84,8 +86,8 @@ def test_build_comparison_calculates_metric_delta() -> None:
         challenger_metrics={"accuracy": 0.9, "auc": 0.75},
     )
 
-    assert comparison["baseline"]["accuracy"] == 0.8
-    assert comparison["challenger"]["accuracy"] == 0.9
+    assert comparison["baseline"]["accuracy"] == 0.8  # noqa: PLR2004
+    assert comparison["challenger"]["accuracy"] == 0.9  # noqa: PLR2004
     assert comparison["delta"]["accuracy"] == pytest.approx(0.1)
     assert comparison["delta"]["auc"] == pytest.approx(0.05)
 
@@ -118,7 +120,7 @@ def test_train_and_log_model_trains_logs_and_saves(
         name="baseline",
         params={"n_estimators": 10},
         role="baseline",
-        builder=lambda params: DummyClassifier(params),
+        builder=DummyClassifier,
         output_path=tmp_path / "baseline_model.pkl",
     )
 

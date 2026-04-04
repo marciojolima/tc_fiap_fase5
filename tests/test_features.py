@@ -19,7 +19,7 @@ def test_create_features_adds_expected_columns(
     assert "BalancePerProduct" in featured_df.columns
     assert "PointsPerSalary" in featured_df.columns
     assert "BalancePerProduct" not in base_df.columns
-    assert featured_df.loc[0, "BalancePerProduct"] == 1000.0
+    assert featured_df.loc[0, "BalancePerProduct"] == 1000.0  # noqa: PLR2004
 
 
 def test_drop_leakage_from_features_removes_only_feature_columns(
