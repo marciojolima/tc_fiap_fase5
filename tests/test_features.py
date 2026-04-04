@@ -3,6 +3,7 @@ import pandas as pd
 from features.feature_engineering import (
     FeatureEngineeringConfig,
     build_features,
+    clean_interim_data,
     create_features,
     drop_leakage_from_features,
     preprocess_features,
@@ -20,6 +21,21 @@ def test_create_features_adds_expected_columns(
     assert "PointsPerSalary" in featured_df.columns
     assert "BalancePerProduct" not in base_df.columns
     assert featured_df.loc[0, "BalancePerProduct"] == 1000.0  # noqa: PLR2004
+
+
+def test_clean_interim_data_removes_duplicates_and_missing_values(
+    churn_dataframe: pd.DataFrame,
+) -> None:
+    dirty_df = pd.concat(
+        [churn_dataframe, churn_dataframe.iloc[[0]]],
+        ignore_index=True
+    )
+    dirty_df.loc[1, "Balance"] = None
+
+    cleaned_df = clean_interim_data(dirty_df)
+
+    assert len(cleaned_df) == len(churn_dataframe) - 1
+    assert cleaned_df.isna().sum().sum() == 0
 
 
 def test_drop_leakage_from_features_removes_only_feature_columns(

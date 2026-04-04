@@ -11,6 +11,7 @@ stages:
       - configs/pipeline_config.yaml
       - data/raw/Customer-Churn-Records.csv
     outs:
+      - data/interim/cleaned.parquet
       - data/processed/train.parquet
       - data/processed/test.parquet
       - data/processed/feature_columns.json

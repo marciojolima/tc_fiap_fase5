@@ -48,6 +48,12 @@ class PipelineArtifacts(NamedTuple):
     preprocessor: ColumnTransformer
 
 
+class InterimArtifacts(NamedTuple):
+    """Artefatos produzidos na camada de dados intermediários."""
+
+    cleaned_df: pd.DataFrame
+
+
 class FeatureEngineeringConfig(NamedTuple):
     """Configuração usada no pipeline de engenharia de atributos."""
 
@@ -105,6 +111,32 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return df_feat
+
+
+def clean_interim_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Prepara os dados intermediários antes da modelagem.
+
+    Esta camada representa o conjunto de dados já sem identificadores
+    e com limpeza básica aplicada, mas ainda sem remoção de vazamento
+    para modelagem e sem transformações como encoding ou scaling.
+    """
+
+    initial_rows = len(df)
+    df_clean = df.drop_duplicates().dropna().reset_index(drop=True)
+
+    removed_duplicates = initial_rows - len(df.drop_duplicates())
+    removed_missing = len(df.drop_duplicates()) - len(df_clean)
+
+    logger.info(
+        ("Camada interim preparada — linhas iniciais: "
+        "%d | duplicadas removidas: %d | linhas com valores ausentes removidas: %d"),
+        initial_rows,
+        removed_duplicates,
+        removed_missing,
+    )
+    logger.info("Shape do conjunto interim: %s", df_clean.shape)
+
+    return df_clean
 
 
 def split_train_test(
@@ -335,6 +367,25 @@ def build_features(df: pd.DataFrame) -> PipelineArtifacts:
     )
 
 
+def save_interim_artifacts(
+    artifacts: InterimArtifacts,
+    output_dir: Path = Path("data/interim"),
+) -> None:
+    """Persiste a camada de dados intermediários em disco."""
+
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        cleaned_path = output_dir / "cleaned.parquet"
+        artifacts.cleaned_df.to_parquet(cleaned_path, index=False)
+    except OSError as exc:
+        logger.exception("Falha ao persistir dados intermediários em %s", output_dir)
+        raise OSError(
+            f"Não foi possível salvar dados intermediários em '{output_dir}'"
+        ) from exc
+
+    logger.info("Dados intermediários salvos em %s", cleaned_path)
+
+
 def save_artifacts(
     artifacts: PipelineArtifacts,
     output_dir: Path = Path("data/processed"),
@@ -375,9 +426,11 @@ def main() -> None:
     logger.info("Iniciando pipeline de engenharia de atributos")
 
     df = load_raw_data()
-    validate_schema(df)
+    interim_df = clean_interim_data(df)
+    validate_schema(interim_df)
+    save_interim_artifacts(InterimArtifacts(cleaned_df=interim_df))
 
-    artifacts = build_features(df)
+    artifacts = build_features(interim_df)
     save_artifacts(artifacts)
 
     logger.info("Pipeline de engenharia de atributos concluído com sucesso")
