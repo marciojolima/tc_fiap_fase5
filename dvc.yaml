@@ -14,8 +14,8 @@ stages:
       - data/processed/train.parquet
       - data/processed/test.parquet
       - data/processed/feature_columns.json
-      - data/processed/preprocessor.joblib
       - data/processed/schema_report.json
+      - artifacts/preprocessor.joblib
 
   train:
     cmd: python -m src.models.train

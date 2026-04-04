@@ -343,12 +343,14 @@ def save_artifacts(
 
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
+        artifacts_dir = Path("artifacts")
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         train_path = output_dir / "train.parquet"
         test_path = output_dir / "test.parquet"
         feature_cols_path = output_dir / "feature_columns.json"
         schema_report_path = output_dir / "schema_report.json"
-        preprocessor_path = output_dir / "preprocessor.joblib"
+        preprocessor_path = artifacts_dir / "preprocessor.joblib"
 
         artifacts.train_df.to_parquet(train_path, index=False)
         artifacts.test_df.to_parquet(test_path, index=False)
