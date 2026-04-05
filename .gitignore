@@ -62,7 +62,7 @@ data/**/*.csv
 !data/processed/feature_columns.json
 !data/processed/schema_report.json
 !configs/*.yaml
-!examples/what_if/*.json
+!examples/scenario_analysis/*.json
 
 *.pkl
 *.joblib

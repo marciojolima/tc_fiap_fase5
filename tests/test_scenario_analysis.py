@@ -3,20 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from inference.what_if import (
-    WhatIfResult,
+from inference.scenario_analysis import (
+    ScenarioAnalysisConfig,
+    ScenarioAnalysisResult,
     build_scenario,
     load_scenario_suite,
-    log_what_if_run,
-    run_what_if_prediction,
-    run_what_if_suite,
-    WhatIfConfig,
+    log_scenario_analysis_run,
+    run_scenario_analysis_suite,
+    run_scenario_prediction,
 )
 from serving.pipeline import ServingConfig
 
 
 class DummyRun:
-    def __init__(self, run_id: str = "what-if-run") -> None:
+    def __init__(self, run_id: str = "scenario-run") -> None:
         self.info = SimpleNamespace(run_id=run_id)
 
     def __enter__(self):
@@ -45,72 +45,13 @@ def return_prediction(
     return 0.69, 1
 
 
-def test_run_what_if_prediction_returns_standardized_output(monkeypatch) -> None:
-    scenario = build_scenario(
-        name="high_churn_candidate",
-        payload={
-            "Age": 60,
-            "Balance": 0,
-            "Card Type": "SILVER",
-            "CreditScore": 400,
-            "EstimatedSalary": 30000,
-            "Gender": "Female",
-            "Geography": "Germany",
-            "HasCrCard": 0,
-            "IsActiveMember": 0,
-            "NumOfProducts": 1,
-            "Point Earned": 100,
-            "Tenure": 1,
-        },
-    )
-
-    monkeypatch.setattr("inference.what_if.build_serving_config", return_serving_config)
-    monkeypatch.setattr(
-        "inference.what_if.predict_from_dataframe_with_config",
-        return_prediction,
-    )
-
-    result = run_what_if_prediction(
-        scenario,
-        "configs/training/experiments/random_forest_v2.yaml",
-    )
-
-    assert isinstance(result, WhatIfResult)
-    assert result.churn_probability == 0.69  # noqa: PLR2004
-    assert result.churn_prediction == 1
-    assert result.threshold == 0.5  # noqa: PLR2004
-    assert result.model_name == "random_forest_v2"
-
-
-def test_load_scenario_suite_supports_dict_wrapper(tmp_path: Path) -> None:
-    suite_path = tmp_path / "suite.json"
-    suite_path.write_text(
-        (
-            '{"scenarios": ['
-            '{"name": "high_risk", "payload": {"Age": 60, "Balance": 0, '
-            '"Card Type": "SILVER", "CreditScore": 400, '
-            '"EstimatedSalary": 30000, "Gender": "Female", '
-            '"Geography": "Germany", "HasCrCard": 0, '
-            '"IsActiveMember": 0, "NumOfProducts": 1, '
-            '"Point Earned": 100, "Tenure": 1}}'
-            "]}"
-        ),
-        encoding="utf-8",
-    )
-
-    scenarios = load_scenario_suite(str(suite_path))
-
-    assert len(scenarios) == 1
-    assert scenarios[0].name == "high_risk"
-
-
 def return_suite_result(
     scenario,
     experiment_config_path: str,
-) -> WhatIfResult:
+) -> ScenarioAnalysisResult:
     probability = 0.91 if scenario.name == "high_risk" else 0.08
     prediction = 1 if scenario.name == "high_risk" else 0
-    return WhatIfResult(
+    return ScenarioAnalysisResult(
         scenario_name=scenario.name,
         churn_probability=probability,
         churn_prediction=prediction,
@@ -158,7 +99,69 @@ _TAG_LOG: list[tuple[str, str]] = []
 _ARTIFACT_LOG: list[tuple[str, str]] = []
 
 
-def test_run_what_if_suite_executes_all_scenarios(
+def test_run_scenario_prediction_returns_standardized_output(monkeypatch) -> None:
+    scenario = build_scenario(
+        name="high_churn_candidate",
+        payload={
+            "Age": 60,
+            "Balance": 0,
+            "Card Type": "SILVER",
+            "CreditScore": 400,
+            "EstimatedSalary": 30000,
+            "Gender": "Female",
+            "Geography": "Germany",
+            "HasCrCard": 0,
+            "IsActiveMember": 0,
+            "NumOfProducts": 1,
+            "Point Earned": 100,
+            "Tenure": 1,
+        },
+    )
+
+    monkeypatch.setattr(
+        "inference.scenario_analysis.build_serving_config",
+        return_serving_config,
+    )
+    monkeypatch.setattr(
+        "inference.scenario_analysis.predict_from_dataframe_with_config",
+        return_prediction,
+    )
+
+    result = run_scenario_prediction(
+        scenario,
+        "configs/training/experiments/random_forest_v2.yaml",
+    )
+
+    assert isinstance(result, ScenarioAnalysisResult)
+    assert result.churn_probability == 0.69  # noqa: PLR2004
+    assert result.churn_prediction == 1
+    assert result.threshold == 0.5  # noqa: PLR2004
+    assert result.model_name == "random_forest_v2"
+
+
+def test_load_scenario_suite_supports_dict_wrapper(tmp_path: Path) -> None:
+    suite_path = tmp_path / "suite.json"
+    suite_path.write_text(
+        (
+            '{"scenarios": ['
+            '{"name": "high_risk", "payload": {"Age": 60, "Balance": 0, '
+            '"Card Type": "SILVER", "CreditScore": 400, '
+            '"EstimatedSalary": 30000, "Gender": "Female", '
+            '"Geography": "Germany", "HasCrCard": 0, '
+            '"IsActiveMember": 0, "NumOfProducts": 1, '
+            '"Point Earned": 100, "Tenure": 1}}'
+            "]}"
+        ),
+        encoding="utf-8",
+    )
+
+    scenarios = load_scenario_suite(str(suite_path))
+
+    assert len(scenarios) == 1
+    assert scenarios[0].name == "high_risk"
+
+
+def test_run_scenario_analysis_suite_executes_all_scenarios(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -183,15 +186,18 @@ def test_run_what_if_suite_executes_all_scenarios(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("inference.what_if.run_what_if_scenario", return_suite_result)
+    monkeypatch.setattr(
+        "inference.scenario_analysis.run_scenario_analysis",
+        return_suite_result,
+    )
 
-    results = run_what_if_suite(str(suite_path))
+    results = run_scenario_analysis_suite(str(suite_path))
 
     assert len(results) == 2
     assert [result.scenario_name for result in results] == ["high_risk", "low_risk"]
 
 
-def test_log_what_if_run_registers_mlflow_data(monkeypatch) -> None:
+def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
     scenario = build_scenario(
         name="high_risk_profile",
         payload={
@@ -209,7 +215,7 @@ def test_log_what_if_run_registers_mlflow_data(monkeypatch) -> None:
             "Tenure": 1,
         },
     )
-    result = WhatIfResult(
+    result = ScenarioAnalysisResult(
         scenario_name="high_risk_profile",
         churn_probability=0.69,
         churn_prediction=1,
@@ -217,9 +223,9 @@ def test_log_what_if_run_registers_mlflow_data(monkeypatch) -> None:
         model_name="random_forest_v2",
         run_name="random_forest_v2",
     )
-    cfg = WhatIfConfig(
+    cfg = ScenarioAnalysisConfig(
         tracking_uri="file:./mlruns",
-        mlflow_experiment_name="datathon-churn-what-if",
+        mlflow_experiment_name="datathon-churn-scenario-analysis",
         experiment_config_path="configs/training/model_current.yaml",
     )
 
@@ -228,29 +234,38 @@ def test_log_what_if_run_registers_mlflow_data(monkeypatch) -> None:
     _TAG_LOG.clear()
     _ARTIFACT_LOG.clear()
 
-    monkeypatch.setattr("inference.what_if.mlflow.set_tracking_uri", ignore_tracking_uri)
-    monkeypatch.setattr("inference.what_if.mlflow.set_experiment", ignore_experiment_name)
-    monkeypatch.setattr("inference.what_if.mlflow.start_run", return_dummy_run)
     monkeypatch.setattr(
-        "inference.what_if.mlflow.log_param",
+        "inference.scenario_analysis.mlflow.set_tracking_uri",
+        ignore_tracking_uri,
+    )
+    monkeypatch.setattr(
+        "inference.scenario_analysis.mlflow.set_experiment",
+        ignore_experiment_name,
+    )
+    monkeypatch.setattr(
+        "inference.scenario_analysis.mlflow.start_run",
+        return_dummy_run,
+    )
+    monkeypatch.setattr(
+        "inference.scenario_analysis.mlflow.log_param",
         return_logged_param,
     )
     monkeypatch.setattr(
-        "inference.what_if.mlflow.log_metric",
+        "inference.scenario_analysis.mlflow.log_metric",
         return_logged_metric,
     )
     monkeypatch.setattr(
-        "inference.what_if.mlflow.set_tag",
+        "inference.scenario_analysis.mlflow.set_tag",
         return_logged_tag,
     )
     monkeypatch.setattr(
-        "inference.what_if._log_json_artifact",
+        "inference.scenario_analysis._log_json_artifact",
         return_json_artifact,
     )
 
-    log_what_if_run(scenario, result, cfg)
+    log_scenario_analysis_run(scenario, result, cfg)
 
     assert ("threshold", 0.5) in _PARAM_LOG  # noqa: PLR2004
     assert ("churn_probability", 0.69) in _METRIC_LOG  # noqa: PLR2004
-    assert ("flow", "what_if") in _TAG_LOG
-    assert ("payload.json", "what_if/high_risk_profile") in _ARTIFACT_LOG
+    assert ("flow", "scenario_analysis") in _TAG_LOG
+    assert ("payload.json", "scenario_analysis/high_risk_profile") in _ARTIFACT_LOG

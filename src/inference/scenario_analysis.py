@@ -1,4 +1,4 @@
-"""Executa cenários hipotéticos de churn com rastreabilidade no MLflow."""
+"""Executa análise de cenários de churn com rastreabilidade no MLflow."""
 
 from __future__ import annotations
 
@@ -25,23 +25,23 @@ from serving.schemas import ChurnPredictionRequest
 logger = get_logger(__name__)
 
 
-class WhatIfConfig(NamedTuple):
-    """Configuração necessária para rodar uma análise what-if."""
+class ScenarioAnalysisConfig(NamedTuple):
+    """Configuração necessária para rodar análise de cenários."""
 
     tracking_uri: str
     mlflow_experiment_name: str
     experiment_config_path: str
 
 
-class WhatIfScenario(NamedTuple):
+class AnalysisScenario(NamedTuple):
     """Cenário hipotético com nome estável e payload bruto."""
 
     name: str
     payload: dict[str, Any]
 
 
-class WhatIfResult(NamedTuple):
-    """Resultado padronizado da análise hipotética."""
+class ScenarioAnalysisResult(NamedTuple):
+    """Resultado padronizado da análise de cenário."""
 
     scenario_name: str
     churn_probability: float
@@ -51,26 +51,26 @@ class WhatIfResult(NamedTuple):
     run_name: str
 
 
-def load_what_if_config(
+def load_scenario_analysis_config(
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
-) -> WhatIfConfig:
-    """Carrega a configuração global do fluxo de what-if."""
+) -> ScenarioAnalysisConfig:
+    """Carrega a configuração global do fluxo de análise de cenários."""
 
     global_config = load_global_config()
-    return WhatIfConfig(
+    return ScenarioAnalysisConfig(
         tracking_uri=global_config["mlflow"]["tracking_uri"],
         mlflow_experiment_name=global_config["mlflow"].get(
-            "what_if_experiment_name",
-            "datathon-churn-what-if",
+            "scenario_analysis_experiment_name",
+            "datathon-churn-scenario-analysis",
         ),
         experiment_config_path=experiment_config_path,
     )
 
 
-def build_scenario(name: str, payload: dict[str, Any]) -> WhatIfScenario:
+def build_scenario(name: str, payload: dict[str, Any]) -> AnalysisScenario:
     """Monta um cenário hipotético validado em memória."""
 
-    return WhatIfScenario(name=name, payload=payload)
+    return AnalysisScenario(name=name, payload=payload)
 
 
 def parse_payload(payload: dict[str, Any]) -> ChurnPredictionRequest:
@@ -79,10 +79,10 @@ def parse_payload(payload: dict[str, Any]) -> ChurnPredictionRequest:
     return ChurnPredictionRequest(**payload)
 
 
-def run_what_if_prediction(
-    scenario: WhatIfScenario,
+def run_scenario_prediction(
+    scenario: AnalysisScenario,
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
-) -> WhatIfResult:
+) -> ScenarioAnalysisResult:
     """Executa a inferência de um cenário hipotético."""
 
     serving_cfg = build_serving_config(experiment_config_path)
@@ -90,7 +90,7 @@ def run_what_if_prediction(
     df_feat = prepare_inference_dataframe(request, serving_cfg)
     probability, prediction = predict_from_dataframe_with_config(df_feat, serving_cfg)
 
-    return WhatIfResult(
+    return ScenarioAnalysisResult(
         scenario_name=scenario.name,
         churn_probability=probability,
         churn_prediction=prediction,
@@ -124,17 +124,17 @@ def _log_json_artifact(data: dict[str, Any], filename: str, artifact_dir: str) -
         mlflow.log_artifact(str(output_path), artifact_path=artifact_dir)
 
 
-def log_what_if_run(
-    scenario: WhatIfScenario,
-    result: WhatIfResult,
-    cfg: WhatIfConfig,
+def log_scenario_analysis_run(
+    scenario: AnalysisScenario,
+    result: ScenarioAnalysisResult,
+    cfg: ScenarioAnalysisConfig,
 ) -> None:
-    """Registra uma execução what-if em experimento dedicado no MLflow."""
+    """Registra uma execução de análise de cenário em experimento dedicado."""
 
     mlflow.set_tracking_uri(cfg.tracking_uri)
     mlflow.set_experiment(cfg.mlflow_experiment_name)
 
-    run_name = f"what_if::{result.model_name}::{scenario.name}"
+    run_name = f"scenario_analysis::{result.model_name}::{scenario.name}"
     with mlflow.start_run(run_name=run_name):
         _log_payload_params(scenario.payload)
         mlflow.log_param("experiment_config_path", cfg.experiment_config_path)
@@ -145,35 +145,36 @@ def log_what_if_run(
         mlflow.log_metric("churn_probability", result.churn_probability)
         mlflow.log_metric("churn_prediction", float(result.churn_prediction))
 
-        mlflow.set_tag("flow", "what_if")
+        mlflow.set_tag("flow", "scenario_analysis")
         mlflow.set_tag("analysis_type", "hypothetical_scenario")
         mlflow.set_tag("scenario_name", scenario.name)
         mlflow.set_tag("model_name", result.model_name)
 
+        artifact_dir = f"scenario_analysis/{scenario.name}"
         _log_json_artifact(
             scenario.payload,
             filename="payload.json",
-            artifact_dir=f"what_if/{scenario.name}",
+            artifact_dir=artifact_dir,
         )
         _log_json_artifact(
             result._asdict(),
             filename="prediction.json",
-            artifact_dir=f"what_if/{scenario.name}",
+            artifact_dir=artifact_dir,
         )
 
 
-def run_what_if_scenario(
-    scenario: WhatIfScenario,
+def run_scenario_analysis(
+    scenario: AnalysisScenario,
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
-) -> WhatIfResult:
+) -> ScenarioAnalysisResult:
     """Executa um cenário único e registra a análise no MLflow."""
 
-    cfg = load_what_if_config(experiment_config_path)
-    result = run_what_if_prediction(scenario, experiment_config_path)
-    log_what_if_run(scenario, result, cfg)
+    cfg = load_scenario_analysis_config(experiment_config_path)
+    result = run_scenario_prediction(scenario, experiment_config_path)
+    log_scenario_analysis_run(scenario, result, cfg)
 
     logger.info(
-        "What-if executado — cenário=%s | modelo=%s | prob=%.4f | pred=%d",
+        "Análise de cenário executada — cenário=%s | modelo=%s | prob=%.4f | pred=%d",
         result.scenario_name,
         result.model_name,
         result.churn_probability,
@@ -182,7 +183,7 @@ def run_what_if_scenario(
     return result
 
 
-def load_scenario_suite(suite_path: str) -> list[WhatIfScenario]:
+def load_scenario_suite(suite_path: str) -> list[AnalysisScenario]:
     """Carrega uma suíte versionada de cenários hipotéticos em JSON."""
 
     with open(suite_path, "r", encoding="utf-8") as file_obj:
@@ -195,22 +196,22 @@ def load_scenario_suite(suite_path: str) -> list[WhatIfScenario]:
     ]
 
 
-def run_what_if_suite(
+def run_scenario_analysis_suite(
     suite_path: str,
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
-) -> list[WhatIfResult]:
+) -> list[ScenarioAnalysisResult]:
     """Executa uma suíte de cenários hipotéticos de forma sequencial."""
 
     scenarios = load_scenario_suite(suite_path)
     results = [
-        run_what_if_scenario(
+        run_scenario_analysis(
             scenario=scenario,
             experiment_config_path=experiment_config_path,
         )
         for scenario in scenarios
     ]
 
-    logger.info("Suíte what-if concluída — cenários executados: %d", len(results))
+    logger.info("Suíte de cenários concluída — cenários executados: %d", len(results))
     return results
 
 
@@ -218,7 +219,7 @@ def parse_args() -> argparse.Namespace:
     """Lê argumentos de linha de comando para cenário único ou suíte."""
 
     parser = argparse.ArgumentParser(
-        description="Executa análise what-if para churn com rastreio no MLflow.",
+        description="Executa análise de cenários para churn com rastreio no MLflow.",
     )
     parser.add_argument(
         "--config",
@@ -260,12 +261,12 @@ def _load_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main() -> None:
-    """Ponto de entrada para execução local do fluxo what-if."""
+    """Ponto de entrada para execução local do fluxo de análise de cenários."""
 
     args = parse_args()
 
     if args.suite_file:
-        results = run_what_if_suite(
+        results = run_scenario_analysis_suite(
             suite_path=args.suite_file,
             experiment_config_path=args.config,
         )
@@ -280,7 +281,7 @@ def main() -> None:
 
     payload = _load_payload_from_args(args)
     scenario = build_scenario(args.scenario_name, payload)
-    result = run_what_if_scenario(
+    result = run_scenario_analysis(
         scenario=scenario,
         experiment_config_path=args.config,
     )

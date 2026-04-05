@@ -31,7 +31,7 @@ class ChurnPredictionRequest(BaseModel):
     Tenure: int = Field(
         5,
         ge=0,
-        le=10,
+        le=20,
         description="Anos que o cliente possui conta no banco",
     )
     Balance: float = Field(
@@ -42,7 +42,7 @@ class ChurnPredictionRequest(BaseModel):
     NumOfProducts: int = Field(
         1,
         ge=1,
-        le=4,
+        le=9,
         description="Quantidade de produtos bancários ativos",
     )
     HasCrCard: int = Field(

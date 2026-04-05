@@ -1,23 +1,23 @@
-# What-If Analysis
+# Scenario Analysis
 
-O modulo `src.inference.what_if` executa cenarios hipoteticos de churn e
-registra cada execucao em um experimento separado no MLflow.
+O modulo `src.inference.scenario_analysis` executa cenarios hipoteticos
+de churn e registra cada execucao em um experimento separado no MLflow.
 
 ## Executar um cenario unico
 
 ```bash
-python -m src.inference.what_if \
+python -m src.inference.scenario_analysis \
   --config configs/training/model_current.yaml \
   --scenario-name high_churn_manual \
-  --payload-file examples/what_if/high_churn_customer.json
+  --payload-file examples/scenario_analysis/high_churn_customer.json
 ```
 
 ## Executar uma suite de cenarios
 
 ```bash
-python -m src.inference.what_if \
+python -m src.inference.scenario_analysis \
   --config configs/training/model_current.yaml \
-  --suite-file examples/what_if/churn_validation_suite.json
+  --suite-file examples/scenario_analysis/churn_validation_suite.json
 ```
 
 ## Formato da suite
