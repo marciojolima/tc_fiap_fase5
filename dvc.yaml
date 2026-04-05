@@ -8,7 +8,7 @@ stages:
       - src/common/seed.py
       - src/features/schema_validation.py
       - src/features/feature_engineering.py
-      - configs/pipeline_config.yaml
+      - configs/pipeline_global_config.yaml
       - data/raw/Customer-Churn-Records.csv
     outs:
       - data/interim/cleaned.parquet
@@ -26,7 +26,7 @@ stages:
       - src/common/seed.py
       - src/models/baseline.py
       - src/models/train.py
-      - configs/pipeline_config.yaml
+      - configs/pipeline_global_config.yaml
       - data/processed/train.parquet
       - data/processed/test.parquet
     outs:

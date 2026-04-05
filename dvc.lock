@@ -3,7 +3,7 @@ stages:
   featurize:
     cmd: python -m src.features.feature_engineering
     deps:
-    - path: configs/pipeline_config.yaml
+    - path: configs/pipeline_global_config.yaml
       hash: md5
       md5: 6a3f3b02c5db8cccd41f922293fecd4a
       size: 762
@@ -55,7 +55,7 @@ stages:
   train:
     cmd: python -m src.models.train
     deps:
-    - path: configs/pipeline_config.yaml
+    - path: configs/pipeline_global_config.yaml
       hash: md5
       md5: 6a3f3b02c5db8cccd41f922293fecd4a
       size: 762
