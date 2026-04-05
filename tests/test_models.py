@@ -1,27 +1,25 @@
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
-import pytest
 
+from models.catalog import build_model
 from models.train import (
     DatasetSplits,
     ExperimentTrainingConfig,
     ModelSpec,
-    TrainingConfig,
-    build_comparison,
     build_model_spec,
     evaluate_model,
     load_experiment_training_config,
+    run_training,
     train_and_log_model,
 )
 
 
 class DummyClassifier:
-    def __init__(self, params: dict) -> None:
-        self.params = params
+    def __init__(self, dummy_param: int = 1, **params) -> None:
+        self.params = {"dummy_param": dummy_param, **params}
         self.was_fit = False
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
@@ -54,12 +52,31 @@ class DummyRun:
         return None
 
 
-def return_model_builder(params: dict) -> dict:
-    return params
-
-
-def return_dummy_run(run_name: str) -> DummyRun:
-    return DummyRun()
+def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConfig:
+    return ExperimentTrainingConfig(
+        seed=42,
+        target_col="Exited",
+        test_size=0.2,
+        algorithm="random_forest",
+        flavor="sklearn",
+        experiment_name="random_forest_candidate",
+        run_name="rf_candidate",
+        model_params={"n_estimators": 200},
+        threshold=0.5,
+        feature_set="processed_v1",
+        model_path=model_path,
+        mlflow_cfg={
+            "tracking_uri": "file:./mlruns",
+            "experiment_name": "candidate-exp",
+            "tags": {
+                "owner": "team",
+                "phase": "dev",
+                "dataset_name": "dataset",
+                "candidate_type": "current",
+            },
+        },
+        registry_cfg={"enabled": False},
+    )
 
 
 def return_global_training_config() -> dict:
@@ -100,22 +117,85 @@ def return_experiment_training_config(_: str) -> dict:
     }
 
 
-def test_build_model_spec_extracts_name_params_and_metadata() -> None:
-    spec = build_model_spec(
-        model_cfg={"name": "baseline", "n_estimators": 100, "max_depth": 10},
-        role="baseline",
-        builder=return_model_builder,
-        output_path=Path("artifacts/model.pkl"),
+def return_dummy_run(run_name: str) -> DummyRun:
+    return DummyRun()
+
+
+def return_dummy_classifier(algorithm: str, params: dict) -> DummyClassifier:
+    return DummyClassifier(**params)
+
+
+def return_logged_metrics(metrics: dict[str, float]) -> None:
+    _METRICS_LOG.append(metrics)
+
+
+def return_logged_model(model, artifact_path: str) -> None:
+    _MODEL_LOG.append((model, artifact_path))
+
+
+def return_dump_call(model, output_path: Path) -> None:
+    _DUMP_LOG.append((model, output_path))
+
+
+def return_logged_metadata(
+    params: dict,
+    cfg: ExperimentTrainingConfig,
+    datasets: DatasetSplits,
+) -> None:
+    _METADATA_LOG.append((params, cfg, datasets))
+
+
+def return_train_call(
+    spec: ModelSpec,
+    cfg: ExperimentTrainingConfig,
+    datasets: DatasetSplits,
+) -> dict[str, float]:
+    _TRAIN_CALLS.append((spec, cfg, datasets))
+    return {"accuracy": 1.0}
+
+
+def return_datasets_stub(target_col: str) -> DatasetSplits:
+    return DatasetSplits(
+        X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
+        y_train=pd.Series([0, 1, 0, 1]),
+        X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
+        y_test=pd.Series([0, 1, 0, 1]),
     )
 
-    assert spec.name == "baseline"
-    assert spec.role == "baseline"
-    assert spec.params == {"n_estimators": 100, "max_depth": 10}
+
+def return_experiment_cfg_for_run(
+    experiment_config_path: str,
+) -> ExperimentTrainingConfig:
+    return build_experiment_training_config(Path("artifacts/model.pkl"))
+
+
+_METRICS_LOG: list[dict[str, float]] = []
+_MODEL_LOG: list[tuple[object, str]] = []
+_DUMP_LOG: list[tuple[object, Path]] = []
+_METADATA_LOG: list[tuple[dict, ExperimentTrainingConfig, DatasetSplits]] = []
+_TRAIN_CALLS: list[tuple[ModelSpec, ExperimentTrainingConfig, DatasetSplits]] = []
+
+
+def test_build_model_returns_supported_sklearn_estimator() -> None:
+    model = build_model("random_forest", {"n_estimators": 10, "random_state": 42})
+
+    assert model.__class__.__name__ == "RandomForestClassifier"
+
+
+def test_build_model_spec_uses_experiment_contract() -> None:
+    cfg = build_experiment_training_config(Path("artifacts/model.pkl"))
+
+    spec = build_model_spec(cfg)
+
+    assert spec.name == "random_forest_candidate"
+    assert spec.run_name == "rf_candidate"
+    assert spec.algorithm == "random_forest"
+    assert spec.params == {"n_estimators": 200}
     assert spec.output_path == Path("artifacts/model.pkl")
 
 
 def test_evaluate_model_returns_expected_metrics() -> None:
-    model = DummyClassifier(params={})
+    model = DummyClassifier()
     X_test = pd.DataFrame({"f1": [1, 2, 3, 4]})
     y_test = pd.Series([0, 1, 0, 1])
 
@@ -126,18 +206,6 @@ def test_evaluate_model_returns_expected_metrics() -> None:
     assert metrics["recall"] == 1.0
     assert metrics["f1"] == 1.0
     assert 0.0 <= metrics["auc"] <= 1.0
-
-
-def test_build_comparison_calculates_metric_delta() -> None:
-    comparison = build_comparison(
-        baseline_metrics={"accuracy": 0.8, "auc": 0.7},
-        challenger_metrics={"accuracy": 0.9, "auc": 0.75},
-    )
-
-    assert comparison["baseline"]["accuracy"] == 0.8  # noqa: PLR2004
-    assert comparison["challenger"]["accuracy"] == 0.9  # noqa: PLR2004
-    assert comparison["delta"]["accuracy"] == pytest.approx(0.1)
-    assert comparison["delta"]["auc"] == pytest.approx(0.05)
 
 
 def test_load_experiment_training_config_merges_global_and_experiment(
@@ -175,43 +243,46 @@ def test_train_and_log_model_trains_logs_and_saves(
         X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
         y_test=pd.Series([0, 1, 0, 1]),
     )
-    cfg = TrainingConfig(
-        seed=42,
-        target_col="Exited",
-        test_size=0.2,
-        baseline_cfg={},
-        challenger_cfg={},
-        mlflow_cfg={
-            "owner": "team",
-            "phase": "dev",
-            "dataset_name": "dataset",
-            "tracking_uri": "file:./mlruns",
-            "experiment_name": "exp",
-        },
-    )
-    spec = ModelSpec(
-        name="baseline",
-        params={"n_estimators": 10},
-        role="baseline",
-        builder=DummyClassifier,
-        output_path=tmp_path / "baseline_model.pkl",
-    )
+    cfg = build_experiment_training_config(tmp_path / "candidate_model.pkl")
+    spec = build_model_spec(cfg)
+
+    _METRICS_LOG.clear()
+    _MODEL_LOG.clear()
+    _DUMP_LOG.clear()
+    _METADATA_LOG.clear()
 
     monkeypatch.setattr("models.train.mlflow.start_run", return_dummy_run)
-    log_metrics_mock = Mock()
-    log_model_mock = Mock()
-    dump_mock = Mock()
-    metadata_mock = Mock()
-
-    monkeypatch.setattr("models.train.mlflow.log_metrics", log_metrics_mock)
-    monkeypatch.setattr("models.train.mlflow.sklearn.log_model", log_model_mock)
-    monkeypatch.setattr("models.train.dump", dump_mock)
-    monkeypatch.setattr("models.train.log_run_metadata", metadata_mock)
+    monkeypatch.setattr("models.train.mlflow.log_metrics", return_logged_metrics)
+    monkeypatch.setattr("models.train.mlflow.sklearn.log_model", return_logged_model)
+    monkeypatch.setattr("models.train.dump", return_dump_call)
+    monkeypatch.setattr("models.train.log_run_metadata", return_logged_metadata)
+    monkeypatch.setattr("models.train.build_model", return_dummy_classifier)
 
     metrics = train_and_log_model(spec, cfg, datasets)
 
-    metadata_mock.assert_called_once_with(spec.params, spec.role, cfg, datasets)
-    log_metrics_mock.assert_called_once()
-    log_model_mock.assert_called_once()
-    dump_mock.assert_called_once()
+    assert _METADATA_LOG == [(spec.params, cfg, datasets)]
+    assert len(_METRICS_LOG) == 1
+    assert len(_MODEL_LOG) == 1
+    assert len(_DUMP_LOG) == 1
     assert metrics["accuracy"] == 1.0
+
+
+def test_run_training_executes_single_experiment(monkeypatch) -> None:
+    seed_calls = []
+    mlflow_cfg_calls = []
+    _TRAIN_CALLS.clear()
+
+    monkeypatch.setattr(
+        "models.train.load_experiment_training_config",
+        return_experiment_cfg_for_run,
+    )
+    monkeypatch.setattr("models.train.set_global_seed", seed_calls.append)
+    monkeypatch.setattr("models.train.load_training_data", return_datasets_stub)
+    monkeypatch.setattr("models.train.configure_mlflow", mlflow_cfg_calls.append)
+    monkeypatch.setattr("models.train.train_and_log_model", return_train_call)
+
+    run_training("configs/training/model_current.yaml")
+
+    assert seed_calls == [42]
+    assert len(mlflow_cfg_calls) == 1
+    assert len(_TRAIN_CALLS) == 1

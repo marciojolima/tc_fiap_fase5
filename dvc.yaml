@@ -24,13 +24,12 @@ stages:
       - src/common/config_loader.py
       - src/common/logger.py
       - src/common/seed.py
-      - src/models/baseline.py
+      - src/models/catalog.py
       - src/models/train.py
       - configs/pipeline_global_config.yaml
+      - configs/training/model_current.yaml
       - data/processed/train.parquet
       - data/processed/test.parquet
     outs:
-      - artifacts/baseline_model.pkl
       - artifacts/challenger_model.pkl
-      - artifacts/metrics.json
       

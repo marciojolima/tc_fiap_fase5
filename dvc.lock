@@ -5,16 +5,16 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 6a3f3b02c5db8cccd41f922293fecd4a
-      size: 762
+      md5: 8d140e242fe1cabf210b8a7f02abab5a
+      size: 907
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
       md5: e37acb179fefe4cac8a33e280a12f62c
       size: 837415
     - path: src/common/config_loader.py
       hash: md5
-      md5: cc139f521aecb35f726f604658312867
-      size: 290
+      md5: d696fa66291cdc8c4bcfa9f80da091e6
+      size: 1322
     - path: src/common/data_loader.py
       hash: md5
       md5: 8884b5275145a7853274e6a53a7bf1a0
@@ -57,8 +57,12 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 6a3f3b02c5db8cccd41f922293fecd4a
-      size: 762
+      md5: 8d140e242fe1cabf210b8a7f02abab5a
+      size: 907
+    - path: configs/training/model_current.yaml
+      hash: md5
+      md5: 863cd58460df5b465c0aca73fedcaa80
+      size: 683
     - path: data/processed/test.parquet
       hash: md5
       md5: 0781c128020c019b0d6970ea6969067a
@@ -69,8 +73,8 @@ stages:
       size: 322321
     - path: src/common/config_loader.py
       hash: md5
-      md5: cc139f521aecb35f726f604658312867
-      size: 290
+      md5: d696fa66291cdc8c4bcfa9f80da091e6
+      size: 1322
     - path: src/common/logger.py
       hash: md5
       md5: ed0345d8d4a981440409ab02e7359bec
@@ -79,24 +83,16 @@ stages:
       hash: md5
       md5: e3863cbaf4b2627fabdafd56456a880f
       size: 178
-    - path: src/models/baseline.py
+    - path: src/models/catalog.py
       hash: md5
-      md5: ae37ed21049e7ef31dcf0e514929cb38
-      size: 278
+      md5: adfc0fae1169bb526517a070e2b41bae
+      size: 954
     - path: src/models/train.py
       hash: md5
-      md5: df5a47ccde86258c37e6007b16376182
-      size: 4687
+      md5: 34e9aa6999ca4cbfe24f59abfc5d6f08
+      size: 8164
     outs:
-    - path: artifacts/baseline_model.pkl
-      hash: md5
-      md5: 84af04dbe5fa821d21e765f8e71a6147
-      size: 5189753
     - path: artifacts/challenger_model.pkl
       hash: md5
       md5: b09c67fe941373565eb1bb7ad6c4db58
       size: 15212633
-    - path: artifacts/metrics.json
-      hash: md5
-      md5: 26c88f49d198d10cde867a433e3ad86a
-      size: 552
