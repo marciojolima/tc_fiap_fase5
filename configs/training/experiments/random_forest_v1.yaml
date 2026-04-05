@@ -19,7 +19,7 @@ inference:
   threshold: 0.5
 
 artifacts:
-  model_path: artifacts/baseline_model.pkl
+  model_path: artifacts/random_forest_v1.pkl
 
 mlflow:
   experiment_name: datathon-churn-baseline
@@ -28,7 +28,7 @@ mlflow:
     phase: datathon-fase05
     dataset_name: bank-customer-churn
     model_family: random_forest
-    candidate_type: baseline
+    candidate_type: challenger
 
 registry:
   enabled: false

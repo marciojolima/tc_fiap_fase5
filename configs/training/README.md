@@ -9,3 +9,6 @@ de treino de modelos.
 O executor de treino consome um unico experimento por vez. Novos
 experimentos devem ser adicionados em `experiments/` seguindo o mesmo
 contrato YAML.
+
+Convencao recomendada para artefatos:
+- `artifacts/<experiment.name>.pkl`
