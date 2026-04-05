@@ -9,15 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: "pip"
+
       - name: Install dependencies
-        run: pip install -e .
+        run: pip install -e . ruff
+
       - name: Lint
+        run: ruff check src tests
+
+      - name: Syntax check
         run: python -m compileall src tests evaluation
+
       - name: Test
         run: pytest -q
+
       - name: Build
         run: python -m pip check
