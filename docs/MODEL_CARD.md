@@ -24,12 +24,20 @@
 
 O gráfico de **Feature Importance** (usando o critério "Gain") revela quais variáveis o modelo considerou mais relevantes para prever o churn dos clientes. Quanto maior o valor de Gain, maior a contribuição da feature nas decisões do modelo.
 
-#### Top 5 Features Mais Importantes
-
-| Posição | Feature              | Importância (%) | Interpretação de Negócio |
-|---------|----------------------|------------------|---------------------------|
-| 1º     | **NumOfProducts**    | 26.59%          | **Mais importante do modelo**. Clientes com poucos produtos bancários (ex: apenas conta) têm risco muito maior de churn. Estratégia de cross-selling pode ser muito eficaz. |
-| 2º     | **IsActiveMember**   | 15.34%          | Clientes inativos saem muito mais do banco. Manter o engajamento (uso de app, transações, etc.) é uma das chaves para reduzir o churn. |
-| 3º     | **Age**              | 10.31%          | A idade tem influência significativa. Geralmente clientes muito jovens ou mais velhos apresentam maior probabilidade de churn. |
-| 4º     | **Geo_Germany**      | 7.60%           | Clientes da Alemanha possuem maior risco de churn em relação à França (categoria referência). Pode refletir diferenças de mercado ou concorrência no país. |
-| 5º     | **Balance**          | 4.81%           | O saldo em conta influencia a decisão de permanência. Clientes com saldos baixos tendem a ser mais propensos a sair. |
+#### Features por Importância
+| Posição | Feature               | Impacto no Churn | Interpretação de Negócio |
+|--------|----------------------|------------------|---------------------------|
+| 1º     | NumOfProducts        | 🔥 Muito alto     | Clientes com poucos produtos têm maior probabilidade de churn. Cross-sell é essencial para retenção. |
+| 2º     | IsActiveMember       | 🔥 Muito alto     | Clientes inativos apresentam alto risco de churn. Engajamento é chave. |
+| 3º     | Age                  | ⚠️ Alto           | Idades extremas (jovens ou mais velhos) tendem a churn maior. |
+| 4º     | Geography (Germany)  | ⚠️ Alto           | Clientes da Alemanha apresentam maior churn comparado a outros países. |
+| 5º     | Balance              | ⚠️ Alto           | Baixo saldo indica menor vínculo com o banco → maior churn. |
+| 6º     | Complain             | 🔥 Muito alto     | Clientes que reclamaram têm altíssimo risco de churn. |
+| 7º     | Satisfaction Score   | 🔥 Muito alto     | Baixa satisfação está diretamente ligada ao churn. |
+| 8º     | Tenure               | ⚠️ Médio          | Clientes novos têm maior risco de sair por falta de vínculo. |
+| 9º     | CreditScore          | ⚠️ Médio          | Score baixo pode indicar instabilidade financeira → maior churn. |
+| 10º    | Card Type            | ⚠️ Médio          | Clientes com cartões premium tendem a churn menor. |
+| 11º    | Point Earned         | ⚠️ Médio          | Mais pontos acumulados indicam maior engajamento e menor churn. |
+| 12º    | EstimatedSalary      | ⚠️ Baixo          | Salário influencia pouco isoladamente no churn. |
+| 13º    | HasCrCard            | ⚠️ Baixo          | Ter cartão ajuda na retenção, mas com impacto limitado. |
+| 14º    | Gender              | ⚠️ Muito baixo     | Baixo poder preditivo isolado; pode refletir padrões, mas com pouco impacto direto. |
