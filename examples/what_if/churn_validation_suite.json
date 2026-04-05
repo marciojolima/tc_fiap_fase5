@@ -3,12 +3,12 @@
     {
       "name": "high_risk_profile",
       "payload": {
-        "Age": 60,
+        "Age": 65,
         "Balance": 0,
         "Card Type": "SILVER",
-        "CreditScore": 400,
-        "EstimatedSalary": 30000,
-        "Gender": "Female",
+        "CreditScore": 300,
+        "EstimatedSalary": 10000,
+        "Gender": "Male",
         "Geography": "Germany",
         "HasCrCard": 0,
         "IsActiveMember": 0,
@@ -20,16 +20,16 @@
     {
       "name": "low_risk_profile",
       "payload": {
-        "Age": 35,
+        "Age": 30,
         "Balance": 70000,
         "Card Type": "DIAMOND",
         "CreditScore": 780,
-        "EstimatedSalary": 120000,
-        "Gender": "Male",
+        "EstimatedSalary": 150000,
+        "Gender": "Female",
         "Geography": "France",
         "HasCrCard": 1,
         "IsActiveMember": 1,
-        "NumOfProducts": 2,
+        "NumOfProducts": 7,
         "Point Earned": 800,
         "Tenure": 8
       }
