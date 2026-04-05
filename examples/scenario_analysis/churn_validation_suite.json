@@ -3,35 +3,52 @@
     {
       "name": "high_risk_profile",
       "payload": {
-        "Age": 70,
+        "Age": 92,
         "Balance": 0,
         "Card Type": "SILVER",
-        "CreditScore": 400,
-        "EstimatedSalary": 9000,
-        "Gender": "Male",
+        "CreditScore": 350,
+        "EstimatedSalary": 11.58,
+        "Gender": "Female",
         "Geography": "Germany",
         "HasCrCard": 0,
         "IsActiveMember": 0,
-        "NumOfProducts": 1,
-        "Point Earned": 100,
-        "Tenure": 1
+        "NumOfProducts": 4,
+        "Point Earned": 119,
+        "Tenure": 0
       }
     },
     {
       "name": "low_risk_profile",
       "payload": {
-        "Age": 30,
-        "Balance": 90000,
+        "Age": 40,
+        "Balance": 250898.09,
         "Card Type": "DIAMOND",
-        "CreditScore": 820,
-        "EstimatedSalary": 150000,
+        "CreditScore": 850,
+        "EstimatedSalary": 199992.48,
         "Gender": "Male",
         "Geography": "France",
         "HasCrCard": 1,
         "IsActiveMember": 1,
-        "NumOfProducts": 6,
-        "Point Earned": 800,
-        "Tenure": 8
+        "NumOfProducts": 2,
+        "Point Earned": 1000,
+        "Tenure": 10
+      }
+    },
+    {
+      "name": "medium_risk_profile",
+      "payload": {
+        "Age": 45,
+        "Balance": 10000,
+        "Card Type": "GOLD",
+        "CreditScore": 600,
+        "EstimatedSalary": 70000,
+        "Gender": "Male",
+        "Geography": "Spain",
+        "HasCrCard": 1,
+        "IsActiveMember": 0,
+        "NumOfProducts": 1,
+        "Point Earned": 500,
+        "Tenure": 3
       }
     }
   ]
