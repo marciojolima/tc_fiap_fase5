@@ -1,0 +1,38 @@
+{
+  "scenarios": [
+    {
+      "name": "high_risk_profile",
+      "payload": {
+        "Age": 60,
+        "Balance": 0,
+        "Card Type": "SILVER",
+        "CreditScore": 400,
+        "EstimatedSalary": 30000,
+        "Gender": "Female",
+        "Geography": "Germany",
+        "HasCrCard": 0,
+        "IsActiveMember": 0,
+        "NumOfProducts": 1,
+        "Point Earned": 100,
+        "Tenure": 1
+      }
+    },
+    {
+      "name": "low_risk_profile",
+      "payload": {
+        "Age": 35,
+        "Balance": 70000,
+        "Card Type": "DIAMOND",
+        "CreditScore": 780,
+        "EstimatedSalary": 120000,
+        "Gender": "Male",
+        "Geography": "France",
+        "HasCrCard": 1,
+        "IsActiveMember": 1,
+        "NumOfProducts": 2,
+        "Point Earned": 800,
+        "Tenure": 8
+      }
+    }
+  ]
+}
