@@ -129,8 +129,8 @@ def return_logged_metrics(metrics: dict[str, float]) -> None:
     _METRICS_LOG.append(metrics)
 
 
-def return_logged_model(model, artifact_path: str) -> None:
-    _MODEL_LOG.append((model, artifact_path))
+def return_logged_model(model, name: str) -> None:
+    _MODEL_LOG.append((model, name))
 
 
 def return_dump_call(model, output_path: Path) -> None:
