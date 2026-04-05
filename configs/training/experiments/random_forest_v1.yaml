@@ -1,6 +1,6 @@
 experiment:
-  name: random_forest_challenger
-  run_name: random_forest_challenger
+  name: random_forest_v1
+  run_name: random_forest_v1
   algorithm: random_forest
   flavor: sklearn
 
@@ -10,17 +10,16 @@ dataset:
 
 training:
   params:
-    n_estimators: 200
-    max_depth: 15
+    n_estimators: 100
+    max_depth: 10
     random_state: 42
     class_weight: balanced
-    min_samples_leaf: 5
 
 inference:
   threshold: 0.5
 
 artifacts:
-  model_path: artifacts/challenger_model.pkl
+  model_path: artifacts/baseline_model.pkl
 
 mlflow:
   experiment_name: datathon-churn-baseline
@@ -29,7 +28,7 @@ mlflow:
     phase: datathon-fase05
     dataset_name: bank-customer-churn
     model_family: random_forest
-    candidate_type: challenger
+    candidate_type: baseline
 
 registry:
   enabled: false
