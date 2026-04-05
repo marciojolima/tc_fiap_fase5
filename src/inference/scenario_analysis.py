@@ -139,7 +139,6 @@ def log_scenario_analysis_run(
         _log_payload_params(scenario.payload)
         mlflow.log_param("experiment_config_path", cfg.experiment_config_path)
         mlflow.log_param("threshold", result.threshold)
-        mlflow.log_param("model_name", result.model_name)
         mlflow.log_param("run_name", result.run_name)
 
         mlflow.log_metric("churn_probability", result.churn_probability)

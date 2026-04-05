@@ -326,13 +326,12 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
 
     log_run_metadata(cfg.model_params, cfg, datasets)
 
-    assert ("model_version", "0.2.0") in _PARAM_LOG
-    assert ("training_data_version", "data-hash-123") in _PARAM_LOG
-    assert ("git_sha", "abc123") in _PARAM_LOG
-    assert ("risk_level", "high") in _PARAM_LOG
     assert ("fairness_checked", False) in _PARAM_LOG
     assert ("model_name", "random_forest_candidate") in _TAG_LOG
     assert ("model_version", "0.2.0") in _TAG_LOG
+    assert ("training_data_version", "data-hash-123") in _TAG_LOG
+    assert ("git_sha", "abc123") in _TAG_LOG
+    assert ("risk_level", "high") in _TAG_LOG
 
 
 def test_train_and_log_model_trains_logs_and_saves(

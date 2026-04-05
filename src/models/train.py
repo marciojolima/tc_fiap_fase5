@@ -238,10 +238,6 @@ def log_run_metadata(
     mlflow.log_param("n_samples", datasets.X_train.shape[0])
     mlflow.log_param("threshold", cfg.threshold)
     mlflow.log_param("feature_set", cfg.feature_set)
-    mlflow.log_param("model_version", cfg.model_version)
-    mlflow.log_param("training_data_version", cfg.training_data_version)
-    mlflow.log_param("git_sha", cfg.git_sha)
-    mlflow.log_param("risk_level", cfg.risk_level)
     mlflow.log_param("fairness_checked", cfg.fairness_checked)
 
     mlflow.set_tag("model_type", "classification")
