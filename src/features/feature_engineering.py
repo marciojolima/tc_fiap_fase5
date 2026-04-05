@@ -128,8 +128,10 @@ def clean_interim_data(df: pd.DataFrame) -> pd.DataFrame:
     removed_missing = len(df.drop_duplicates()) - len(df_clean)
 
     logger.info(
-        ("Camada interim preparada — linhas iniciais: "
-        "%d | duplicadas removidas: %d | linhas com valores ausentes removidas: %d"),
+        (
+            "Camada interim preparada — linhas iniciais: "
+            "%d | duplicadas removidas: %d | linhas com valores ausentes removidas: %d"
+        ),
         initial_rows,
         removed_duplicates,
         removed_missing,
@@ -167,8 +169,10 @@ def split_train_test(
     )
 
     logger.info(
-        ("Split realizado antes do pré-processamento (anti-leakage) — "
-        "Train: %d | Test: %d"),
+        (
+            "Split realizado antes do pré-processamento (anti-leakage) — "
+            "Train: %d | Test: %d"
+        ),
         len(X_train),
         len(X_test),
     )

@@ -27,8 +27,7 @@ def test_clean_interim_data_removes_duplicates_and_missing_values(
     churn_dataframe: pd.DataFrame,
 ) -> None:
     dirty_df = pd.concat(
-        [churn_dataframe, churn_dataframe.iloc[[0]]],
-        ignore_index=True
+        [churn_dataframe, churn_dataframe.iloc[[0]]], ignore_index=True
     )
     dirty_df.loc[1, "Balance"] = None
 
