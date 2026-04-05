@@ -216,7 +216,7 @@ def train_and_log_model(
 
         metrics = evaluate_model(model, datasets.X_test, datasets.y_test)
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(model, "model")
+        mlflow.sklearn.log_model(model, name="model")
 
         spec.output_path.parent.mkdir(parents=True, exist_ok=True)
         dump(model, spec.output_path)
