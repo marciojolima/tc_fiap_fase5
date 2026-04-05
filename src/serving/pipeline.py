@@ -7,7 +7,11 @@ from typing import Any, NamedTuple
 import pandas as pd
 from joblib import load
 
-from common.config_loader import load_global_config, load_training_experiment_config
+from common.config_loader import (
+    DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    load_global_config,
+    load_training_experiment_config,
+)
 from features.feature_engineering import create_features, normalize_feature_names
 from serving.schemas import ChurnPredictionRequest
 
@@ -21,13 +25,16 @@ class ServingConfig(NamedTuple):
     preprocessor_path: Path
     threshold: float
     model_name: str
+    run_name: str
 
 
-def load_serving_config() -> ServingConfig:
+def build_serving_config(
+    experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+) -> ServingConfig:
     """Carrega a configuração usada pela API de inferência."""
 
     global_config = load_global_config()
-    experiment_config = load_training_experiment_config()
+    experiment_config = load_training_experiment_config(experiment_config_path)
 
     return ServingConfig(
         target_col=global_config["data"]["target_col"],
@@ -36,21 +43,35 @@ def load_serving_config() -> ServingConfig:
         preprocessor_path=Path("artifacts/preprocessor.joblib"),
         threshold=experiment_config["inference"]["threshold"],
         model_name=experiment_config["experiment"]["name"],
+        run_name=experiment_config["experiment"]["run_name"],
     )
 
 
 @lru_cache
-def load_prediction_model() -> Any:
+def _load_artifact(path_str: str) -> Any:
+    """Carrega um artefato serializado e reutiliza-o por caminho."""
+
+    return load(Path(path_str))
+
+
+def load_serving_config() -> ServingConfig:
+    """Carrega a configuração padrão usada pela API de inferência."""
+
+    return build_serving_config()
+
+
+def load_prediction_model(model_path: Path | None = None) -> Any:
     """Carrega o modelo ativo persistido para serving."""
 
-    return load(load_serving_config().model_path)
+    path = model_path or load_serving_config().model_path
+    return _load_artifact(str(path))
 
 
-@lru_cache
-def load_preprocessor() -> Any:
+def load_preprocessor(preprocessor_path: Path | None = None) -> Any:
     """Carrega o pré-processador persistido para serving."""
 
-    return load(load_serving_config().preprocessor_path)
+    path = preprocessor_path or load_serving_config().preprocessor_path
+    return _load_artifact(str(path))
 
 
 def prepare_inference_dataframe(
@@ -73,9 +94,19 @@ def prepare_inference_dataframe(
 def predict_from_dataframe(df_feat: pd.DataFrame) -> tuple[float, int]:
     """Aplica pré-processamento e modelo para obter a predição final."""
 
-    preprocessor = load_preprocessor()
-    model = load_prediction_model()
-    threshold = load_serving_config().threshold
+    cfg = load_serving_config()
+    return predict_from_dataframe_with_config(df_feat, cfg)
+
+
+def predict_from_dataframe_with_config(
+    df_feat: pd.DataFrame,
+    cfg: ServingConfig,
+) -> tuple[float, int]:
+    """Aplica pré-processamento e modelo para obter a predição final."""
+
+    preprocessor = load_preprocessor(cfg.preprocessor_path)
+    model = load_prediction_model(cfg.model_path)
+    threshold = cfg.threshold
 
     X_array = preprocessor.transform(df_feat)
     feature_names = normalize_feature_names(

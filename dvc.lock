@@ -5,8 +5,8 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 8d140e242fe1cabf210b8a7f02abab5a
-      size: 907
+      md5: 22b21d2c4e60da430052dd09b477fe19
+      size: 509
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
       md5: e37acb179fefe4cac8a33e280a12f62c
@@ -57,8 +57,8 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 8d140e242fe1cabf210b8a7f02abab5a
-      size: 907
+      md5: 22b21d2c4e60da430052dd09b477fe19
+      size: 509
     - path: configs/training/model_current.yaml
       hash: md5
       md5: 863cd58460df5b465c0aca73fedcaa80

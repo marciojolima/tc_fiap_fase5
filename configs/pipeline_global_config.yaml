@@ -22,6 +22,7 @@ split:
 mlflow:
   tracking_uri: file:./mlruns
   experiment_name: datathon-churn-baseline
+  what_if_experiment_name: datathon-churn-what-if
   owner: datathon-grupo
   phase: datathon-fase05
   dataset_name: bank-customer-churn

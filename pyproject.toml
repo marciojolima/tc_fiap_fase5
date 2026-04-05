@@ -31,6 +31,7 @@ packages = [
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
     { include = "features", from = "src" },
+    { include = "inference", from = "src" },
     { include = "models", from = "src" },
     { include = "monitoring", from = "src" },
     { include = "security", from = "src" },
@@ -60,6 +61,7 @@ pre_format = 'ruff check --fix'
 format = 'ruff format'
 mlead = 'python -m src.features.feature_engineering'
 mltrain = 'python -m src.models.train'
+mlwhatif = 'python -m src.inference.what_if --suite-file examples/what_if/churn_validation_suite.json'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'

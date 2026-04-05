@@ -18,6 +18,7 @@ def return_route_config() -> ServingConfig:
         preprocessor_path=Mock(),
         threshold=0.5,
         model_name="random_forest_current",
+        run_name="random_forest_current",
     )
 
 
@@ -53,6 +54,7 @@ def test_prepare_inference_dataframe_removes_leakage_columns() -> None:
         preprocessor_path=Mock(),
         threshold=0.5,
         model_name="random_forest_current",
+        run_name="random_forest_current",
     )
 
     df_feat = prepare_inference_dataframe(payload, cfg)

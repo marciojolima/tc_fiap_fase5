@@ -92,6 +92,7 @@ def build_serving_config() -> ServingConfig:
         preprocessor_path=Path("artifacts/preprocessor.joblib"),
         threshold=0.5,
         model_name="random_forest_current",
+        run_name="random_forest_current",
     )
 
 
