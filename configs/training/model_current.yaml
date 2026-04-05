@@ -1,0 +1,37 @@
+experiment:
+  name: random_forest_current
+  run_name: random_forest_current
+  algorithm: random_forest
+  flavor: sklearn
+
+dataset:
+  target_col: Exited
+  feature_set: processed_v1
+
+training:
+  params:
+    n_estimators: 200
+    max_depth: 15
+    random_state: 42
+    class_weight: balanced
+    min_samples_leaf: 5
+
+inference:
+  threshold: 0.5
+
+artifacts:
+  model_path: artifacts/challenger_model.pkl
+
+mlflow:
+  experiment_name: datathon-churn-baseline
+  tags:
+    owner: datathon-grupo
+    phase: datathon-fase05
+    dataset_name: bank-customer-churn
+    model_family: random_forest
+    candidate_type: current
+
+registry:
+  enabled: false
+  model_name: churn-classifier
+  alias: null

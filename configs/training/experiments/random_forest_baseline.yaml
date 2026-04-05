@@ -1,0 +1,36 @@
+experiment:
+  name: random_forest_baseline
+  run_name: random_forest_baseline
+  algorithm: random_forest
+  flavor: sklearn
+
+dataset:
+  target_col: Exited
+  feature_set: processed_v1
+
+training:
+  params:
+    n_estimators: 100
+    max_depth: 10
+    random_state: 42
+    class_weight: balanced
+
+inference:
+  threshold: 0.5
+
+artifacts:
+  model_path: artifacts/baseline_model.pkl
+
+mlflow:
+  experiment_name: datathon-churn-baseline
+  tags:
+    owner: datathon-grupo
+    phase: datathon-fase05
+    dataset_name: bank-customer-churn
+    model_family: random_forest
+    candidate_type: baseline
+
+registry:
+  enabled: false
+  model_name: churn-classifier
+  alias: null

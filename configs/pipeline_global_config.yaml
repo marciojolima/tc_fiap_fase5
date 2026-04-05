@@ -19,6 +19,9 @@ split:
   random_state: 42
   stratify: true
 
+# Compatibilidade temporária:
+# esta seção será removida quando o treino passar a ler
+# configs/training/*.yaml como fonte de experimentos.
 models:
   baseline:
     name: random_forest_baseline

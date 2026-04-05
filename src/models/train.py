@@ -1,4 +1,10 @@
-"""Treinamento dos modelos baseline e challenger com rastreio em MLflow."""
+"""Treinamento de modelos com rastreio em MLflow.
+
+Este módulo ainda mantém o fluxo legado de baseline/challenger por
+compatibilidade temporária. Ao mesmo tempo, ele já expõe o carregamento
+do novo contrato de experimento individual para sustentar a próxima
+etapa da refatoração.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +24,12 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from common.config_loader import load_config
+from common.config_loader import (
+    DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    load_config,
+    load_global_config,
+    load_training_experiment_config,
+)
 from common.logger import get_logger
 from common.seed import set_global_seed
 from models.baseline import build_baseline_model, build_challenger_model
@@ -27,7 +38,7 @@ logger = get_logger(__name__)
 
 
 class TrainingConfig(NamedTuple):
-    """Configuração necessária para a etapa de treinamento."""
+    """Configuração necessária para a etapa de treinamento legado."""
 
     seed: int
     target_col: str
@@ -35,6 +46,24 @@ class TrainingConfig(NamedTuple):
     baseline_cfg: dict[str, Any]
     challenger_cfg: dict[str, Any]
     mlflow_cfg: dict[str, Any]
+
+
+class ExperimentTrainingConfig(NamedTuple):
+    """Contrato carregado para um experimento individual de treino."""
+
+    seed: int
+    target_col: str
+    test_size: float
+    algorithm: str
+    flavor: str
+    experiment_name: str
+    run_name: str
+    model_params: dict[str, Any]
+    threshold: float
+    feature_set: str
+    model_path: Path
+    mlflow_cfg: dict[str, Any]
+    registry_cfg: dict[str, Any]
 
 
 class DatasetSplits(NamedTuple):
@@ -57,7 +86,7 @@ class ModelSpec(NamedTuple):
 
 
 def load_training_config() -> TrainingConfig:
-    """Carrega a configuração necessária para o treinamento."""
+    """Carrega a configuração necessária para o treinamento legado."""
 
     config = load_config()
     return TrainingConfig(
@@ -67,6 +96,48 @@ def load_training_config() -> TrainingConfig:
         baseline_cfg=config["models"]["baseline"],
         challenger_cfg=config["models"]["challenger"],
         mlflow_cfg=config["mlflow"],
+    )
+
+
+def load_experiment_training_config(
+    experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+) -> ExperimentTrainingConfig:
+    """Carrega um experimento individual combinando config global e local."""
+
+    global_cfg = load_global_config()
+    experiment_cfg = load_training_experiment_config(experiment_config_path)
+
+    mlflow_tags = {
+        "owner": global_cfg["mlflow"]["owner"],
+        "phase": global_cfg["mlflow"]["phase"],
+        "dataset_name": global_cfg["mlflow"]["dataset_name"],
+    }
+    mlflow_tags.update(experiment_cfg["mlflow"].get("tags", {}))
+
+    return ExperimentTrainingConfig(
+        seed=global_cfg["seed"],
+        target_col=experiment_cfg["dataset"].get(
+            "target_col",
+            global_cfg["data"]["target_col"],
+        ),
+        test_size=global_cfg["split"]["test_size"],
+        algorithm=experiment_cfg["experiment"]["algorithm"],
+        flavor=experiment_cfg["experiment"]["flavor"],
+        experiment_name=experiment_cfg["experiment"]["name"],
+        run_name=experiment_cfg["experiment"]["run_name"],
+        model_params=experiment_cfg["training"]["params"],
+        threshold=experiment_cfg["inference"]["threshold"],
+        feature_set=experiment_cfg["dataset"]["feature_set"],
+        model_path=Path(experiment_cfg["artifacts"]["model_path"]),
+        mlflow_cfg={
+            "tracking_uri": global_cfg["mlflow"]["tracking_uri"],
+            "experiment_name": experiment_cfg["mlflow"].get(
+                "experiment_name",
+                global_cfg["mlflow"]["experiment_name"],
+            ),
+            "tags": mlflow_tags,
+        },
+        registry_cfg=experiment_cfg["registry"],
     )
 
 

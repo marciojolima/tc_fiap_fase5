@@ -8,11 +8,13 @@ import pytest
 
 from models.train import (
     DatasetSplits,
+    ExperimentTrainingConfig,
     ModelSpec,
     TrainingConfig,
     build_comparison,
     build_model_spec,
     evaluate_model,
+    load_experiment_training_config,
     train_and_log_model,
 )
 
@@ -52,11 +54,57 @@ class DummyRun:
         return None
 
 
+def return_model_builder(params: dict) -> dict:
+    return params
+
+
+def return_dummy_run(run_name: str) -> DummyRun:
+    return DummyRun()
+
+
+def return_global_training_config() -> dict:
+    return {
+        "seed": 42,
+        "data": {"target_col": "Exited"},
+        "split": {"test_size": 0.2},
+        "mlflow": {
+            "tracking_uri": "file:./mlruns",
+            "experiment_name": "global-exp",
+            "owner": "team",
+            "phase": "dev",
+            "dataset_name": "dataset",
+        },
+    }
+
+
+def return_experiment_training_config(_: str) -> dict:
+    return {
+        "experiment": {
+            "name": "random_forest_candidate",
+            "run_name": "rf_candidate",
+            "algorithm": "random_forest",
+            "flavor": "sklearn",
+        },
+        "dataset": {
+            "target_col": "Exited",
+            "feature_set": "processed_v1",
+        },
+        "training": {"params": {"n_estimators": 200}},
+        "inference": {"threshold": 0.5},
+        "artifacts": {"model_path": "artifacts/model.pkl"},
+        "mlflow": {
+            "experiment_name": "candidate-exp",
+            "tags": {"candidate_type": "current"},
+        },
+        "registry": {"enabled": False},
+    }
+
+
 def test_build_model_spec_extracts_name_params_and_metadata() -> None:
     spec = build_model_spec(
         model_cfg={"name": "baseline", "n_estimators": 100, "max_depth": 10},
         role="baseline",
-        builder=lambda params: params,
+        builder=return_model_builder,
         output_path=Path("artifacts/model.pkl"),
     )
 
@@ -92,6 +140,31 @@ def test_build_comparison_calculates_metric_delta() -> None:
     assert comparison["delta"]["auc"] == pytest.approx(0.05)
 
 
+def test_load_experiment_training_config_merges_global_and_experiment(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "models.train.load_global_config",
+        return_global_training_config,
+    )
+    monkeypatch.setattr(
+        "models.train.load_training_experiment_config",
+        return_experiment_training_config,
+    )
+
+    cfg = load_experiment_training_config("configs/training/model_current.yaml")
+
+    assert isinstance(cfg, ExperimentTrainingConfig)
+    assert cfg.algorithm == "random_forest"
+    assert cfg.run_name == "rf_candidate"
+    assert cfg.model_params == {"n_estimators": 200}
+    assert cfg.model_path == Path("artifacts/model.pkl")
+    assert cfg.mlflow_cfg["tracking_uri"] == "file:./mlruns"
+    assert cfg.mlflow_cfg["experiment_name"] == "candidate-exp"
+    assert cfg.mlflow_cfg["tags"]["owner"] == "team"
+    assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
+
+
 def test_train_and_log_model_trains_logs_and_saves(
     monkeypatch,
     tmp_path: Path,
@@ -124,7 +197,7 @@ def test_train_and_log_model_trains_logs_and_saves(
         output_path=tmp_path / "baseline_model.pkl",
     )
 
-    monkeypatch.setattr("models.train.mlflow.start_run", lambda run_name: DummyRun())
+    monkeypatch.setattr("models.train.mlflow.start_run", return_dummy_run)
     log_metrics_mock = Mock()
     log_model_mock = Mock()
     dump_mock = Mock()
