@@ -225,7 +225,7 @@ def build_preprocessor(numeric_features: list[str]) -> ColumnTransformer:
     )
 
 
-def _normalize_feature_names(feature_names: list[str]) -> list[str]:
+def normalize_feature_names(feature_names: list[str]) -> list[str]:
     """Padroniza nomes de colunas geradas pelo ColumnTransformer."""
 
     return [name.replace("Geography_", "Geo_") for name in feature_names]
@@ -303,7 +303,7 @@ def preprocess_features(
 
     X_train_processed = preprocessor.fit_transform(X_train)
     X_test_processed = preprocessor.transform(X_test)
-    feature_cols = _normalize_feature_names(
+    feature_cols = normalize_feature_names(
         preprocessor.get_feature_names_out().tolist()
     )
 

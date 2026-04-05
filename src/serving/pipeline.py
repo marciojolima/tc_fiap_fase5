@@ -8,7 +8,7 @@ import pandas as pd
 from joblib import load
 
 from common.config_loader import load_config
-from features.feature_engineering import create_features
+from features.feature_engineering import create_features, normalize_feature_names
 from serving.schemas import ChurnPredictionRequest
 
 
@@ -73,7 +73,12 @@ def predict_from_dataframe(df_feat: pd.DataFrame) -> tuple[float, int]:
     model = load_prediction_model()
     threshold = load_serving_config().threshold
 
-    X = preprocessor.transform(df_feat)
+    X_array = preprocessor.transform(df_feat)
+    feature_names = normalize_feature_names(
+        preprocessor.get_feature_names_out().tolist()
+    )
+    X = pd.DataFrame(X_array, columns=feature_names, index=df_feat.index)
+
     probability = float(model.predict_proba(X)[0][1])
     prediction = int(probability >= threshold)
     return probability, prediction

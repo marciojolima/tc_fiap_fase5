@@ -19,13 +19,52 @@ class DummyPreprocessor:
         self.is_fitted = True
 
     def transform(self, df):
-        if self.is_fitted:  # Agora o self é usado
+        if self.is_fitted:
             return df.to_numpy()
+
+        return None
+
+    @staticmethod
+    def get_feature_names_out():
+        return np.array(
+            [
+                "Card Type",
+                "Gender",
+                "Geography_Germany",
+                "CreditScore",
+                "Age",
+                "Tenure",
+                "Balance",
+                "NumOfProducts",
+                "HasCrCard",
+                "IsActiveMember",
+                "EstimatedSalary",
+                "Point Earned",
+                "BalancePerProduct",
+                "PointsPerSalary",
+            ]
+        )
 
 
 class DummyModel:
     @staticmethod
     def predict_proba(X):
+        assert list(X.columns) == [
+            "Card Type",
+            "Gender",
+            "Geo_Germany",
+            "CreditScore",
+            "Age",
+            "Tenure",
+            "Balance",
+            "NumOfProducts",
+            "HasCrCard",
+            "IsActiveMember",
+            "EstimatedSalary",
+            "Point Earned",
+            "BalancePerProduct",
+            "PointsPerSalary",
+        ]
         return np.array([[0.2, 0.8]])
 
 
