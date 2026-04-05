@@ -51,6 +51,6 @@ def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
     return ChurnPredictionResponse(
         churn_probability=probability,
         churn_prediction=prediction,
-        model_name="challenger_model",
+        model_name=cfg.model_name,
         threshold=cfg.threshold,
     )

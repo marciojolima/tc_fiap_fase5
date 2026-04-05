@@ -7,7 +7,7 @@ from typing import Any, NamedTuple
 import pandas as pd
 from joblib import load
 
-from common.config_loader import load_config
+from common.config_loader import load_global_config, load_training_experiment_config
 from features.feature_engineering import create_features, normalize_feature_names
 from serving.schemas import ChurnPredictionRequest
 
@@ -20,24 +20,28 @@ class ServingConfig(NamedTuple):
     model_path: Path
     preprocessor_path: Path
     threshold: float
+    model_name: str
 
 
 def load_serving_config() -> ServingConfig:
     """Carrega a configuração usada pela API de inferência."""
 
-    config = load_config()
+    global_config = load_global_config()
+    experiment_config = load_training_experiment_config()
+
     return ServingConfig(
-        target_col=config["data"]["target_col"],
-        leakage_columns=config["features"]["leakage_columns"],
-        model_path=Path("artifacts/challenger_model.pkl"),
+        target_col=global_config["data"]["target_col"],
+        leakage_columns=global_config["features"]["leakage_columns"],
+        model_path=Path(experiment_config["artifacts"]["model_path"]),
         preprocessor_path=Path("artifacts/preprocessor.joblib"),
-        threshold=0.5,
+        threshold=experiment_config["inference"]["threshold"],
+        model_name=experiment_config["experiment"]["name"],
     )
 
 
 @lru_cache
 def load_prediction_model() -> Any:
-    """Carrega o modelo challenger persistido para serving."""
+    """Carrega o modelo ativo persistido para serving."""
 
     return load(load_serving_config().model_path)
 

@@ -17,6 +17,7 @@ def return_route_config() -> ServingConfig:
         model_path=Mock(),
         preprocessor_path=Mock(),
         threshold=0.5,
+        model_name="random_forest_current",
     )
 
 
@@ -51,6 +52,7 @@ def test_prepare_inference_dataframe_removes_leakage_columns() -> None:
         model_path=Mock(),
         preprocessor_path=Mock(),
         threshold=0.5,
+        model_name="random_forest_current",
     )
 
     df_feat = prepare_inference_dataframe(payload, cfg)
@@ -101,6 +103,6 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
     assert response.json() == {
         "churn_probability": 0.81,
         "churn_prediction": 1,
-        "model_name": "challenger_model",
+        "model_name": "random_forest_current",
         "threshold": 0.5,
     }
