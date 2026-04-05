@@ -10,8 +10,11 @@ from models.train import (
     ExperimentTrainingConfig,
     ModelSpec,
     build_model_spec,
+    compute_training_data_version,
     evaluate_model,
     load_experiment_training_config,
+    log_run_metadata,
+    resolve_git_sha,
     run_training,
     train_and_log_model,
 )
@@ -61,10 +64,15 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         flavor="sklearn",
         experiment_name="random_forest_candidate",
         run_name="rf_candidate",
+        model_version="0.2.0",
         model_params={"n_estimators": 200},
         threshold=0.5,
         feature_set="processed_v1",
         model_path=model_path,
+        training_data_version="data-hash-123",
+        git_sha="abc123",
+        risk_level="high",
+        fairness_checked=False,
         mlflow_cfg={
             "tracking_uri": "file:./mlruns",
             "experiment_name": "candidate-exp",
@@ -99,6 +107,7 @@ def return_experiment_training_config(_: str) -> dict:
         "experiment": {
             "name": "random_forest_candidate",
             "run_name": "rf_candidate",
+            "version": "0.2.0",
             "algorithm": "random_forest",
             "flavor": "sklearn",
         },
@@ -114,6 +123,10 @@ def return_experiment_training_config(_: str) -> dict:
             "tags": {"candidate_type": "current"},
         },
         "registry": {"enabled": False},
+        "governance": {
+            "risk_level": "high",
+            "fairness_checked": False,
+        },
     }
 
 
@@ -174,6 +187,28 @@ _MODEL_LOG: list[tuple[object, str]] = []
 _DUMP_LOG: list[tuple[object, Path]] = []
 _METADATA_LOG: list[tuple[dict, ExperimentTrainingConfig, DatasetSplits]] = []
 _TRAIN_CALLS: list[tuple[ModelSpec, ExperimentTrainingConfig, DatasetSplits]] = []
+_PARAM_LOG: list[tuple[str, object]] = []
+_TAG_LOG: list[tuple[str, str]] = []
+
+
+def return_data_hash() -> str:
+    return "data-hash-123"
+
+
+def return_git_sha() -> str:
+    return "abc123"
+
+
+def ignore_logged_params(params: dict) -> None:
+    return None
+
+
+def return_logged_param(key: str, value: object) -> None:
+    _PARAM_LOG.append((key, value))
+
+
+def return_logged_tag(key: str, value: str) -> None:
+    _TAG_LOG.append((key, value))
 
 
 def test_build_model_returns_supported_sklearn_estimator() -> None:
@@ -219,18 +254,85 @@ def test_load_experiment_training_config_merges_global_and_experiment(
         "models.train.load_training_experiment_config",
         return_experiment_training_config,
     )
+    monkeypatch.setattr(
+        "models.train.compute_training_data_version",
+        return_data_hash,
+    )
+    monkeypatch.setattr(
+        "models.train.resolve_git_sha",
+        return_git_sha,
+    )
 
     cfg = load_experiment_training_config("configs/training/model_current.yaml")
 
     assert isinstance(cfg, ExperimentTrainingConfig)
     assert cfg.algorithm == "random_forest"
     assert cfg.run_name == "rf_candidate"
+    assert cfg.model_version == "0.2.0"
     assert cfg.model_params == {"n_estimators": 200}
     assert cfg.model_path == Path("artifacts/model.pkl")
+    assert cfg.training_data_version == "data-hash-123"
+    assert cfg.git_sha == "abc123"
+    assert cfg.risk_level == "high"
+    assert cfg.fairness_checked is False
     assert cfg.mlflow_cfg["tracking_uri"] == "file:./mlruns"
     assert cfg.mlflow_cfg["experiment_name"] == "candidate-exp"
     assert cfg.mlflow_cfg["tags"]["owner"] == "team"
     assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
+
+
+def test_resolve_git_sha_returns_string() -> None:
+    git_sha = resolve_git_sha()
+
+    assert isinstance(git_sha, str)
+    assert len(git_sha) > 0
+
+
+def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
+    train_path = tmp_path / "train.parquet"
+    test_path = tmp_path / "test.parquet"
+    train_path.write_bytes(b"train-data")
+    test_path.write_bytes(b"test-data")
+
+    data_version = compute_training_data_version(train_path, test_path)
+
+    assert isinstance(data_version, str)
+    assert len(data_version) == 32
+
+
+def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
+    cfg = build_experiment_training_config(Path("artifacts/model.pkl"))
+    datasets = DatasetSplits(
+        X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
+        y_train=pd.Series([0, 1, 0, 1]),
+        X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
+        y_test=pd.Series([0, 1, 0, 1]),
+    )
+    _PARAM_LOG.clear()
+    _TAG_LOG.clear()
+
+    monkeypatch.setattr(
+        "models.train.mlflow.log_params",
+        ignore_logged_params,
+    )
+    monkeypatch.setattr(
+        "models.train.mlflow.log_param",
+        return_logged_param,
+    )
+    monkeypatch.setattr(
+        "models.train.mlflow.set_tag",
+        return_logged_tag,
+    )
+
+    log_run_metadata(cfg.model_params, cfg, datasets)
+
+    assert ("model_version", "0.2.0") in _PARAM_LOG
+    assert ("training_data_version", "data-hash-123") in _PARAM_LOG
+    assert ("git_sha", "abc123") in _PARAM_LOG
+    assert ("risk_level", "high") in _PARAM_LOG
+    assert ("fairness_checked", False) in _PARAM_LOG
+    assert ("model_name", "random_forest_candidate") in _TAG_LOG
+    assert ("model_version", "0.2.0") in _TAG_LOG
 
 
 def test_train_and_log_model_trains_logs_and_saves(

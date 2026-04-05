@@ -1,6 +1,7 @@
 experiment:
   name: random_forest_v2
   run_name: random_forest_v2
+  version: 0.2.0
   algorithm: random_forest
   flavor: sklearn
 
@@ -35,3 +36,7 @@ registry:
   enabled: false
   model_name: churn-classifier
   alias: null
+
+governance:
+  risk_level: high
+  fairness_checked: false

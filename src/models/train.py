@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import subprocess
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -40,10 +42,15 @@ class ExperimentTrainingConfig(NamedTuple):
     flavor: str
     experiment_name: str
     run_name: str
+    model_version: str
     model_params: dict[str, Any]
     threshold: float
     feature_set: str
     model_path: Path
+    training_data_version: str
+    git_sha: str
+    risk_level: str
+    fairness_checked: bool
     mlflow_cfg: dict[str, Any]
     registry_cfg: dict[str, Any]
 
@@ -67,6 +74,37 @@ class ModelSpec(NamedTuple):
     output_path: Path
 
 
+def resolve_git_sha() -> str:
+    """Obtém o SHA atual do Git para rastreabilidade do experimento."""
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+    return result.stdout.strip()
+
+
+def compute_training_data_version(
+    train_path: Path = Path("data/processed/train.parquet"),
+    test_path: Path = Path("data/processed/test.parquet"),
+) -> str:
+    """Calcula um hash estável dos dados processados usados no treino."""
+
+    hasher = hashlib.md5()
+    for path in (train_path, test_path):
+        with open(path, "rb") as file_obj:
+            while chunk := file_obj.read(8192):
+                hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
 def load_experiment_training_config(
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
 ) -> ExperimentTrainingConfig:
@@ -74,6 +112,7 @@ def load_experiment_training_config(
 
     global_cfg = load_global_config()
     experiment_cfg = load_training_experiment_config(experiment_config_path)
+    governance_cfg = experiment_cfg.get("governance", {})
 
     mlflow_tags = {
         "owner": global_cfg["mlflow"]["owner"],
@@ -93,10 +132,18 @@ def load_experiment_training_config(
         flavor=experiment_cfg["experiment"]["flavor"],
         experiment_name=experiment_cfg["experiment"]["name"],
         run_name=experiment_cfg["experiment"]["run_name"],
+        model_version=experiment_cfg["experiment"].get(
+            "version",
+            experiment_cfg["experiment"]["name"],
+        ),
         model_params=experiment_cfg["training"]["params"],
         threshold=experiment_cfg["inference"]["threshold"],
         feature_set=experiment_cfg["dataset"]["feature_set"],
         model_path=Path(experiment_cfg["artifacts"]["model_path"]),
+        training_data_version=compute_training_data_version(),
+        git_sha=resolve_git_sha(),
+        risk_level=governance_cfg.get("risk_level", "medium"),
+        fairness_checked=governance_cfg.get("fairness_checked", False),
         mlflow_cfg={
             "tracking_uri": global_cfg["mlflow"]["tracking_uri"],
             "experiment_name": experiment_cfg["mlflow"].get(
@@ -191,10 +238,21 @@ def log_run_metadata(
     mlflow.log_param("n_samples", datasets.X_train.shape[0])
     mlflow.log_param("threshold", cfg.threshold)
     mlflow.log_param("feature_set", cfg.feature_set)
+    mlflow.log_param("model_version", cfg.model_version)
+    mlflow.log_param("training_data_version", cfg.training_data_version)
+    mlflow.log_param("git_sha", cfg.git_sha)
+    mlflow.log_param("risk_level", cfg.risk_level)
+    mlflow.log_param("fairness_checked", cfg.fairness_checked)
 
     mlflow.set_tag("model_type", "classification")
     mlflow.set_tag("framework", cfg.flavor)
     mlflow.set_tag("algorithm", cfg.algorithm)
+    mlflow.set_tag("model_name", cfg.experiment_name)
+    mlflow.set_tag("model_version", cfg.model_version)
+    mlflow.set_tag("training_data_version", cfg.training_data_version)
+    mlflow.set_tag("git_sha", cfg.git_sha)
+    mlflow.set_tag("risk_level", cfg.risk_level)
+    mlflow.set_tag("fairness_checked", str(cfg.fairness_checked).lower())
     for key, value in cfg.mlflow_cfg["tags"].items():
         mlflow.set_tag(key, value)
 
