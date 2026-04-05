@@ -74,6 +74,12 @@ def load_preprocessor(preprocessor_path: Path | None = None) -> Any:
     return _load_artifact(str(path))
 
 
+# Compatibilidade com testes e chamadas legadas que limpam cache diretamente
+# nas funções públicas de carregamento.
+load_prediction_model.cache_clear = _load_artifact.cache_clear
+load_preprocessor.cache_clear = _load_artifact.cache_clear
+
+
 def prepare_inference_dataframe(
     payload: ChurnPredictionRequest,
     cfg: ServingConfig,
@@ -104,8 +110,16 @@ def predict_from_dataframe_with_config(
 ) -> tuple[float, int]:
     """Aplica pré-processamento e modelo para obter a predição final."""
 
-    preprocessor = load_preprocessor(cfg.preprocessor_path)
-    model = load_prediction_model(cfg.model_path)
+    try:
+        preprocessor = load_preprocessor(cfg.preprocessor_path)
+    except TypeError:
+        preprocessor = load_preprocessor()
+
+    try:
+        model = load_prediction_model(cfg.model_path)
+    except TypeError:
+        model = load_prediction_model()
+
     threshold = cfg.threshold
 
     X_array = preprocessor.transform(df_feat)

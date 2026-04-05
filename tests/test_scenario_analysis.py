@@ -193,7 +193,7 @@ def test_run_scenario_analysis_suite_executes_all_scenarios(
 
     results = run_scenario_analysis_suite(str(suite_path))
 
-    assert len(results) == 2
+    assert len(results) == 2  # noqa: PLR2004
     assert [result.scenario_name for result in results] == ["high_risk", "low_risk"]
 
 
