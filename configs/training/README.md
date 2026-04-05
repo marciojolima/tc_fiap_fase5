@@ -6,7 +6,6 @@ de treino de modelos.
 - `model_current.yaml`: experimento principal aprovado para treino operacional.
 - `experiments/*.yaml`: experimentos candidatos independentes.
 
-Nesta fase da refatoracao, os arquivos ja existem para estabelecer o
-contrato e a organizacao futura. O treino atual ainda depende
-temporariamente da secao `models` em
-`configs/pipeline_global_config.yaml`.
+O executor de treino consome um unico experimento por vez. Novos
+experimentos devem ser adicionados em `experiments/` seguindo o mesmo
+contrato YAML.

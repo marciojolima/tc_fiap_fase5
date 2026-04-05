@@ -19,25 +19,6 @@ split:
   random_state: 42
   stratify: true
 
-# Compatibilidade temporária:
-# esta seção será removida quando o treino passar a ler
-# configs/training/*.yaml como fonte de experimentos.
-models:
-  baseline:
-    name: random_forest_baseline
-    n_estimators: 100
-    max_depth: 10
-    random_state: 42
-    class_weight: balanced
-
-  challenger:
-    name: random_forest_challenger
-    n_estimators: 200
-    max_depth: 15
-    random_state: 42
-    class_weight: balanced
-    min_samples_leaf: 5
-
 mlflow:
   tracking_uri: file:./mlruns
   experiment_name: datathon-churn-baseline
