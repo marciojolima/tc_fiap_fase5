@@ -285,7 +285,7 @@ def test_resolve_git_sha_returns_string() -> None:
     git_sha = resolve_git_sha()
 
     assert isinstance(git_sha, str)
-    assert len(git_sha) > 0
+    assert len(git_sha) > 0  # noqa: PLR2004
 
 
 def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
@@ -297,7 +297,7 @@ def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
     data_version = compute_training_data_version(train_path, test_path)
 
     assert isinstance(data_version, str)
-    assert len(data_version) == 32
+    assert len(data_version) == 32  # noqa: PLR2004
 
 
 def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
