@@ -282,7 +282,7 @@ def assemble_modeling_dataset(
 ) -> pd.DataFrame:
     """Reconstrói um dataset final de modelagem com features e target."""
 
-    modeling_dataset = transformed_features.copy()
+    modeling_dataset = transformed_features.reset_index(drop=True).copy()
     modeling_dataset[target_column] = target_series.reset_index(drop=True)
     return modeling_dataset
 

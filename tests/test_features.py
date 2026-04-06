@@ -109,6 +109,8 @@ def test_build_features_returns_train_and_test_without_leakage(
     assert "Complain" not in artifacts.feature_cols
     assert "Satisfaction Score" not in artifacts.feature_cols
     assert "Geo_Germany" in artifacts.feature_cols
+    assert artifacts.train_df["Exited"].isna().sum() == 0
+    assert artifacts.test_df["Exited"].isna().sum() == 0
 
 
 def test_validate_lgpd_exclusions_logs_success() -> None:
