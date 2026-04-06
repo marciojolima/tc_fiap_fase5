@@ -8,8 +8,6 @@ Este README foi organizado para funcionar ao mesmo tempo como:
 - checklist de entrega da Datathon
 - mapa de pendências e próximos passos
 
-O documento considera o mínimo descrito em [REQUISITOS_DATATHON.md](/home/marcio/dev/projects/python/tc_fiap_fase5/REQUISITOS_DATATHON.md), mas também registra evoluções adicionais já implementadas neste repositório.
-
 ## Grupo
 
 ### 👥 Autores
@@ -159,15 +157,31 @@ poetry run task test
 
 ## Artefatos Gerados
 
-Atualmente o projeto persiste:
+Atualmente o projeto persiste os seguintes artefatos por motivos de MLOps e governança:
+
 - `data/interim/cleaned.parquet`
+  Mantém uma versão intermediária já limpa, sem duplicidades, sem nulos e após minimização de identificadores diretos. Isso ajuda na rastreabilidade da preparação dos dados, facilita auditoria do pipeline e permite inspecionar a camada anterior à modelagem sem depender de reprocessar tudo.
+
 - `data/processed/train.parquet`
+  Registra o conjunto final de treino já transformado e pronto para modelagem. Esse artefato garante reprodutibilidade experimental, desacopla a etapa de engenharia de features da etapa de treino e permite comparar modelos diferentes sobre exatamente a mesma base processada.
+
 - `data/processed/test.parquet`
+  Registra o conjunto final de teste usado na avaliação. Isso é importante para consistência de benchmark, reprodutibilidade de métricas e auditoria posterior sobre quais dados sustentaram a validação do modelo.
+
 - `data/processed/feature_columns.json`
+  Documenta a ordem e o nome final das features geradas pelo pipeline. Esse controle evita ambiguidades entre treino e inferência, ajuda debugging e dá transparência sobre o espaço final de entrada do modelo.
+
 - `data/processed/schema_report.json`
+  Guarda evidência de que o dado passou pelas validações esperadas no pipeline. Mesmo sendo simples hoje, esse artefato funciona como ponto inicial de compliance operacional e pode evoluir para relatórios mais detalhados de qualidade de dados.
+
 - `artifacts/feature_pipeline.joblib`
+  Persiste o pipeline completo de transformação de features para reutilização em produção. Isso reduz `training-serving skew`, garante que treino e inferência usem exatamente a mesma lógica de transformação e melhora a sustentabilidade da arquitetura.
+
 - artefatos de modelo definidos nos YAMLs de treino
+  Permitem versionar e promover modelos treinados por experimento. Isso é essencial para governança, comparação entre versões, rollback controlado e rastreabilidade do que foi efetivamente treinado.
+
 - runs e métricas no MLflow
+  Registram parâmetros, métricas, tags e contexto de cada experimento. Isso sustenta boas práticas de experiment tracking, lineage, auditoria técnica e documentação da evolução do projeto ao longo do tempo.
 
 ## Documentação Disponível
 
@@ -292,7 +306,6 @@ Esta seção deve continuar sendo usada como checklist vivo do grupo.
 
 ## Observações Importantes
 
-- O arquivo [REQUISITOS_DATATHON.md](/home/marcio/dev/projects/python/tc_fiap_fase5/REQUISITOS_DATATHON.md) deve ser tratado como baseline mínimo, não como limite máximo da solução.
 - Este README foi escrito para acompanhar o estado real do repositório, então o checklist deve ser atualizado sempre que uma etapa evoluir.
 - Componentes documentados como placeholder não devem ser apresentados como concluídos.
 
