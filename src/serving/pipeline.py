@@ -12,8 +12,11 @@ from common.config_loader import (
     load_global_config,
     load_training_experiment_config,
 )
+from common.logger import get_logger
 from features.feature_engineering import create_features, normalize_feature_names
 from serving.schemas import ChurnPredictionRequest
+
+logger = get_logger(__name__)
 
 
 class ServingConfig(NamedTuple):
@@ -21,6 +24,7 @@ class ServingConfig(NamedTuple):
 
     target_col: str
     leakage_columns: list[str]
+    drop_columns: list[str]
     model_path: Path
     preprocessor_path: Path
     threshold: float
@@ -39,6 +43,7 @@ def build_serving_config(
     return ServingConfig(
         target_col=global_config["data"]["target_col"],
         leakage_columns=global_config["features"]["leakage_columns"],
+        drop_columns=global_config["data"]["drop_columns"],
         model_path=Path(experiment_config["artifacts"]["model_path"]),
         preprocessor_path=Path("artifacts/preprocessor.joblib"),
         threshold=experiment_config["inference"]["threshold"],
@@ -93,6 +98,16 @@ def prepare_inference_dataframe(
     existing_leakage = [c for c in leakage_in_features if c in df_feat.columns]
     if existing_leakage:
         df_feat = df_feat.drop(columns=existing_leakage)
+
+    logger.info(
+        "LGPD: inferência preparada sem identificadores diretos; colunas vedadas por "
+        "política: %s",
+        cfg.drop_columns,
+    )
+    if "Geography" in df_feat.columns:
+        logger.info(
+            "LGPD: Geography utilizada sob governança para predição em produção"
+        )
 
     return df_feat
 

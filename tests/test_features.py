@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pandas as pd
 
 from features.feature_engineering import (
@@ -7,6 +9,7 @@ from features.feature_engineering import (
     create_features,
     drop_leakage_from_features,
     preprocess_features,
+    validate_lgpd_exclusions,
 )
 
 
@@ -84,6 +87,7 @@ def test_build_features_returns_train_and_test_without_leakage(
     cfg = FeatureEngineeringConfig(
         seed=42,
         target_col="Exited",
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
         leakage_columns=["Exited", "Complain", "Satisfaction Score"],
         test_size=0.2,
         random_state=42,
@@ -102,3 +106,46 @@ def test_build_features_returns_train_and_test_without_leakage(
     assert "Complain" not in artifacts.feature_cols
     assert "Satisfaction Score" not in artifacts.feature_cols
     assert "Geo_Germany" in artifacts.feature_cols
+
+
+def test_validate_lgpd_exclusions_logs_success() -> None:
+    df = pd.DataFrame({"CreditScore": [600], "Geography": ["France"]})
+
+    with patch("features.feature_engineering.logger.info") as mock_info:
+        validate_lgpd_exclusions(df, ["RowNumber", "CustomerId", "Surname"])
+
+    mock_info.assert_any_call(
+        "LGPD: exclusão de identificadores validada com sucesso: %s",
+        ["RowNumber", "CustomerId", "Surname"],
+    )
+
+
+def test_build_features_logs_lgpd_governance_for_geography(
+    churn_dataframe: pd.DataFrame,
+    monkeypatch,
+) -> None:
+    cfg = FeatureEngineeringConfig(
+        seed=42,
+        target_col="Exited",
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
+        leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        test_size=0.2,
+        random_state=42,
+        stratify=True,
+    )
+    monkeypatch.setattr(
+        "features.feature_engineering.load_feature_engineering_config",
+        lambda: cfg,
+    )
+
+    with patch("features.feature_engineering.logger.info") as mock_info:
+        build_features(churn_dataframe)
+
+    mock_info.assert_any_call(
+        "LGPD: colunas de exclusão obrigatória configuradas: %s",
+        ["RowNumber", "CustomerId", "Surname"],
+    )
+    mock_info.assert_any_call(
+        "LGPD: Geography mantida sob governança para predição e monitoramento "
+        "de fairness"
+    )

@@ -59,6 +59,7 @@ class FeatureEngineeringConfig(NamedTuple):
 
     seed: int
     target_col: str
+    drop_columns: list[str]
     leakage_columns: list[str]
     test_size: float
     random_state: int
@@ -72,6 +73,7 @@ def load_feature_engineering_config() -> FeatureEngineeringConfig:
     return FeatureEngineeringConfig(
         seed=config["seed"],
         target_col=config["data"]["target_col"],
+        drop_columns=config["data"]["drop_columns"],
         leakage_columns=config["features"]["leakage_columns"],
         test_size=config["split"]["test_size"],
         random_state=config["split"]["random_state"],
@@ -262,6 +264,39 @@ def _log_preprocessing_details(feature_cols: list[str]) -> None:
     logger.info("Features finais (%d): %s", len(feature_cols), feature_cols)
 
 
+def validate_lgpd_exclusions(
+    df: pd.DataFrame,
+    drop_columns: list[str],
+) -> None:
+    """Valida exclusão de identificadores diretos segundo a política LGPD."""
+
+    existing_drop_columns = [col for col in drop_columns if col in df.columns]
+    if existing_drop_columns:
+        logger.error(
+            "LGPD: colunas identificadoras ainda presentes no pipeline: %s",
+            existing_drop_columns,
+        )
+        raise ValueError(
+            "LGPD: colunas identificadoras não foram excluídas antes da "
+            f"engenharia de atributos: {existing_drop_columns}"
+        )
+
+    logger.info(
+        "LGPD: exclusão de identificadores validada com sucesso: %s",
+        drop_columns,
+    )
+
+
+def log_governed_features(df: pd.DataFrame) -> None:
+    """Registra uso governado de atributos sensíveis ou quase sensíveis."""
+
+    if "Geography" in df.columns:
+        logger.info(
+            "LGPD: Geography mantida sob governança para predição e monitoramento "
+            "de fairness"
+        )
+
+
 def drop_leakage_from_features(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
@@ -325,6 +360,10 @@ def build_features(df: pd.DataFrame) -> PipelineArtifacts:
         cfg.target_col,
         cfg.leakage_columns,
     )
+    logger.info(
+        "LGPD: colunas de exclusão obrigatória configuradas: %s",
+        cfg.drop_columns,
+    )
 
     # Roteiro do pipeline:
     # 1. criar features
@@ -332,6 +371,8 @@ def build_features(df: pd.DataFrame) -> PipelineArtifacts:
     # 3. limpar vazamento em X
     # 4. preprocessar
     # 5. montar artefatos
+    validate_lgpd_exclusions(df, cfg.drop_columns)
+    log_governed_features(df)
     df_feat = create_features(df)
     X_train, X_test, y_train, y_test = split_train_test(
         df=df_feat,

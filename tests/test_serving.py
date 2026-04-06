@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pandas as pd
 from fastapi.testclient import TestClient
@@ -14,6 +14,7 @@ def return_route_config() -> ServingConfig:
     return ServingConfig(
         target_col="Exited",
         leakage_columns=["Exited"],
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
         model_path=Mock(),
         preprocessor_path=Mock(),
         threshold=0.5,
@@ -50,6 +51,7 @@ def test_prepare_inference_dataframe_removes_leakage_columns() -> None:
     cfg = ServingConfig(
         target_col="Exited",
         leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
         model_path=Mock(),
         preprocessor_path=Mock(),
         threshold=0.5,
@@ -65,6 +67,47 @@ def test_prepare_inference_dataframe_removes_leakage_columns() -> None:
     assert "Satisfaction Score" not in df_feat.columns
     assert "BalancePerProduct" in df_feat.columns
     assert "PointsPerSalary" in df_feat.columns
+
+
+def test_prepare_inference_dataframe_logs_lgpd_governance() -> None:
+    payload = ChurnPredictionRequest(
+        **{
+            "CreditScore": 650,
+            "Geography": "France",
+            "Gender": "Female",
+            "Age": 35,
+            "Tenure": 4,
+            "Balance": 2000.0,
+            "NumOfProducts": 2,
+            "HasCrCard": 1,
+            "IsActiveMember": 1,
+            "EstimatedSalary": 50000.0,
+            "Card Type": "GOLD",
+            "Point Earned": 200,
+        }
+    )
+    cfg = ServingConfig(
+        target_col="Exited",
+        leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
+        model_path=Mock(),
+        preprocessor_path=Mock(),
+        threshold=0.5,
+        model_name="random_forest_current",
+        run_name="random_forest_current",
+    )
+
+    with patch("serving.pipeline.logger.info") as mock_info:
+        prepare_inference_dataframe(payload, cfg)
+
+    mock_info.assert_any_call(
+        "LGPD: inferência preparada sem identificadores diretos; colunas vedadas por "
+        "política: %s",
+        ["RowNumber", "CustomerId", "Surname"],
+    )
+    mock_info.assert_any_call(
+        "LGPD: Geography utilizada sob governança para predição em produção"
+    )
 
 
 def test_predict_route_returns_prediction_payload(monkeypatch) -> None:

@@ -30,6 +30,7 @@ def return_serving_config(experiment_config_path: str) -> ServingConfig:
     return ServingConfig(
         target_col="Exited",
         leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
         model_path=Path("artifacts/random_forest_v2.pkl"),
         preprocessor_path=Path("artifacts/preprocessor.joblib"),
         threshold=0.5,

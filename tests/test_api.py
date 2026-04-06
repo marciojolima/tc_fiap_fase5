@@ -88,6 +88,7 @@ def build_serving_config() -> ServingConfig:
     return ServingConfig(
         target_col="Exited",
         leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        drop_columns=["RowNumber", "CustomerId", "Surname"],
         model_path=Path("artifacts/random_forest_current.pkl"),
         preprocessor_path=Path("artifacts/preprocessor.joblib"),
         threshold=0.5,
