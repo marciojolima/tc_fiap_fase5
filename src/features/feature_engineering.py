@@ -32,7 +32,7 @@ logger = get_logger(__name__)
 
 @dataclass(frozen=True)
 class FeatureEngineeringStageConfig:
-    """Configuração consolidada da etapa de engenharia de atributos."""
+    """Configuração consolidada da etapa de engenharia de features."""
 
     seed: int
     target_column: str
@@ -161,7 +161,7 @@ def validate_lgpd_exclusions(
         )
         raise ValueError(
             "LGPD: colunas identificadoras não foram excluídas antes da "
-            f"engenharia de atributos: {existing_identifier_columns}"
+            f"engenharia de features: {existing_identifier_columns}"
         )
 
     logger.info(
@@ -508,9 +508,9 @@ def _log_feature_pipeline_details(
 
 
 def main() -> None:
-    """Executa o pipeline completo de engenharia de atributos."""
+    """Executa o pipeline completo de engenharia de features."""
 
-    logger.info("Iniciando pipeline de engenharia de atributos")
+    logger.info("Iniciando pipeline de engenharia de features")
 
     stage_config = load_feature_engineering_config()
     raw_dataset = load_raw_data()
@@ -532,7 +532,7 @@ def main() -> None:
     modeling_artifacts = prepare_modeling_datasets(interim_dataset)
     save_modeling_artifacts(modeling_artifacts)
 
-    logger.info("Pipeline de engenharia de atributos concluído com sucesso")
+    logger.info("Pipeline de engenharia de features concluído com sucesso")
 
 
 if __name__ == "__main__":
