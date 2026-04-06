@@ -87,8 +87,11 @@ def run_scenario_prediction(
 
     serving_cfg = build_serving_config(experiment_config_path)
     request = parse_payload(scenario.payload)
-    df_feat = prepare_inference_dataframe(request, serving_cfg)
-    probability, prediction = predict_from_dataframe_with_config(df_feat, serving_cfg)
+    transformed_features = prepare_inference_dataframe(request, serving_cfg)
+    probability, prediction = predict_from_dataframe_with_config(
+        transformed_features,
+        serving_cfg,
+    )
 
     return ScenarioAnalysisResult(
         scenario_name=scenario.name,

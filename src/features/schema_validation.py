@@ -1,36 +1,104 @@
-import pandera.pandas as pa
-from pandera.pandas import Check, Column, DataFrameSchema
+"""Schemas de validação para estágios distintos do pipeline de dados."""
 
+from __future__ import annotations
+
+import pandera.pandas as pa
+from pandera.typing import Series
+
+from common.config_loader import load_global_config
 from common.logger import get_logger
 
 logger = get_logger(__name__)
 
-CHURN_SCHEMA = DataFrameSchema(
-    {
-        "CreditScore": Column(int, Check.between(300, 850)),
-        "Geography": Column(str, Check.isin(["France", "Germany", "Spain"])),
-        "Gender": Column(str, Check.isin(["Male", "Female"])),
-        "Age": Column(int, Check.between(18, 100)),
-        "Tenure": Column(int, Check.between(0, 10)),
-        "Balance": Column(float, Check.ge(0)),
-        "NumOfProducts": Column(int, Check.between(1, 4)),
-        "HasCrCard": Column(int, Check.isin([0, 1])),
-        "IsActiveMember": Column(int, Check.isin([0, 1])),
-        "EstimatedSalary": Column(float, Check.gt(0)),
-        "Exited": Column(int, Check.isin([0, 1])),
-        "Complain": Column(int, Check.isin([0, 1])),
-        "Satisfaction Score": Column(int, Check.between(1, 5)),
-        "Card Type": Column(str, Check.isin(["DIAMOND", "GOLD", "SILVER", "PLATINUM"])),
-        "Point Earned": Column(int, Check.ge(0)),
-    }
-)
+_GLOBAL_CONFIG = load_global_config()
+_FEATURE_CONFIG = _GLOBAL_CONFIG["features"]["categorical_features"]
+_CARD_TYPE_CATEGORIES = _FEATURE_CONFIG["ordinal"]["Card Type"]
+_GENDER_CATEGORIES = _FEATURE_CONFIG["ordinal"]["Gender"]
+_GEOGRAPHY_CATEGORIES = _FEATURE_CONFIG["one_hot"]["Geography"]
 
 
-def validate_schema(df) -> None:
-    logger.info("Iniciando validação de schema...")
+class RawCustomerDatasetSchema(pa.DataFrameModel):
+    """Schema do dado bruto antes da minimização LGPD."""
+
+    RowNumber: Series[int]
+    CustomerId: Series[int]
+    Surname: Series[str]
+    CreditScore: Series[int] = pa.Field(in_range={"min_value": 300, "max_value": 850})
+    Geography: Series[str] = pa.Field(isin=_GEOGRAPHY_CATEGORIES)
+    Gender: Series[str] = pa.Field(isin=_GENDER_CATEGORIES)
+    Age: Series[int] = pa.Field(in_range={"min_value": 18, "max_value": 100})
+    Tenure: Series[int] = pa.Field(in_range={"min_value": 0, "max_value": 10})
+    Balance: Series[float] = pa.Field(ge=0)
+    NumOfProducts: Series[int] = pa.Field(in_range={"min_value": 1, "max_value": 4})
+    HasCrCard: Series[int] = pa.Field(isin=[0, 1])
+    IsActiveMember: Series[int] = pa.Field(isin=[0, 1])
+    EstimatedSalary: Series[float] = pa.Field(gt=0)
+    Exited: Series[int] = pa.Field(isin=[0, 1])
+    Complain: Series[int] = pa.Field(isin=[0, 1])
+    SatisfactionScore: Series[int] = pa.Field(
+        alias="Satisfaction Score",
+        in_range={"min_value": 1, "max_value": 5},
+    )
+    CardType: Series[str] = pa.Field(alias="Card Type", isin=_CARD_TYPE_CATEGORIES)
+    PointEarned: Series[int] = pa.Field(alias="Point Earned", ge=0)
+
+
+class InterimCustomerDatasetSchema(pa.DataFrameModel):
+    """Schema do dado após minimização LGPD e limpeza básica."""
+
+    CreditScore: Series[int] = pa.Field(in_range={"min_value": 300, "max_value": 850})
+    Geography: Series[str] = pa.Field(isin=_GEOGRAPHY_CATEGORIES)
+    Gender: Series[str] = pa.Field(isin=_GENDER_CATEGORIES)
+    Age: Series[int] = pa.Field(in_range={"min_value": 18, "max_value": 100})
+    Tenure: Series[int] = pa.Field(in_range={"min_value": 0, "max_value": 10})
+    Balance: Series[float] = pa.Field(ge=0)
+    NumOfProducts: Series[int] = pa.Field(in_range={"min_value": 1, "max_value": 4})
+    HasCrCard: Series[int] = pa.Field(isin=[0, 1])
+    IsActiveMember: Series[int] = pa.Field(isin=[0, 1])
+    EstimatedSalary: Series[float] = pa.Field(gt=0)
+    Exited: Series[int] = pa.Field(isin=[0, 1])
+    Complain: Series[int] = pa.Field(isin=[0, 1])
+    SatisfactionScore: Series[int] = pa.Field(
+        alias="Satisfaction Score",
+        in_range={"min_value": 1, "max_value": 5},
+    )
+    CardType: Series[str] = pa.Field(alias="Card Type", isin=_CARD_TYPE_CATEGORIES)
+    PointEarned: Series[int] = pa.Field(alias="Point Earned", ge=0)
+
+
+def validate_raw_dataset_schema(raw_dataset) -> None:
+    """Valida o layout bruto do dataset logo após a leitura."""
+
+    logger.info("Validando schema do dado bruto")
     try:
-        CHURN_SCHEMA.validate(df)
-        logger.info("Schema validado com sucesso — %d linhas, %d colunas", *df.shape)
-    except pa.errors.SchemaError as e:
-        logger.error("Schema inválido: %s", e)
+        RawCustomerDatasetSchema.validate(raw_dataset)
+    except pa.errors.SchemaError as exc:
+        logger.error("Schema bruto inválido: %s", exc)
         raise
+
+    logger.info(
+        "Schema bruto validado com sucesso — %d linhas, %d colunas",
+        *raw_dataset.shape,
+    )
+
+
+def validate_interim_dataset_schema(interim_dataset) -> None:
+    """Valida o dataset após limpeza e minimização de identificadores."""
+
+    logger.info("Validando schema do dado interim")
+    try:
+        InterimCustomerDatasetSchema.validate(interim_dataset)
+    except pa.errors.SchemaError as exc:
+        logger.error("Schema interim inválido: %s", exc)
+        raise
+
+    logger.info(
+        "Schema interim validado com sucesso — %d linhas, %d colunas",
+        *interim_dataset.shape,
+    )
+
+
+def validate_schema(interim_dataset) -> None:
+    """Compatibilidade retroativa com a antiga validação única."""
+
+    validate_interim_dataset_schema(interim_dataset)

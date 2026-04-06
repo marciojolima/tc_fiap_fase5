@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal
+from pydantic import BaseModel, Field, field_validator
 
-from pydantic import BaseModel, Field
+from common.config_loader import load_global_config
+
+_GLOBAL_CONFIG = load_global_config()
+_CATEGORICAL_FEATURES = _GLOBAL_CONFIG["features"]["categorical_features"]
+_GEOGRAPHY_CATEGORIES = _CATEGORICAL_FEATURES["one_hot"]["Geography"]
+_GENDER_CATEGORIES = _CATEGORICAL_FEATURES["ordinal"]["Gender"]
+_CARD_TYPE_CATEGORIES = _CATEGORICAL_FEATURES["ordinal"]["Card Type"]
 
 
 class ChurnPredictionRequest(BaseModel):
@@ -14,12 +20,12 @@ class ChurnPredictionRequest(BaseModel):
         le=850,
         description="Pontuação de crédito: Confiabilidade financeira (300-850)",
     )
-    Geography: Literal["Germany", "France", "Spain"] = Field(
-        "Germany",
+    Geography: str = Field(
+        _GEOGRAPHY_CATEGORIES[0],
         description="País de residência do cliente",
     )
-    Gender: Literal["Female", "Male"] = Field(
-        "Female",
+    Gender: str = Field(
+        _GENDER_CATEGORIES[0],
         description="Gênero do cliente",
     )
     Age: int = Field(
@@ -62,8 +68,8 @@ class ChurnPredictionRequest(BaseModel):
         gt=0,
         description="Rendimento anual estimado do cliente",
     )
-    card_type: Literal["SILVER", "GOLD", "PLATINUM", "DIAMOND"] = Field(
-        "SILVER",
+    card_type: str = Field(
+        _CARD_TYPE_CATEGORIES[0],
         alias="Card Type",
         description="Categoria do cartão do cliente",
     )
@@ -79,8 +85,8 @@ class ChurnPredictionRequest(BaseModel):
         "json_schema_extra": {
             "example": {
                 "CreditScore": 600,
-                "Geography": "Germany",
-                "Gender": "Female",
+                "Geography": _GEOGRAPHY_CATEGORIES[1],
+                "Gender": _GENDER_CATEGORIES[0],
                 "Age": 40,
                 "Tenure": 3,
                 "Balance": 60000.0,
@@ -88,11 +94,32 @@ class ChurnPredictionRequest(BaseModel):
                 "HasCrCard": 1,
                 "IsActiveMember": 1,
                 "EstimatedSalary": 50000.0,
-                "Card Type": "DIAMOND",
+                "Card Type": _CARD_TYPE_CATEGORIES[-1],
                 "Point Earned": 450,
             }
         },
     }
+
+    @field_validator("Geography")
+    @classmethod
+    def validate_geography(cls, value: str) -> str:
+        if value not in _GEOGRAPHY_CATEGORIES:
+            raise ValueError(f"Geography deve ser um de {_GEOGRAPHY_CATEGORIES}")
+        return value
+
+    @field_validator("Gender")
+    @classmethod
+    def validate_gender(cls, value: str) -> str:
+        if value not in _GENDER_CATEGORIES:
+            raise ValueError(f"Gender deve ser um de {_GENDER_CATEGORIES}")
+        return value
+
+    @field_validator("card_type")
+    @classmethod
+    def validate_card_type(cls, value: str) -> str:
+        if value not in _CARD_TYPE_CATEGORIES:
+            raise ValueError(f"Card Type deve ser um de {_CARD_TYPE_CATEGORIES}")
+        return value
 
 
 class ChurnPredictionResponse(BaseModel):

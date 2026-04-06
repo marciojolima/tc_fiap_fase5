@@ -45,8 +45,8 @@ def healthcheck() -> dict[str, str]:
 )
 def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
     cfg = load_serving_config()
-    df_feat = prepare_inference_dataframe(payload, cfg)
-    probability, prediction = predict_from_dataframe(df_feat)
+    transformed_features = prepare_inference_dataframe(payload, cfg)
+    probability, prediction = predict_from_dataframe(transformed_features)
 
     return ChurnPredictionResponse(
         churn_probability=probability,

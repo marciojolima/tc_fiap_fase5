@@ -31,8 +31,9 @@ def return_serving_config(experiment_config_path: str) -> ServingConfig:
         target_col="Exited",
         leakage_columns=["Exited", "Complain", "Satisfaction Score"],
         drop_columns=["RowNumber", "CustomerId", "Surname"],
+        governed_columns=["Geography"],
         model_path=Path("artifacts/random_forest_v2.pkl"),
-        preprocessor_path=Path("artifacts/preprocessor.joblib"),
+        feature_pipeline_path=Path("artifacts/feature_pipeline.joblib"),
         threshold=0.5,
         model_name="random_forest_v2",
         run_name="random_forest_v2",
@@ -44,6 +45,10 @@ def return_prediction(
     cfg: ServingConfig,
 ) -> tuple[float, int]:
     return 0.69, 1
+
+
+def return_transformed_features(payload, cfg: ServingConfig):
+    return {"prepared": True}
 
 
 def return_suite_result(
@@ -126,6 +131,10 @@ def test_run_scenario_prediction_returns_standardized_output(monkeypatch) -> Non
     monkeypatch.setattr(
         "inference.scenario_analysis.predict_from_dataframe_with_config",
         return_prediction,
+    )
+    monkeypatch.setattr(
+        "inference.scenario_analysis.prepare_inference_dataframe",
+        return_transformed_features,
     )
 
     result = run_scenario_prediction(

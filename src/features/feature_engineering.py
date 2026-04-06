@@ -1,180 +1,240 @@
-"""Pipeline de engenharia de atributos para o conjunto de dados Bank Customer Churn.
-
-Responsabilidades deste módulo:
-    1. Criação de features derivadas
-    2. Separação treino/teste sem data leakage
-    3. Encoding de variáveis categóricas
-    4. Escalonamento de variáveis numéricas
-    5. Persistência dos artefatos processados
-
-Uso:
-    python -m src.features.feature_engineering
-"""
+"""Orquestra a preparação de datasets e artefatos de features para modelagem."""
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import NamedTuple
 
 import pandas as pd
 from joblib import dump
-from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
 
 from common.config_loader import load_config
 from common.data_loader import load_raw_data
 from common.logger import get_logger
 from common.seed import set_global_seed
-from features.schema_validation import validate_schema
+from features.pipeline_components import (
+    DomainFeatureEnricher,
+    FeatureEncodingConfig,
+    LeakageFeatureDropper,
+    build_feature_preprocessor,
+    build_feature_transformation_pipeline,
+)
+from features.schema_validation import (
+    validate_interim_dataset_schema,
+    validate_raw_dataset_schema,
+)
 
 logger = get_logger(__name__)
 
-CARD_CATEGORIES: list[list[str]] = [["SILVER", "GOLD", "PLATINUM", "DIAMOND"]]
-GENDER_CATEGORIES: list[list[str]] = [["Female", "Male"]]
-GEOGRAPHY_CATEGORIES: list[list[str]] = [["France", "Germany", "Spain"]]
 
-ORDINAL_COLUMNS: list[str] = ["Card Type", "Gender"]
-OHE_COLUMNS: list[str] = ["Geography"]
-
-
-class PipelineArtifacts(NamedTuple):
-    """Artefatos produzidos pela etapa de engenharia de atributos."""
-
-    train_df: pd.DataFrame
-    test_df: pd.DataFrame
-    feature_cols: list[str]
-    preprocessor: ColumnTransformer
-
-
-class InterimArtifacts(NamedTuple):
-    """Artefatos produzidos na camada de dados intermediários."""
-
-    cleaned_df: pd.DataFrame
-
-
-class FeatureEngineeringConfig(NamedTuple):
-    """Configuração usada no pipeline de engenharia de atributos."""
+@dataclass(frozen=True)
+class FeatureEngineeringStageConfig:
+    """Configuração consolidada da etapa de engenharia de atributos."""
 
     seed: int
-    target_col: str
-    drop_columns: list[str]
-    leakage_columns: list[str]
+    target_column: str
+    direct_identifier_columns: list[str]
+    leakage_feature_columns: list[str]
     test_size: float
     random_state: int
     stratify: bool
-
-
-def load_feature_engineering_config() -> FeatureEngineeringConfig:
-    """Carrega apenas a configuração necessária para esta etapa."""
-
-    config = load_config()
-    return FeatureEngineeringConfig(
-        seed=config["seed"],
-        target_col=config["data"]["target_col"],
-        drop_columns=config["data"]["drop_columns"],
-        leakage_columns=config["features"]["leakage_columns"],
-        test_size=config["split"]["test_size"],
-        random_state=config["split"]["random_state"],
-        stratify=config["split"]["stratify"],
+    governed_columns: list[str] = field(
+        default_factory=lambda: _load_default_governed_columns(load_config())
+    )
+    encoding_config: FeatureEncodingConfig = field(
+        default_factory=lambda: _load_default_encoding_config(load_config())
     )
 
 
-def create_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Cria features derivadas de domínio sem alterar o DataFrame original."""
+@dataclass(frozen=True)
+class ModelingDatasetArtifacts:
+    """Artefatos necessários para treino, rastreabilidade e serving."""
 
-    required_cols = {"Balance", "NumOfProducts", "Point Earned", "EstimatedSalary"}
-    missing_cols = required_cols - set(df.columns)
-    if missing_cols:
-        raise KeyError(
-            "Colunas necessárias para criar features estão ausentes: "
-            f"{sorted(missing_cols)}"
+    train_dataset: pd.DataFrame
+    test_dataset: pd.DataFrame
+    feature_names: list[str]
+    feature_pipeline: Pipeline
+
+    @property
+    def train_df(self) -> pd.DataFrame:
+        return self.train_dataset
+
+    @property
+    def test_df(self) -> pd.DataFrame:
+        return self.test_dataset
+
+    @property
+    def feature_cols(self) -> list[str]:
+        return self.feature_names
+
+    @property
+    def preprocessor(self) -> Pipeline:
+        return self.feature_pipeline
+
+
+@dataclass(frozen=True)
+class InterimDatasetArtifacts:
+    """Artefatos produzidos na camada de dados intermediários."""
+
+    interim_dataset: pd.DataFrame
+
+    @property
+    def cleaned_df(self) -> pd.DataFrame:
+        return self.interim_dataset
+
+
+def _load_default_encoding_config(config: dict) -> FeatureEncodingConfig:
+    """Cria a configuração de encoding a partir do YAML global."""
+
+    categorical_feature_config = config["features"]["categorical_features"]
+    return FeatureEncodingConfig(
+        ordinal_categories_by_column=categorical_feature_config["ordinal"],
+        one_hot_categories_by_column=categorical_feature_config["one_hot"],
+    )
+
+
+def _load_default_governed_columns(config: dict) -> list[str]:
+    """Cria a configuração padrão de colunas governadas a partir do YAML."""
+
+    return config["features"].get("governed_columns", [])
+
+
+def load_feature_engineering_stage_config() -> FeatureEngineeringStageConfig:
+    """Carrega a configuração necessária para preparar os dados de modelagem."""
+
+    global_config = load_config()
+    encoding_config = _load_default_encoding_config(global_config)
+
+    return FeatureEngineeringStageConfig(
+        seed=global_config["seed"],
+        target_column=global_config["data"]["target_col"],
+        direct_identifier_columns=global_config["data"]["drop_columns"],
+        leakage_feature_columns=global_config["features"]["leakage_columns"],
+        governed_columns=global_config["features"].get("governed_columns", []),
+        encoding_config=encoding_config,
+        test_size=global_config["split"]["test_size"],
+        random_state=global_config["split"]["random_state"],
+        stratify=global_config["split"]["stratify"],
+    )
+
+
+def load_feature_engineering_config() -> FeatureEngineeringStageConfig:
+    """Compatibilidade retroativa com o antigo loader de configuração."""
+
+    return load_feature_engineering_stage_config()
+
+
+def remove_direct_identifier_columns(
+    raw_dataset: pd.DataFrame,
+    direct_identifier_columns: list[str],
+) -> pd.DataFrame:
+    """Aplica minimização LGPD removendo identificadores diretos do dataset."""
+
+    minimized_dataset = raw_dataset.drop(
+        columns=direct_identifier_columns,
+        errors="ignore",
+    )
+    logger.info(
+        "LGPD: identificadores diretos removidos do dataset bruto: %s",
+        direct_identifier_columns,
+    )
+    logger.info("Shape após minimização LGPD: %s", minimized_dataset.shape)
+    return minimized_dataset
+
+
+def validate_lgpd_exclusions(
+    dataset: pd.DataFrame,
+    direct_identifier_columns: list[str],
+) -> None:
+    """Valida exclusão de identificadores diretos segundo a política LGPD."""
+
+    existing_identifier_columns = [
+        column for column in direct_identifier_columns if column in dataset.columns
+    ]
+    if existing_identifier_columns:
+        logger.error(
+            "LGPD: colunas identificadoras ainda presentes no pipeline: %s",
+            existing_identifier_columns,
+        )
+        raise ValueError(
+            "LGPD: colunas identificadoras não foram excluídas antes da "
+            f"engenharia de atributos: {existing_identifier_columns}"
         )
 
-    df_feat = df.copy()
-
-    df_feat["BalancePerProduct"] = df_feat["Balance"] / df_feat[
-        "NumOfProducts"
-    ].replace(0, 1)
     logger.info(
-        "Feature criada: BalancePerProduct — media=%.2f | std=%.2f",
-        df_feat["BalancePerProduct"].mean(),
-        df_feat["BalancePerProduct"].std(),
+        "LGPD: exclusão de identificadores validada com sucesso: %s",
+        direct_identifier_columns,
     )
 
-    df_feat["PointsPerSalary"] = df_feat["Point Earned"] / (
-        df_feat["EstimatedSalary"] + 1
-    )
-    logger.info(
-        "Feature criada: PointsPerSalary — media=%.6f | std=%.6f",
-        df_feat["PointsPerSalary"].mean(),
-        df_feat["PointsPerSalary"].std(),
-    )
 
-    return df_feat
+def log_governed_columns(dataset: pd.DataFrame, governed_columns: list[str]) -> None:
+    """Registra o uso deliberado de colunas sob governança de risco."""
+
+    present_governed_columns = [
+        column for column in governed_columns if column in dataset.columns
+    ]
+    if present_governed_columns:
+        logger.info(
+            "LGPD: colunas mantidas sob governança para predição e fairness: %s",
+            present_governed_columns,
+        )
 
 
-def clean_interim_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Prepara os dados intermediários antes da modelagem.
+def clean_interim_data(dataset: pd.DataFrame) -> pd.DataFrame:
+    """Remove duplicidades e ausências na camada interim antes da modelagem."""
 
-    Esta camada representa o conjunto de dados já sem identificadores
-    e com limpeza básica aplicada, mas ainda sem remoção de vazamento
-    para modelagem e sem transformações como encoding ou scaling.
-    """
+    initial_row_count = len(dataset)
+    deduplicated_dataset = dataset.drop_duplicates()
+    cleaned_dataset = deduplicated_dataset.dropna().reset_index(drop=True)
 
-    initial_rows = len(df)
-    df_clean = df.drop_duplicates().dropna().reset_index(drop=True)
-
-    removed_duplicates = initial_rows - len(df.drop_duplicates())
-    removed_missing = len(df.drop_duplicates()) - len(df_clean)
+    removed_duplicates = initial_row_count - len(deduplicated_dataset)
+    removed_missing = len(deduplicated_dataset) - len(cleaned_dataset)
 
     logger.info(
         (
-            "Camada interim preparada — linhas iniciais: "
-            "%d | duplicadas removidas: %d | linhas com valores ausentes removidas: %d"
+            "Camada interim preparada — linhas iniciais: %d | "
+            "duplicadas removidas: %d | linhas com valores ausentes removidas: %d"
         ),
-        initial_rows,
+        initial_row_count,
         removed_duplicates,
         removed_missing,
     )
-    logger.info("Shape do conjunto interim: %s", df_clean.shape)
+    logger.info("Shape do conjunto interim: %s", cleaned_dataset.shape)
+    return cleaned_dataset
 
-    return df_clean
 
-
-def split_train_test(
-    df: pd.DataFrame,
-    target_col: str,
+def split_modeling_dataset(
+    modeling_base_dataset: pd.DataFrame,
+    target_column: str,
     test_size: float,
     random_state: int,
     stratify: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Separa treino e teste antes do pré-processamento para evitar vazamento."""
+    """Separa treino e teste antes do fit do pipeline para evitar vazamento."""
 
-    if target_col not in df.columns:
+    if target_column not in modeling_base_dataset.columns:
         raise KeyError(
-            f"Coluna target '{target_col}' não encontrada. "
-            f"Colunas disponíveis: {list(df.columns)}"
+            f"Coluna target '{target_column}' não encontrada. "
+            f"Colunas disponíveis: {list(modeling_base_dataset.columns)}"
         )
 
-    X = df.drop(columns=[target_col]).copy()
-    y = df[target_col].copy()
-    stratify_col = y if stratify else None
+    training_features = modeling_base_dataset.drop(columns=[target_column]).copy()
+    target_series = modeling_base_dataset[target_column].copy()
+    stratify_series = target_series if stratify else None
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
+        training_features,
+        target_series,
         test_size=test_size,
         random_state=random_state,
-        stratify=stratify_col,
+        stratify=stratify_series,
     )
 
     logger.info(
-        (
-            "Split realizado antes do pré-processamento (anti-leakage) — "
-            "Train: %d | Test: %d"
-        ),
+        "Split realizado antes do pipeline de features — Train: %d | Test: %d",
         len(X_train),
         len(X_test),
     )
@@ -183,118 +243,201 @@ def split_train_test(
         y_train.mean() * 100,
         y_test.mean() * 100,
     )
-
     return X_train, X_test, y_train, y_test
 
 
-def build_preprocessor(numeric_features: list[str]) -> ColumnTransformer:
-    """Cria o pré-processador com encoders persistíveis e scaler."""
+def transform_model_inputs(
+    training_features: pd.DataFrame,
+    test_features: pd.DataFrame,
+    stage_config: FeatureEngineeringStageConfig,
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str], Pipeline]:
+    """Ajusta o pipeline de features no treino e transforma treino/teste."""
 
-    return ColumnTransformer(
-        transformers=[
-            (
-                "card_type",
-                OrdinalEncoder(
-                    categories=CARD_CATEGORIES,
-                    handle_unknown="use_encoded_value",
-                    unknown_value=-1,
-                ),
-                ["Card Type"],
-            ),
-            (
-                "geography",
-                OneHotEncoder(
-                    categories=GEOGRAPHY_CATEGORIES,
-                    drop="first",
-                    handle_unknown="ignore",
-                    sparse_output=False,
-                ),
-                ["Geography"],
-            ),
-            (
-                "gender",
-                OrdinalEncoder(
-                    categories=GENDER_CATEGORIES,
-                    handle_unknown="use_encoded_value",
-                    unknown_value=-1,
-                ),
-                ["Gender"],
-            ),
-            ("numeric", StandardScaler(), numeric_features),
-        ],
-        remainder="drop",
-        verbose_feature_names_out=False,
+    feature_pipeline = build_feature_transformation_pipeline(
+        training_features=training_features,
+        encoding_config=stage_config.encoding_config,
+        leakage_columns=stage_config.leakage_feature_columns,
+    )
+
+    transformed_train_features = feature_pipeline.fit_transform(training_features)
+    transformed_test_features = feature_pipeline.transform(test_features)
+    feature_names = transformed_train_features.columns.tolist()
+
+    _log_feature_pipeline_details(
+        feature_names=feature_names,
+        stage_config=stage_config,
+    )
+    return (
+        transformed_train_features,
+        transformed_test_features,
+        feature_names,
+        feature_pipeline,
     )
 
 
-def normalize_feature_names(feature_names: list[str]) -> list[str]:
-    """Padroniza nomes de colunas geradas pelo ColumnTransformer."""
-
-    return [name.replace("Geography_", "Geo_") for name in feature_names]
-
-
-def _assemble_dataframe(
-    X_array,
-    feature_cols: list[str],
-    y: pd.Series,
-    target_col: str,
+def assemble_modeling_dataset(
+    transformed_features: pd.DataFrame,
+    target_series: pd.Series,
+    target_column: str,
 ) -> pd.DataFrame:
-    """Reconstrói um DataFrame processado com atributos e variável alvo."""
+    """Reconstrói um dataset final de modelagem com features e target."""
 
-    df_out = pd.DataFrame(X_array, columns=feature_cols)
-    df_out[target_col] = y.reset_index(drop=True)
-    return df_out
+    modeling_dataset = transformed_features.copy()
+    modeling_dataset[target_column] = target_series.reset_index(drop=True)
+    return modeling_dataset
 
 
-def _log_preprocessing_details(feature_cols: list[str]) -> None:
-    """Registra no log os detalhes das transformações configuradas."""
+def prepare_modeling_datasets(
+    interim_dataset: pd.DataFrame,
+) -> ModelingDatasetArtifacts:
+    """Executa a etapa de feature engineering para gerar datasets de modelagem."""
 
-    geo_cols = [c for c in feature_cols if c.startswith("Geo_")]
+    stage_config = load_feature_engineering_config()
+    set_global_seed(stage_config.seed)
 
     logger.info(
-        "Card Type — Ordinal Encoding configurado: %s",
-        dict(zip(CARD_CATEGORIES[0], range(1, len(CARD_CATEGORIES[0]) + 1))),
+        "Target: %s | Colunas de leakage em X: %s",
+        stage_config.target_column,
+        stage_config.leakage_feature_columns,
     )
     logger.info(
-        "Gender — Ordinal Encoding configurado: %s",
-        dict(zip(GENDER_CATEGORIES[0], range(len(GENDER_CATEGORIES[0])))),
+        "LGPD: colunas de exclusão obrigatória configuradas: %s",
+        stage_config.direct_identifier_columns,
     )
-    logger.info("Geography — One-Hot Encoding aplicado: %s", geo_cols)
-    logger.info("StandardScaler aplicado com fit no treino e transform no teste")
-    logger.info("Features finais (%d): %s", len(feature_cols), feature_cols)
+
+    validate_lgpd_exclusions(
+        dataset=interim_dataset,
+        direct_identifier_columns=stage_config.direct_identifier_columns,
+    )
+    log_governed_columns(
+        dataset=interim_dataset,
+        governed_columns=stage_config.governed_columns,
+    )
+
+    (
+        training_features,
+        test_features,
+        training_target,
+        test_target,
+    ) = split_modeling_dataset(
+        modeling_base_dataset=interim_dataset,
+        target_column=stage_config.target_column,
+        test_size=stage_config.test_size,
+        random_state=stage_config.random_state,
+        stratify=stage_config.stratify,
+    )
+    (
+        transformed_train_features,
+        transformed_test_features,
+        feature_names,
+        feature_pipeline,
+    ) = transform_model_inputs(
+        training_features=training_features,
+        test_features=test_features,
+        stage_config=stage_config,
+    )
+
+    train_dataset = assemble_modeling_dataset(
+        transformed_features=transformed_train_features,
+        target_series=training_target,
+        target_column=stage_config.target_column,
+    )
+    test_dataset = assemble_modeling_dataset(
+        transformed_features=transformed_test_features,
+        target_series=test_target,
+        target_column=stage_config.target_column,
+    )
+
+    return ModelingDatasetArtifacts(
+        train_dataset=train_dataset,
+        test_dataset=test_dataset,
+        feature_names=feature_names,
+        feature_pipeline=feature_pipeline,
+    )
 
 
-def validate_lgpd_exclusions(
-    df: pd.DataFrame,
-    drop_columns: list[str],
+def save_interim_artifacts(
+    interim_artifacts: InterimDatasetArtifacts,
+    output_dir: Path = Path("data/interim"),
 ) -> None:
-    """Valida exclusão de identificadores diretos segundo a política LGPD."""
+    """Persiste o dataset interim em disco."""
 
-    existing_drop_columns = [col for col in drop_columns if col in df.columns]
-    if existing_drop_columns:
-        logger.error(
-            "LGPD: colunas identificadoras ainda presentes no pipeline: %s",
-            existing_drop_columns,
-        )
-        raise ValueError(
-            "LGPD: colunas identificadoras não foram excluídas antes da "
-            f"engenharia de atributos: {existing_drop_columns}"
-        )
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        interim_dataset_path = output_dir / "cleaned.parquet"
+        interim_artifacts.interim_dataset.to_parquet(interim_dataset_path, index=False)
+    except OSError as exc:
+        logger.exception("Falha ao persistir dados intermediários em %s", output_dir)
+        raise OSError(
+            f"Não foi possível salvar dados intermediários em '{output_dir}'"
+        ) from exc
 
-    logger.info(
-        "LGPD: exclusão de identificadores validada com sucesso: %s",
-        drop_columns,
-    )
+    logger.info("Dados intermediários salvos em %s", interim_dataset_path)
 
 
-def log_governed_features(df: pd.DataFrame) -> None:
-    """Registra uso governado de atributos sensíveis ou quase sensíveis."""
+def save_modeling_artifacts(
+    modeling_artifacts: ModelingDatasetArtifacts,
+    output_dir: Path = Path("data/processed"),
+) -> None:
+    """Persiste datasets processados e o pipeline de features reutilizável."""
 
-    if "Geography" in df.columns:
-        logger.info(
-            "LGPD: Geography mantida sob governança para predição e monitoramento "
-            "de fairness"
-        )
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        artifacts_dir = Path("artifacts")
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+        train_dataset_path = output_dir / "train.parquet"
+        test_dataset_path = output_dir / "test.parquet"
+        feature_columns_path = output_dir / "feature_columns.json"
+        schema_report_path = output_dir / "schema_report.json"
+        feature_pipeline_path = artifacts_dir / "feature_pipeline.joblib"
+
+        modeling_artifacts.train_dataset.to_parquet(train_dataset_path, index=False)
+        modeling_artifacts.test_dataset.to_parquet(test_dataset_path, index=False)
+        dump(modeling_artifacts.feature_pipeline, feature_pipeline_path)
+
+        with open(feature_columns_path, "w", encoding="utf-8") as file_obj:
+            json.dump(
+                modeling_artifacts.feature_names,
+                file_obj,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        with open(schema_report_path, "w", encoding="utf-8") as file_obj:
+            json.dump(
+                {"status": "validated", "pipeline": "feature_pipeline.joblib"},
+                file_obj,
+                indent=2,
+                ensure_ascii=False,
+            )
+    except OSError as exc:
+        logger.exception("Falha ao persistir artefatos em %s", output_dir)
+        raise OSError(f"Não foi possível salvar artefatos em '{output_dir}'") from exc
+
+    logger.info("Arquivos processados salvos em %s", output_dir)
+    logger.info("Pipeline de features persistido em %s", feature_pipeline_path)
+
+
+def create_features(dataset: pd.DataFrame) -> pd.DataFrame:
+    """Compatibilidade retroativa para enriquecimento de features de domínio."""
+
+    return DomainFeatureEnricher().fit_transform(dataset)
+
+
+def build_features(interim_dataset: pd.DataFrame) -> ModelingDatasetArtifacts:
+    """Compatibilidade retroativa com o antigo nome da fachada principal."""
+
+    return prepare_modeling_datasets(interim_dataset)
+
+
+def save_artifacts(
+    modeling_artifacts: ModelingDatasetArtifacts,
+    output_dir: Path = Path("data/processed"),
+) -> None:
+    """Compatibilidade retroativa com o antigo nome da persistência final."""
+
+    save_modeling_artifacts(modeling_artifacts, output_dir)
 
 
 def drop_leakage_from_features(
@@ -303,166 +446,65 @@ def drop_leakage_from_features(
     leakage_columns: list[str],
     target_col: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Remove colunas com vazamento apenas do espaço de atributos."""
+    """Compatibilidade retroativa para remoção de leakage nas features."""
 
-    leakage_in_features = [c for c in leakage_columns if c != target_col]
-    existing_leakage = [c for c in leakage_in_features if c in X_train.columns]
-    missing_leakage = sorted(set(leakage_in_features) - set(existing_leakage))
-
-    if missing_leakage:
-        logger.warning(
-            "Colunas marcadas como leakage não encontradas nas features: %s",
-            missing_leakage,
-        )
-
-    if not existing_leakage:
-        logger.info("Nenhuma coluna extra de leakage encontrada nas features")
-        return X_train, X_test
-
-    logger.info("Removendo colunas de leakage das features: %s", existing_leakage)
-    return (
-        X_train.drop(columns=existing_leakage),
-        X_test.drop(columns=existing_leakage),
-    )
+    leakage_feature_columns = [
+        column for column in leakage_columns if column != target_col
+    ]
+    leakage_dropper = LeakageFeatureDropper(leakage_feature_columns)
+    leakage_dropper.fit(X_train)
+    return leakage_dropper.transform(X_train), leakage_dropper.transform(X_test)
 
 
 def preprocess_features(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame, list[str], ColumnTransformer]:
-    """Ajusta o pré-processador no treino e transforma treino e teste."""
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str], Pipeline]:
+    """Compatibilidade retroativa para fit/transform do pipeline de atributos."""
 
-    categorical_cols = set(ORDINAL_COLUMNS + OHE_COLUMNS)
-    numeric_features = [c for c in X_train.columns if c not in categorical_cols]
-    preprocessor = build_preprocessor(numeric_features)
-
-    X_train_processed = preprocessor.fit_transform(X_train)
-    X_test_processed = preprocessor.transform(X_test)
-    feature_cols = normalize_feature_names(
-        preprocessor.get_feature_names_out().tolist()
+    stage_config = load_feature_engineering_config()
+    feature_preprocessor = build_feature_preprocessor(
+        input_columns=X_train.columns.tolist(),
+        encoding_config=stage_config.encoding_config,
     )
+    transformed_train = feature_preprocessor.fit_transform(X_train)
+    transformed_test = feature_preprocessor.transform(X_test)
+    transformed_train.columns = [
+        column_name.replace("Geography_", "Geo_")
+        for column_name in transformed_train.columns
+    ]
+    transformed_test.columns = [
+        column_name.replace("Geography_", "Geo_")
+        for column_name in transformed_test.columns
+    ]
+    feature_names = transformed_train.columns.tolist()
+    return transformed_train, transformed_test, feature_names, feature_preprocessor
 
-    _log_preprocessing_details(feature_cols)
 
-    train_df = pd.DataFrame(X_train_processed, columns=feature_cols)
-    test_df = pd.DataFrame(X_test_processed, columns=feature_cols)
-    return train_df, test_df, feature_cols, preprocessor
+def _log_feature_pipeline_details(
+    feature_names: list[str],
+    stage_config: FeatureEngineeringStageConfig,
+) -> None:
+    """Registra as escolhas do pipeline de transformação de features."""
 
-
-def build_features(df: pd.DataFrame) -> PipelineArtifacts:
-    """Orquestra o pipeline completo como uma fachada simples."""
-
-    cfg = load_feature_engineering_config()
-    set_global_seed(cfg.seed)
+    geography_feature_names = [
+        column_name for column_name in feature_names if column_name.startswith("Geo_")
+    ]
 
     logger.info(
-        "Target: %s | Excluídas por vazamento em X: %s",
-        cfg.target_col,
-        cfg.leakage_columns,
+        "Card Type — Ordinal Encoding configurado: %s",
+        stage_config.encoding_config.ordinal_categories_by_column["Card Type"],
     )
     logger.info(
-        "LGPD: colunas de exclusão obrigatória configuradas: %s",
-        cfg.drop_columns,
+        "Gender — Ordinal Encoding configurado: %s",
+        stage_config.encoding_config.ordinal_categories_by_column["Gender"],
     )
-
-    # Roteiro do pipeline:
-    # 1. criar features
-    # 2. split
-    # 3. limpar vazamento em X
-    # 4. preprocessar
-    # 5. montar artefatos
-    validate_lgpd_exclusions(df, cfg.drop_columns)
-    log_governed_features(df)
-    df_feat = create_features(df)
-    X_train, X_test, y_train, y_test = split_train_test(
-        df=df_feat,
-        target_col=cfg.target_col,
-        test_size=cfg.test_size,
-        random_state=cfg.random_state,
-        stratify=cfg.stratify,
+    logger.info(
+        "Geography — One-Hot Encoding aplicado: %s",
+        geography_feature_names,
     )
-    X_train, X_test = drop_leakage_from_features(
-        X_train=X_train,
-        X_test=X_test,
-        leakage_columns=cfg.leakage_columns,
-        target_col=cfg.target_col,
-    )
-    X_train_processed, X_test_processed, feature_cols, preprocessor = (
-        preprocess_features(X_train, X_test)
-    )
-
-    train_df = _assemble_dataframe(
-        X_train_processed.to_numpy(),
-        feature_cols,
-        y_train,
-        cfg.target_col,
-    )
-    test_df = _assemble_dataframe(
-        X_test_processed.to_numpy(),
-        feature_cols,
-        y_test,
-        cfg.target_col,
-    )
-
-    return PipelineArtifacts(
-        train_df=train_df,
-        test_df=test_df,
-        feature_cols=feature_cols,
-        preprocessor=preprocessor,
-    )
-
-
-def save_interim_artifacts(
-    artifacts: InterimArtifacts,
-    output_dir: Path = Path("data/interim"),
-) -> None:
-    """Persiste a camada de dados intermediários em disco."""
-
-    try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        cleaned_path = output_dir / "cleaned.parquet"
-        artifacts.cleaned_df.to_parquet(cleaned_path, index=False)
-    except OSError as exc:
-        logger.exception("Falha ao persistir dados intermediários em %s", output_dir)
-        raise OSError(
-            f"Não foi possível salvar dados intermediários em '{output_dir}'"
-        ) from exc
-
-    logger.info("Dados intermediários salvos em %s", cleaned_path)
-
-
-def save_artifacts(
-    artifacts: PipelineArtifacts,
-    output_dir: Path = Path("data/processed"),
-) -> None:
-    """Persiste os artefatos processados em disco com logs diagnósticos."""
-
-    try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        artifacts_dir = Path("artifacts")
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-
-        train_path = output_dir / "train.parquet"
-        test_path = output_dir / "test.parquet"
-        feature_cols_path = output_dir / "feature_columns.json"
-        schema_report_path = output_dir / "schema_report.json"
-        preprocessor_path = artifacts_dir / "preprocessor.joblib"
-
-        artifacts.train_df.to_parquet(train_path, index=False)
-        artifacts.test_df.to_parquet(test_path, index=False)
-        dump(artifacts.preprocessor, preprocessor_path)
-
-        with open(feature_cols_path, "w", encoding="utf-8") as f:
-            json.dump(artifacts.feature_cols, f, indent=2, ensure_ascii=False)
-
-        with open(schema_report_path, "w", encoding="utf-8") as f:
-            json.dump({"status": "validated"}, f, indent=2, ensure_ascii=False)
-    except OSError as exc:
-        logger.exception("Falha ao persistir artefatos em %s", output_dir)
-        raise OSError(f"Não foi possível salvar artefatos em '{output_dir}'") from exc
-
-    logger.info("Arquivos processados salvos em %s", output_dir)
-    logger.info("Pré-processador persistido em %s", preprocessor_path)
+    logger.info("Pipeline de features ajustado com sucesso")
+    logger.info("Features finais (%d): %s", len(feature_names), feature_names)
 
 
 def main() -> None:
@@ -470,16 +512,33 @@ def main() -> None:
 
     logger.info("Iniciando pipeline de engenharia de atributos")
 
-    df = load_raw_data()
-    interim_df = clean_interim_data(df)
-    validate_schema(interim_df)
-    save_interim_artifacts(InterimArtifacts(cleaned_df=interim_df))
+    stage_config = load_feature_engineering_config()
+    raw_dataset = load_raw_data()
+    validate_raw_dataset_schema(raw_dataset)
 
-    artifacts = build_features(interim_df)
-    save_artifacts(artifacts)
+    minimized_dataset = remove_direct_identifier_columns(
+        raw_dataset=raw_dataset,
+        direct_identifier_columns=stage_config.direct_identifier_columns,
+    )
+    validate_lgpd_exclusions(
+        dataset=minimized_dataset,
+        direct_identifier_columns=stage_config.direct_identifier_columns,
+    )
+
+    interim_dataset = clean_interim_data(minimized_dataset)
+    validate_interim_dataset_schema(interim_dataset)
+    save_interim_artifacts(InterimDatasetArtifacts(interim_dataset=interim_dataset))
+
+    modeling_artifacts = prepare_modeling_datasets(interim_dataset)
+    save_modeling_artifacts(modeling_artifacts)
 
     logger.info("Pipeline de engenharia de atributos concluído com sucesso")
 
 
 if __name__ == "__main__":
     main()
+
+
+FeatureEngineeringConfig = FeatureEngineeringStageConfig
+PipelineArtifacts = ModelingDatasetArtifacts
+InterimArtifacts = InterimDatasetArtifacts

@@ -70,14 +70,17 @@ def test_preprocess_features_returns_expected_encoded_columns(
         columns=["Exited", "Complain", "Satisfaction Score"]
     )
 
-    train_df, test_df, feature_cols, preprocessor = preprocess_features(X_train, X_test)
+    train_df, test_df, feature_cols, feature_pipeline = preprocess_features(
+        X_train,
+        X_test,
+    )
 
     assert train_df.shape[1] == len(feature_cols)
     assert test_df.shape[1] == len(feature_cols)
     assert "Geo_Germany" in feature_cols
     assert "Geo_Spain" in feature_cols
     assert "Geography" not in feature_cols
-    assert preprocessor is not None
+    assert feature_pipeline is not None
 
 
 def test_build_features_returns_train_and_test_without_leakage(
@@ -86,9 +89,9 @@ def test_build_features_returns_train_and_test_without_leakage(
 ) -> None:
     cfg = FeatureEngineeringConfig(
         seed=42,
-        target_col="Exited",
-        drop_columns=["RowNumber", "CustomerId", "Surname"],
-        leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        target_column="Exited",
+        direct_identifier_columns=["RowNumber", "CustomerId", "Surname"],
+        leakage_feature_columns=["Exited", "Complain", "Satisfaction Score"],
         test_size=0.2,
         random_state=42,
         stratify=True,
@@ -126,9 +129,9 @@ def test_build_features_logs_lgpd_governance_for_geography(
 ) -> None:
     cfg = FeatureEngineeringConfig(
         seed=42,
-        target_col="Exited",
-        drop_columns=["RowNumber", "CustomerId", "Surname"],
-        leakage_columns=["Exited", "Complain", "Satisfaction Score"],
+        target_column="Exited",
+        direct_identifier_columns=["RowNumber", "CustomerId", "Surname"],
+        leakage_feature_columns=["Exited", "Complain", "Satisfaction Score"],
         test_size=0.2,
         random_state=42,
         stratify=True,
@@ -146,6 +149,6 @@ def test_build_features_logs_lgpd_governance_for_geography(
         ["RowNumber", "CustomerId", "Surname"],
     )
     mock_info.assert_any_call(
-        "LGPD: Geography mantida sob governança para predição e monitoramento "
-        "de fairness"
+        "LGPD: colunas mantidas sob governança para predição e fairness: %s",
+        ["Geography"],
     )
