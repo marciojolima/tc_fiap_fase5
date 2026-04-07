@@ -73,7 +73,9 @@ data/**/*.csv
 # =============================================================
 # ARTIFACTS E OUTPUTS
 # =============================================================
-artifacts/
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/.gitignore
 reports/figures/
 evaluation/results/
 
