@@ -51,6 +51,7 @@ class ExperimentTrainingConfig(NamedTuple):
     training_data_version: str
     git_sha: str
     git_tag: str
+    git_nearest_tag: str
     risk_level: str
     fairness_checked: bool
     mlflow_cfg: dict[str, Any]
@@ -104,6 +105,22 @@ def resolve_git_tag() -> str:
     try:
         result = subprocess.run(
             ["git", "describe", "--tags", "--exact-match"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "post_release_commits"
+
+    return result.stdout.strip()
+
+
+def resolve_git_nearest_tag() -> str:
+    """Obtém a tag Git mais próxima no histórico do commit atual, se existir."""
+
+    try:
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
             check=True,
             capture_output=True,
             text=True,
@@ -167,6 +184,7 @@ def load_experiment_training_config(
         training_data_version=compute_training_data_version(),
         git_sha=resolve_git_sha(),
         git_tag=resolve_git_tag(),
+        git_nearest_tag=resolve_git_nearest_tag(),
         risk_level=governance_cfg.get("risk_level", "medium"),
         fairness_checked=governance_cfg.get("fairness_checked", False),
         mlflow_cfg={
@@ -273,6 +291,7 @@ def log_run_metadata(
     mlflow.set_tag("training_data_version", cfg.training_data_version)
     mlflow.set_tag("git_sha", cfg.git_sha)
     mlflow.set_tag("git_tag", cfg.git_tag)
+    mlflow.set_tag("git_nearest_tag", cfg.git_nearest_tag)
     mlflow.set_tag("risk_level", cfg.risk_level)
     mlflow.set_tag("fairness_checked", str(cfg.fairness_checked).lower())
     for key, value in cfg.mlflow_cfg["tags"].items():
@@ -315,6 +334,7 @@ def train_and_log_model(
                     "training_data_version": cfg.training_data_version,
                     "git_sha": cfg.git_sha,
                     "git_tag": cfg.git_tag,
+                    "git_nearest_tag": cfg.git_nearest_tag,
                     "risk_level": cfg.risk_level,
                     "fairness_checked": cfg.fairness_checked,
                     "mlflow_experiment_name": cfg.mlflow_cfg["experiment_name"],
