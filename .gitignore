@@ -63,6 +63,7 @@ data/**/*.csv
 !data/processed/schema_report.json
 !configs/*.yaml
 !examples/scenario_analysis/*.json
+.config/dvc/gdrive_credentials.json
 
 *.pkl
 *.joblib
