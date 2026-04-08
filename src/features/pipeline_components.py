@@ -53,9 +53,8 @@ class DomainFeatureEnricher(BaseEstimator, TransformerMixin):
         enriched_dataframe["BalancePerProduct"] = enriched_dataframe["Balance"] / (
             enriched_dataframe["NumOfProducts"].replace(0, 1)
         )
-        enriched_dataframe["PointsPerSalary"] = (
-            enriched_dataframe["Point Earned"]
-            / (enriched_dataframe["EstimatedSalary"] + 1)
+        enriched_dataframe["PointsPerSalary"] = enriched_dataframe["Point Earned"] / (
+            enriched_dataframe["EstimatedSalary"] + 1
         )
 
         logger.info(

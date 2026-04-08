@@ -1,4 +1,3 @@
-
 class FinancialGuardrail:
     @staticmethod
     def validate_output(response_text: str):

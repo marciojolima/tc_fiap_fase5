@@ -15,6 +15,7 @@ from models.train import (
     load_experiment_training_config,
     log_run_metadata,
     resolve_git_sha,
+    resolve_git_tag,
     run_training,
     train_and_log_model,
 )
@@ -71,6 +72,7 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         model_path=model_path,
         training_data_version="data-hash-123",
         git_sha="abc123",
+        git_tag="v0.2.0",
         risk_level="high",
         fairness_checked=False,
         mlflow_cfg={
@@ -199,6 +201,10 @@ def return_git_sha() -> str:
     return "abc123"
 
 
+def return_git_tag() -> str:
+    return "v0.2.0"
+
+
 def ignore_logged_params(params: dict) -> None:
     return None
 
@@ -262,6 +268,10 @@ def test_load_experiment_training_config_merges_global_and_experiment(
         "models.train.resolve_git_sha",
         return_git_sha,
     )
+    monkeypatch.setattr(
+        "models.train.resolve_git_tag",
+        return_git_tag,
+    )
 
     cfg = load_experiment_training_config("configs/training/model_current.yaml")
 
@@ -273,6 +283,7 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.model_path == Path("artifacts/model.pkl")
     assert cfg.training_data_version == "data-hash-123"
     assert cfg.git_sha == "abc123"
+    assert cfg.git_tag == "v0.2.0"
     assert cfg.risk_level == "high"
     assert cfg.fairness_checked is False
     assert cfg.mlflow_cfg["tracking_uri"] == "file:./mlruns"
@@ -286,6 +297,13 @@ def test_resolve_git_sha_returns_string() -> None:
 
     assert isinstance(git_sha, str)
     assert len(git_sha) > 0  # noqa: PLR2004
+
+
+def test_resolve_git_tag_returns_string() -> None:
+    git_tag = resolve_git_tag()
+
+    assert isinstance(git_tag, str)
+    assert len(git_tag) > 0  # noqa: PLR2004
 
 
 def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
@@ -331,6 +349,7 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
     assert ("model_version", "0.2.0") in _TAG_LOG
     assert ("training_data_version", "data-hash-123") in _TAG_LOG
     assert ("git_sha", "abc123") in _TAG_LOG
+    assert ("git_tag", "v0.2.0") in _TAG_LOG
     assert ("risk_level", "high") in _TAG_LOG
 
 
