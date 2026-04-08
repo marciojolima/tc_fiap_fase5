@@ -5,8 +5,8 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 22b21d2c4e60da430052dd09b477fe19
-      size: 509
+      md5: a45ddcb39f8163b36ee3dcd865f4bb15
+      size: 815
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
       md5: e37acb179fefe4cac8a33e280a12f62c
@@ -17,8 +17,8 @@ stages:
       size: 1322
     - path: src/common/data_loader.py
       hash: md5
-      md5: 8884b5275145a7853274e6a53a7bf1a0
-      size: 718
+      md5: 70e2fa47f0ec93268a72cb11d3e1ec63
+      size: 600
     - path: src/common/logger.py
       hash: md5
       md5: ed0345d8d4a981440409ab02e7359bec
@@ -29,48 +29,56 @@ stages:
       size: 178
     - path: src/features/feature_engineering.py
       hash: md5
-      md5: 3be3c4e5f62e2b9417ca5c5c911016fc
-      size: 4643
+      md5: 9f6c724efcff819dafca97ab5b3c5dc6
+      size: 18217
     - path: src/features/schema_validation.py
       hash: md5
-      md5: d5193717f361f04a32042fe6d6f97b59
-      size: 1411
+      md5: 646244d17b6dd5f05cb388e95c61909b
+      size: 4157
     outs:
+    - path: artifacts/feature_pipeline.joblib
+      hash: md5
+      md5: c3db56dae2fed178f232ae94a85e2e2a
+      size: 5525
+    - path: data/interim/cleaned.parquet
+      hash: md5
+      md5: 6ca8c33d4d89b12f65d1ba2311f4cdeb
+      size: 198614
     - path: data/processed/feature_columns.json
       hash: md5
-      md5: ebda6b03ac745a580c045aa715784ae3
+      md5: dc1ef6465a238c6e3e675733800d0f57
       size: 249
     - path: data/processed/schema_report.json
       hash: md5
-      md5: f99c0e9be35e50f83a5d9f32ba41d128
-      size: 27
+      md5: 002eba53d74e71849dbeaa9bb0a3658a
+      size: 68
     - path: data/processed/test.parquet
       hash: md5
-      md5: 0781c128020c019b0d6970ea6969067a
-      size: 93094
+      md5: 7f1a2bbcf281161a66843145231c3c24
+      size: 93065
     - path: data/processed/train.parquet
       hash: md5
-      md5: 7ce2542ca4f600cc0614305252fa2eb6
-      size: 322321
+      md5: 1a15939f1d7c262d568cad4be64f1380
+      size: 322297
   train:
     cmd: python -m src.models.train
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 22b21d2c4e60da430052dd09b477fe19
-      size: 509
+      md5: a45ddcb39f8163b36ee3dcd865f4bb15
+      size: 815
     - path: configs/training/model_current.yaml
       hash: md5
-      md5: 863cd58460df5b465c0aca73fedcaa80
-      size: 683
+      md5: 918dbc08fcea2a4f79446a954cfa6181
+      size: 755
     - path: data/processed/test.parquet
       hash: md5
-      md5: 0781c128020c019b0d6970ea6969067a
-      size: 93094
+      md5: 7f1a2bbcf281161a66843145231c3c24
+      size: 93065
     - path: data/processed/train.parquet
       hash: md5
-      md5: 7ce2542ca4f600cc0614305252fa2eb6
-      size: 322321
+      md5: 1a15939f1d7c262d568cad4be64f1380
+      size: 322297
     - path: src/common/config_loader.py
       hash: md5
       md5: d696fa66291cdc8c4bcfa9f80da091e6
@@ -89,10 +97,14 @@ stages:
       size: 954
     - path: src/models/train.py
       hash: md5
-      md5: 34e9aa6999ca4cbfe24f59abfc5d6f08
-      size: 8164
+      md5: 84ed31f1dae813fa3e989f7d9d2b3aa0
+      size: 11390
     outs:
-    - path: artifacts/challenger_model.pkl
+    - path: artifacts/model_current.pkl
       hash: md5
-      md5: b09c67fe941373565eb1bb7ad6c4db58
-      size: 15212633
+      md5: 90591a8d150dd6de065445d791767d1f
+      size: 15298713
+    - path: artifacts/model_current_metadata.json
+      hash: md5
+      md5: 739e65d4fb75069aa99656e4d63b1daa
+      size: 672
