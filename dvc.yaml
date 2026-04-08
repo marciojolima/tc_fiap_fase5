@@ -16,7 +16,7 @@ stages:
       - data/processed/test.parquet
       - data/processed/feature_columns.json
       - data/processed/schema_report.json
-      - artifacts/preprocessor.joblib
+      - artifacts/feature_pipeline.joblib
 
   train:
     cmd: python -m src.models.train
@@ -31,5 +31,6 @@ stages:
       - data/processed/train.parquet
       - data/processed/test.parquet
     outs:
-      - artifacts/challenger_model.pkl
+      - artifacts/model_current.pkl
+      - artifacts/model_current_metadata.json
       

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -72,6 +73,12 @@ class ModelSpec(NamedTuple):
     algorithm: str
     params: dict[str, Any]
     output_path: Path
+
+
+def build_metadata_output_path(model_output_path: Path) -> Path:
+    """Resolve o caminho do sidecar JSON com metadados do modelo salvo."""
+
+    return model_output_path.with_name(f"{model_output_path.stem}_metadata.json")
 
 
 def resolve_git_sha() -> str:
@@ -274,10 +281,35 @@ def train_and_log_model(
 
         spec.output_path.parent.mkdir(parents=True, exist_ok=True)
         dump(model, spec.output_path)
+        metadata_output_path = build_metadata_output_path(spec.output_path)
+        metadata_output_path.write_text(
+            json.dumps(
+                {
+                    "experiment_name": cfg.experiment_name,
+                    "run_name": cfg.run_name,
+                    "model_version": cfg.model_version,
+                    "algorithm": cfg.algorithm,
+                    "flavor": cfg.flavor,
+                    "model_path": str(spec.output_path),
+                    "threshold": cfg.threshold,
+                    "feature_set": cfg.feature_set,
+                    "training_data_version": cfg.training_data_version,
+                    "git_sha": cfg.git_sha,
+                    "risk_level": cfg.risk_level,
+                    "fairness_checked": cfg.fairness_checked,
+                    "mlflow_experiment_name": cfg.mlflow_cfg["experiment_name"],
+                    "metrics": metrics,
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
         logger.info("Run registrada — ID: %s", run.info.run_id)
         logger.info("Métricas %s: %s", spec.name, metrics)
         logger.info("Modelo salvo em %s", spec.output_path)
+        logger.info("Metadados do modelo salvos em %s", metadata_output_path)
 
     return metrics
 

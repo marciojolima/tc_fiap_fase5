@@ -21,7 +21,7 @@ inference:
   threshold: 0.5
 
 artifacts:
-  model_path: artifacts/random_forest_current.pkl
+  model_path: artifacts/model_current.pkl
 
 mlflow:
   experiment_name: datathon-churn-baseline

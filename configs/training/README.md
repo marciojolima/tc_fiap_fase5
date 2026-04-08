@@ -11,4 +11,6 @@ experimentos devem ser adicionados em `experiments/` seguindo o mesmo
 contrato YAML.
 
 Convencao recomendada para artefatos:
-- `artifacts/<experiment.name>.pkl`
+- `model_current.yaml` deve apontar para um caminho estavel, como `artifacts/model_current.pkl`
+- `experiments/*.yaml` podem usar caminhos versionados, como `artifacts/<experiment.name>.pkl`
+- o treino operacional gera um sidecar de rastreabilidade em `artifacts/model_current_metadata.json`
