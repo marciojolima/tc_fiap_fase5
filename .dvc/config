@@ -1,0 +1,5 @@
+[core]
+    remote = datathon_remote
+['remote "datathon_remote"']
+    url = gdrive://1tfIgv-9mikvC8EZVLUneDVQhQes5_Q7w
+    gdrive_client_id = 683926182382-47if0g0qrm4l8jbecmhkkagptj1647ur.apps.googleusercontent.com
