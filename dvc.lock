@@ -97,8 +97,8 @@ stages:
       size: 954
     - path: src/models/train.py
       hash: md5
-      md5: 84ed31f1dae813fa3e989f7d9d2b3aa0
-      size: 11390
+      md5: 2a2774edda09b388c8c8d5992f58e56f
+      size: 12577
     outs:
     - path: artifacts/model_current.pkl
       hash: md5
@@ -106,5 +106,5 @@ stages:
       size: 15298713
     - path: artifacts/model_current_metadata.json
       hash: md5
-      md5: 739e65d4fb75069aa99656e4d63b1daa
-      size: 672
+      md5: b426aaa1d0f68445f428c97d9f3bcfcb
+      size: 740
