@@ -9,7 +9,7 @@ de churn e registra cada execucao em um experimento separado no MLflow.
 python -m src.inference.scenario_analysis \
   --config configs/training/model_current.yaml \
   --scenario-name high_churn_manual \
-  --payload-file examples/scenario_analysis/high_churn_customer.json
+  --payload-file artifacts/evaluation/scenario_analysis/high_churn_customer.json
 ```
 
 ## Executar uma suite de cenarios
@@ -17,7 +17,7 @@ python -m src.inference.scenario_analysis \
 ```bash
 python -m src.inference.scenario_analysis \
   --config configs/training/model_current.yaml \
-  --suite-file examples/scenario_analysis/churn_validation_suite.json
+  --suite-file artifacts/evaluation/scenario_analysis/churn_validation_suite.json
 ```
 
 ## Formato da suite

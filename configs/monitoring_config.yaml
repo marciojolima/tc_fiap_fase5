@@ -3,11 +3,11 @@ drift:
   reference_data_path: data/processed/train.parquet
   current_data_path: data/monitoring/current/predictions.jsonl
   feature_columns_path: data/processed/feature_columns.json
-  feature_pipeline_path: artifacts/feature_pipeline.joblib
-  model_path: artifacts/model_current.pkl
-  report_html_path: reports/monitoring/drift_report.html
-  metrics_json_path: reports/monitoring/drift_metrics.json
-  status_path: artifacts/monitoring/drift_status.json
+  feature_pipeline_path: artifacts/models/feature_pipeline.joblib
+  model_path: artifacts/models/model_current.pkl
+  report_html_path: artifacts/monitoring/drift/drift_report.html
+  metrics_json_path: artifacts/monitoring/drift/drift_metrics.json
+  status_path: artifacts/monitoring/drift/drift_status.json
 
   data_drift:
     enabled: true
@@ -22,4 +22,4 @@ drift:
   retraining:
     enabled: true
     trigger_mode: placeholder
-    request_path: artifacts/retraining/retrain_request.json
+    request_path: artifacts/monitoring/retraining/retrain_request.json

@@ -301,6 +301,11 @@ def build_evidently_report(
             message="invalid value encountered in multiply",
             category=RuntimeWarning,
         )
+        warnings.filterwarnings(
+            "ignore",
+            message="invalid value encountered in divide",
+            category=RuntimeWarning,
+        )
         snapshot = report.run(
             reference_data=reference_features,
             current_data=current_features,

@@ -36,7 +36,7 @@ stages:
       md5: 646244d17b6dd5f05cb388e95c61909b
       size: 4157
     outs:
-    - path: artifacts/feature_pipeline.joblib
+    - path: artifacts/models/feature_pipeline.joblib
       hash: md5
       md5: c3db56dae2fed178f232ae94a85e2e2a
       size: 5525
@@ -100,11 +100,11 @@ stages:
       md5: 2a2774edda09b388c8c8d5992f58e56f
       size: 12577
     outs:
-    - path: artifacts/model_current.pkl
+    - path: artifacts/models/model_current.pkl
       hash: md5
       md5: 90591a8d150dd6de065445d791767d1f
       size: 15298713
-    - path: artifacts/model_current_metadata.json
+    - path: artifacts/models/model_current_metadata.json
       hash: md5
       md5: b426aaa1d0f68445f428c97d9f3bcfcb
       size: 740

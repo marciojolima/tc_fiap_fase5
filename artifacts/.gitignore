@@ -3,3 +3,6 @@
 # Except these files
 !.gitkeep
 !.gitignore
+!evaluation/
+!evaluation/scenario_analysis/
+!evaluation/scenario_analysis/*.json

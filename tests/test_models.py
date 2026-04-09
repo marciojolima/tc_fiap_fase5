@@ -121,7 +121,7 @@ def return_experiment_training_config(_: str) -> dict:
         },
         "training": {"params": {"n_estimators": 200}},
         "inference": {"threshold": 0.5},
-        "artifacts": {"model_path": "artifacts/model.pkl"},
+        "artifacts": {"model_path": "artifacts/models/model.pkl"},
         "mlflow": {
             "experiment_name": "candidate-exp",
             "tags": {"candidate_type": "current"},
@@ -183,7 +183,7 @@ def return_datasets_stub(target_col: str) -> DatasetSplits:
 def return_experiment_cfg_for_run(
     experiment_config_path: str,
 ) -> ExperimentTrainingConfig:
-    return build_experiment_training_config(Path("artifacts/model.pkl"))
+    return build_experiment_training_config(Path("artifacts/models/model.pkl"))
 
 
 _METRICS_LOG: list[dict[str, float]] = []
@@ -230,7 +230,7 @@ def test_build_model_returns_supported_sklearn_estimator() -> None:
 
 
 def test_build_model_spec_uses_experiment_contract() -> None:
-    cfg = build_experiment_training_config(Path("artifacts/model.pkl"))
+    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
 
     spec = build_model_spec(cfg)
 
@@ -238,7 +238,7 @@ def test_build_model_spec_uses_experiment_contract() -> None:
     assert spec.run_name == "rf_candidate"
     assert spec.algorithm == "random_forest"
     assert spec.params == {"n_estimators": 200}
-    assert spec.output_path == Path("artifacts/model.pkl")
+    assert spec.output_path == Path("artifacts/models/model.pkl")
 
 
 def test_evaluate_model_returns_expected_metrics() -> None:
@@ -290,7 +290,7 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.run_name == "rf_candidate"
     assert cfg.model_version == "0.2.0"
     assert cfg.model_params == {"n_estimators": 200}
-    assert cfg.model_path == Path("artifacts/model.pkl")
+    assert cfg.model_path == Path("artifacts/models/model.pkl")
     assert cfg.training_data_version == "data-hash-123"
     assert cfg.git_sha == "abc123"
     assert cfg.git_tag == "post_release_commits"
@@ -337,7 +337,7 @@ def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
 
 
 def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
-    cfg = build_experiment_training_config(Path("artifacts/model.pkl"))
+    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
     datasets = DatasetSplits(
         X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
         y_train=pd.Series([0, 1, 0, 1]),

@@ -49,7 +49,7 @@ def build_serving_config(
         drop_columns=global_config["data"]["drop_columns"],
         governed_columns=global_config["features"].get("governed_columns", []),
         model_path=Path(experiment_config["artifacts"]["model_path"]),
-        feature_pipeline_path=Path("artifacts/feature_pipeline.joblib"),
+        feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=experiment_config["inference"]["threshold"],
         model_name=experiment_config["experiment"]["name"],
         run_name=experiment_config["experiment"]["run_name"],

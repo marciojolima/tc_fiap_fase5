@@ -383,7 +383,7 @@ def save_modeling_artifacts(
 
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
-        artifacts_dir = Path("artifacts")
+        artifacts_dir = Path("artifacts/models")
         artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         train_dataset_path = output_dir / "train.parquet"
@@ -406,7 +406,10 @@ def save_modeling_artifacts(
 
         with open(schema_report_path, "w", encoding="utf-8") as file_obj:
             json.dump(
-                {"status": "validated", "pipeline": "feature_pipeline.joblib"},
+                {
+                    "status": "validated",
+                    "pipeline": "artifacts/models/feature_pipeline.joblib",
+                },
                 file_obj,
                 indent=2,
                 ensure_ascii=False,

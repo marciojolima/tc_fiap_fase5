@@ -53,7 +53,7 @@ Fluxo principal atualmente implementado:
 4. Limpeza da camada interim
 5. Validação de schema interim
 6. Engenharia de features com pipeline declarativo reutilizável
-7. Persistência de `train.parquet`, `test.parquet` e `feature_pipeline.joblib`
+7. Persistência de `train.parquet`, `test.parquet` e do pipeline em `artifacts/models/`
 8. Treino de modelos com tracking em MLflow
 9. Inferência via FastAPI usando o mesmo pipeline de features do treino
 10. Registro leve de inferências para monitoramento de drift
@@ -68,7 +68,7 @@ tc_fiap_fase5/
 ├── data/
 ├── docs/
 ├── evaluation/
-├── examples/
+├── artifacts/
 ├── src/
 │   ├── agent/
 │   ├── common/
@@ -153,13 +153,13 @@ poetry run task serving
 poetry run task mldrift
 ```
 
-A rotina compara `data/processed/train.parquet` com o lote atual em `data/monitoring/current/predictions.jsonl`, gerado pelas chamadas ao endpoint `/predict`, cria relatório HTML em `reports/monitoring/drift_report.html` e grava métricas/status em JSON. Para uma execução demonstrável sem tráfego real:
+A rotina compara `data/processed/train.parquet` com o lote atual em `data/monitoring/current/predictions.jsonl`, gerado pelas chamadas ao endpoint `/predict`, cria relatório HTML em `artifacts/monitoring/drift/drift_report.html` e grava métricas/status em JSON. Para uma execução demonstrável sem tráfego real:
 
 ```bash
 poetry run task mldriftdemo
 ```
 
-Se o drift ficar crítico, o projeto cria `artifacts/retraining/retrain_request.json` como placeholder governado de retreino.
+Se o drift ficar crítico, o projeto cria `artifacts/monitoring/retraining/retrain_request.json` como placeholder governado de retreino.
 
 ### MLflow UI
 
@@ -192,7 +192,7 @@ Atualmente o projeto persiste os seguintes artefatos por motivos de MLOps e gove
 - `data/processed/schema_report.json`
   Guarda evidência de que o dado passou pelas validações esperadas no pipeline. Mesmo sendo simples hoje, esse artefato funciona como ponto inicial de compliance operacional e pode evoluir para relatórios mais detalhados de qualidade de dados.
 
-- `artifacts/feature_pipeline.joblib`
+- `artifacts/models/feature_pipeline.joblib`
   Persiste o pipeline completo de transformação de features para reutilização em produção. Isso reduz `training-serving skew`, garante que treino e inferência usem exatamente a mesma lógica de transformação e melhora a sustentabilidade da arquitetura.
 
 - artefatos de modelo definidos nos YAMLs de treino
@@ -201,13 +201,13 @@ Atualmente o projeto persiste os seguintes artefatos por motivos de MLOps e gove
 - `data/monitoring/current/predictions.jsonl`
   Registra entradas de inferência, probabilidade, classe prevista, modelo e threshold em formato JSON Lines. Esse arquivo alimenta a comparação entre produção e referência sem acoplar retreino ao endpoint de serving.
 
-- `reports/monitoring/drift_report.html`
+- `artifacts/monitoring/drift/drift_report.html`
   Relatório visual gerado pelo Evidently para auditoria de drift em features transformadas. Ele compara o baseline de treino contra o lote atual de inferências.
 
-- `reports/monitoring/drift_metrics.json` e `artifacts/monitoring/drift_status.json`
+- `artifacts/monitoring/drift/drift_metrics.json` e `artifacts/monitoring/drift/drift_status.json`
   Consolidam PSI por feature, status geral (`ok`, `warning` ou `critical`) e recomendação de retreino. Esses arquivos são o contrato para alertas e futuras automações.
 
-- `artifacts/retraining/retrain_request.json`
+- `artifacts/monitoring/retraining/retrain_request.json`
   Placeholder auditável criado quando o drift atinge status crítico. Ele não retreina automaticamente; registra que há necessidade de aprovação e execução controlada do próximo ciclo.
 
 - runs e métricas no MLflow

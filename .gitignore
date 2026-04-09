@@ -63,7 +63,10 @@ data/**/*.csv
 !data/processed/feature_columns.json
 !data/processed/schema_report.json
 !configs/*.yaml
-!examples/scenario_analysis/*.json
+!artifacts/
+!artifacts/evaluation/
+!artifacts/evaluation/scenario_analysis/
+!artifacts/evaluation/scenario_analysis/*.json
 .config/dvc/gdrive_credentials.json
 
 *.pkl
@@ -79,7 +82,6 @@ artifacts/*
 !artifacts/.gitkeep
 !artifacts/.gitignore
 reports/figures/
-reports/monitoring/
 evaluation/results/
 
 # =============================================================
