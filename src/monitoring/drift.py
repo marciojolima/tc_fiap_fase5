@@ -62,12 +62,24 @@ def load_dataset(path: str | Path) -> pd.DataFrame:
     """Carrega parquet, csv ou jsonl para uma rotina de monitoramento."""
 
     dataset_path = Path(path)
+    if not dataset_path.exists():
+        raise FileNotFoundError(
+            f"Dataset de monitoramento não encontrado: {dataset_path}. "
+            "Gere inferências via /predict ou execute `poetry run task mldriftdemo` "
+            "para uma comparação demonstrativa."
+        )
+    if dataset_path.stat().st_size == 0:
+        raise ValueError(
+            f"Dataset de monitoramento está vazio: {dataset_path}. "
+            "Gere inferências via /predict antes de executar o drift real."
+        )
+
     if dataset_path.suffix == ".parquet":
         return pd.read_parquet(dataset_path)
     if dataset_path.suffix == ".csv":
         return pd.read_csv(dataset_path)
     if dataset_path.suffix in {".jsonl", ".ndjson"}:
-        return pd.read_json(dataset_path, lines=True)
+        return pd.read_json(str(dataset_path), lines=True)
 
     raise ValueError(f"Formato de dataset não suportado para drift: {dataset_path}")
 
@@ -411,7 +423,11 @@ def main() -> None:
     """Ponto de entrada para execução local."""
 
     args = parse_args()
-    run_drift_monitoring(config_path=args.config, current_data_path=args.current)
+    try:
+        run_drift_monitoring(config_path=args.config, current_data_path=args.current)
+    except (FileNotFoundError, ValueError) as exc:
+        logger.error("%s", exc)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":

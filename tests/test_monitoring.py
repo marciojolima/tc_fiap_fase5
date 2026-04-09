@@ -4,11 +4,13 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 import yaml
 
 from monitoring.drift import (
     calculate_numeric_psi,
     decide_drift_status,
+    load_dataset,
     run_drift_monitoring,
 )
 from monitoring.inference_log import (
@@ -75,6 +77,16 @@ def test_calculate_numeric_psi_detects_distribution_change() -> None:
     current = pd.Series([70, 71, 72, 73, 74, 75, 76, 77, 78, 79])
 
     assert calculate_numeric_psi(reference, current) > 0.20  # noqa: PLR2004
+
+
+def test_load_dataset_raises_clear_error_for_missing_file(tmp_path) -> None:
+    missing_path = tmp_path / "predictions.jsonl"
+
+    with pytest.raises(FileNotFoundError) as exc_info:
+        load_dataset(missing_path)
+
+    assert "Dataset de monitoramento não encontrado" in str(exc_info.value)
+    assert "mldriftdemo" in str(exc_info.value)
 
 
 def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
