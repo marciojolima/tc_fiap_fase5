@@ -3,7 +3,7 @@ import pandas as pd
 from common.config_loader import load_config
 from common.logger import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("common.data_loader")
 
 
 def load_raw_data() -> pd.DataFrame:

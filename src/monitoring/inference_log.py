@@ -14,7 +14,7 @@ from serving.schemas import ChurnPredictionRequest
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
 
-logger = get_logger(__name__)
+logger = get_logger("monitoring.inference_log")
 
 
 @dataclass(frozen=True)

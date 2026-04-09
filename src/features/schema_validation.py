@@ -8,7 +8,7 @@ from pandera.typing import Series
 from common.config_loader import load_global_config
 from common.logger import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("features.schema_validation")
 
 _GLOBAL_CONFIG = load_global_config()
 _FEATURE_CONFIG = _GLOBAL_CONFIG["features"]["categorical_features"]

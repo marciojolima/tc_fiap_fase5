@@ -22,7 +22,7 @@ from serving.pipeline import (
 )
 from serving.schemas import ChurnPredictionRequest
 
-logger = get_logger(__name__)
+logger = get_logger("inference.scenario_analysis")
 
 
 class ScenarioAnalysisConfig(NamedTuple):

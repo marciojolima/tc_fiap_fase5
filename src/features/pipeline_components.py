@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 from common.logger import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("features.pipeline_components")
 
 
 @dataclass(frozen=True)

@@ -33,7 +33,7 @@ import pandas as pd
 
 from src.common.logger import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("scripts.generate_metadatastore_features")
 
 
 @dataclass(frozen=True)

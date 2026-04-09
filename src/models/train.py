@@ -30,7 +30,7 @@ from common.logger import get_logger
 from common.seed import set_global_seed
 from models.catalog import build_model
 
-logger = get_logger(__name__)
+logger = get_logger("models.train")
 
 
 class ExperimentTrainingConfig(NamedTuple):

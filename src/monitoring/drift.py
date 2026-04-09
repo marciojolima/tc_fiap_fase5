@@ -31,7 +31,7 @@ MONITORING_METADATA_COLUMNS = {
 }
 MIN_BIN_EDGE_COUNT = 2
 
-logger = get_logger(__name__)
+logger = get_logger("monitoring.drift")
 
 
 @dataclass(frozen=True)

@@ -27,7 +27,7 @@ from features.schema_validation import (
     validate_raw_dataset_schema,
 )
 
-logger = get_logger(__name__)
+logger = get_logger("features.feature_engineering")
 
 
 @dataclass(frozen=True)

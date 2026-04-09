@@ -17,7 +17,7 @@ from common.config_loader import (
 from common.logger import get_logger
 from serving.schemas import ChurnPredictionRequest
 
-logger = get_logger(__name__)
+logger = get_logger("serving.pipeline")
 
 
 @dataclass(frozen=True)
