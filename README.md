@@ -161,6 +161,14 @@ poetry run task mldriftdemo
 
 Se o drift ficar crítico, o projeto cria `artifacts/monitoring/retraining/retrain_request.json` como placeholder governado de retreino.
 
+### Lotes Sintéticos para Drift
+
+```bash
+poetry run task mlsyntheticdrift
+```
+
+Essa rotina gera lotes sintéticos reprodutíveis em `artifacts/evaluation/monitoring/`, já com predições do modelo atual, para validar `data drift` e `prediction drift` sem depender de chamadas manuais à API. Cada lote também é registrado em um experimento dedicado no MLflow.
+
 ### MLflow UI
 
 ```bash
@@ -200,6 +208,12 @@ Atualmente o projeto persiste os seguintes artefatos por motivos de MLOps e gove
 
 - `data/monitoring/current/predictions.jsonl`
   Registra entradas de inferência, probabilidade, classe prevista, modelo e threshold em formato JSON Lines. Esse arquivo alimenta a comparação entre produção e referência sem acoplar retreino ao endpoint de serving.
+
+- `artifacts/evaluation/scenario_analysis/*.json`
+  Mantêm os payloads e suítes versionados da análise de cenários usada na validação manual e na demonstração do projeto.
+
+- `artifacts/evaluation/monitoring/*.jsonl`
+  Guardam lotes sintéticos reprodutíveis para validar drift com volume suficiente para o Evidently. Esses arquivos já saem enriquecidos com probabilidade e classe prevista.
 
 - `artifacts/monitoring/drift/drift_report.html`
   Relatório visual gerado pelo Evidently para auditoria de drift em features transformadas. Ele compara o baseline de treino contra o lote atual de inferências.

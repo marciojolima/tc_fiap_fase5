@@ -40,6 +40,7 @@ mlflow:
   tracking_uri: file:./mlruns
   experiment_name: datathon-churn-baseline
   scenario_analysis_experiment_name: datathon-churn-scenario-analysis
+  monitoring_drift_experiment_name: datathon-churn-monitoring-drift
   owner: datathon-grupo
   phase: datathon-fase05
   dataset_name: bank-customer-churn
