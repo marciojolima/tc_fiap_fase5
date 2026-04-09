@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -30,6 +31,7 @@ MONITORING_METADATA_COLUMNS = {
     PREDICTION_CLASS_COLUMN,
 }
 MIN_BIN_EDGE_COUNT = 2
+MIN_CURRENT_SAMPLE_SIZE_FOR_REPORT = 30
 
 logger = get_logger("monitoring.drift")
 
@@ -274,14 +276,38 @@ def build_evidently_report(
 ) -> None:
     """Gera o relatório HTML de drift usando Evidently."""
 
+    if len(current_features) < MIN_CURRENT_SAMPLE_SIZE_FOR_REPORT:
+        logger.warning(
+            "Amostra current pequena para relatório de drift (%d linhas). "
+            "O Evidently pode emitir warnings estatísticos; ideal >= %d linhas.",
+            len(current_features),
+            MIN_CURRENT_SAMPLE_SIZE_FOR_REPORT,
+        )
+
     report = Report([DataDriftPreset()])
-    snapshot = report.run(
-        reference_data=reference_features,
-        current_data=current_features,
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Degrees of freedom <= 0 for slice",
+            category=RuntimeWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="divide by zero encountered in divide",
+            category=RuntimeWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="invalid value encountered in multiply",
+            category=RuntimeWarning,
+        )
+        snapshot = report.run(
+            reference_data=reference_features,
+            current_data=current_features,
+        )
     report_output_path = Path(output_path)
     report_output_path.parent.mkdir(parents=True, exist_ok=True)
-    snapshot.save_html(report_output_path)
+    snapshot.save_html(str(report_output_path))
 
 
 def write_json(path: str | Path, payload: dict[str, Any]) -> None:
