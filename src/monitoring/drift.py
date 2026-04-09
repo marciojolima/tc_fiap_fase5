@@ -11,6 +11,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from evidently import Report
+from evidently.presets import DataDriftPreset
 from joblib import load
 
 from common.config_loader import load_config
@@ -259,15 +261,6 @@ def build_evidently_report(
     output_path: str | Path,
 ) -> None:
     """Gera o relatório HTML de drift usando Evidently."""
-
-    try:
-        from evidently import Report  # noqa: PLC0415
-        from evidently.presets import DataDriftPreset  # noqa: PLC0415
-    except ImportError as exc:
-        raise RuntimeError(
-            "Evidently não está instalado. Rode `poetry install` ou instale a "
-            "dependência `evidently>=0.7.21,<0.8`."
-        ) from exc
 
     report = Report([DataDriftPreset()])
     snapshot = report.run(
