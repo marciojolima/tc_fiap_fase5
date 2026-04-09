@@ -26,6 +26,7 @@ dependencies = [
     "taskipy (>=1.14.1,<2.0.0)",
     "pyopenssl (>=23.0.0)",
     "cryptography (>=41.0.0)",
+    "evidently>=0.7.21,<0.8",
 ]
 
 [tool.poetry]
@@ -64,6 +65,8 @@ format = 'ruff format'
 mlfeateng = 'python -m src.features.feature_engineering'
 mltrain = 'python -m src.models.train'
 mlscenario = 'python -m src.inference.scenario_analysis --suite-file examples/scenario_analysis/churn_validation_suite.json'
+mldrift = 'python -m src.monitoring.drift'
+mldriftdemo = 'python -m src.monitoring.drift --current data/processed/test.parquet'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from monitoring.inference_log import PredictionLogContext, log_prediction_for_monitoring
 from serving.pipeline import (
     load_serving_config,
     predict_from_dataframe,
@@ -47,6 +48,15 @@ def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
     cfg = load_serving_config()
     transformed_features = prepare_inference_dataframe(payload, cfg)
     probability, prediction = predict_from_dataframe(transformed_features)
+    log_prediction_for_monitoring(
+        payload=payload,
+        prediction_context=PredictionLogContext(
+            probability=probability,
+            prediction=prediction,
+            model_name=cfg.model_name,
+            threshold=cfg.threshold,
+        ),
+    )
 
     return ChurnPredictionResponse(
         churn_probability=probability,

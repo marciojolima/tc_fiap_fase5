@@ -31,6 +31,7 @@ data/raw/*
 !data/raw/*.dvc
 data/interim/*
 data/processed/*
+data/monitoring/*
 data/external/*
 
 # Cache interno do DVC
@@ -78,6 +79,7 @@ artifacts/*
 !artifacts/.gitkeep
 !artifacts/.gitignore
 reports/figures/
+reports/monitoring/
 evaluation/results/
 
 # =============================================================

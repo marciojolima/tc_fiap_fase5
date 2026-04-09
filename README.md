@@ -30,6 +30,7 @@ Hoje o repositório já entrega:
 - treino de modelos com MLflow, metadados padronizados e versionamento de dados processados
 - API FastAPI para serving de churn
 - análise de cenários com rastreabilidade em MLflow
+- monitoramento batch de drift com Evidently, PSI e gatilho auditável de retreino
 - documentação inicial de Model Card, System Card, LGPD, OWASP, Red Team e versionamento
 - suíte de testes unitários para partes centrais do fluxo
 
@@ -39,7 +40,7 @@ Ainda existem componentes em estado parcial ou placeholder:
 - RAG pipeline
 - guardrails de input/output
 - detecção de PII
-- monitoramento operacional e de drift em produção
+- dashboard operacional de produção
 - CI/CD de staging
 
 ## Arquitetura Resumida
@@ -55,7 +56,9 @@ Fluxo principal atualmente implementado:
 7. Persistência de `train.parquet`, `test.parquet` e `feature_pipeline.joblib`
 8. Treino de modelos com tracking em MLflow
 9. Inferência via FastAPI usando o mesmo pipeline de features do treino
-10. Análise de cenários com logging dedicado em MLflow
+10. Registro leve de inferências para monitoramento de drift
+11. Análise de cenários com logging dedicado em MLflow
+12. Drift batch com Evidently e solicitação de retreino quando o PSI fica crítico
 
 ## Estrutura do Repositório
 
@@ -103,6 +106,7 @@ tc_fiap_fase5/
 - Scikit-learn
 - Pandera
 - MLflow
+- Evidently
 - FastAPI
 - DVC
 - Pytest
@@ -143,6 +147,20 @@ poetry run task mlrunall
 poetry run task serving
 ```
 
+### Monitoramento de Drift
+
+```bash
+poetry run task mldrift
+```
+
+A rotina compara `data/processed/train.parquet` com o lote atual em `data/monitoring/current/predictions.jsonl`, gerado pelas chamadas ao endpoint `/predict`, cria relatório HTML em `reports/monitoring/drift_report.html` e grava métricas/status em JSON. Para uma execução demonstrável sem tráfego real:
+
+```bash
+poetry run task mldriftdemo
+```
+
+Se o drift ficar crítico, o projeto cria `artifacts/retraining/retrain_request.json` como placeholder governado de retreino.
+
 ### MLflow UI
 
 ```bash
@@ -179,6 +197,18 @@ Atualmente o projeto persiste os seguintes artefatos por motivos de MLOps e gove
 
 - artefatos de modelo definidos nos YAMLs de treino
   Permitem versionar e promover modelos treinados por experimento. Isso é essencial para governança, comparação entre versões, rollback controlado e rastreabilidade do que foi efetivamente treinado.
+
+- `data/monitoring/current/predictions.jsonl`
+  Registra entradas de inferência, probabilidade, classe prevista, modelo e threshold em formato JSON Lines. Esse arquivo alimenta a comparação entre produção e referência sem acoplar retreino ao endpoint de serving.
+
+- `reports/monitoring/drift_report.html`
+  Relatório visual gerado pelo Evidently para auditoria de drift em features transformadas. Ele compara o baseline de treino contra o lote atual de inferências.
+
+- `reports/monitoring/drift_metrics.json` e `artifacts/monitoring/drift_status.json`
+  Consolidam PSI por feature, status geral (`ok`, `warning` ou `critical`) e recomendação de retreino. Esses arquivos são o contrato para alertas e futuras automações.
+
+- `artifacts/retraining/retrain_request.json`
+  Placeholder auditável criado quando o drift atinge status crítico. Ele não retreina automaticamente; registra que há necessidade de aprovação e execução controlada do próximo ciclo.
 
 - runs e métricas no MLflow
   Registram parâmetros, métricas, tags e contexto de cada experimento. Isso sustenta boas práticas de experiment tracking, lineage, auditoria técnica e documentação da evolução do projeto ao longo do tempo.
@@ -227,11 +257,12 @@ Atualmente o projeto persiste os seguintes artefatos por motivos de MLOps e gove
 - [x] Estrutura de avaliação criada em `evaluation/`
 - [x] Configuração de monitoramento dedicada em `configs/monitoring_config.yaml`
 - [x] Módulos base de drift e métricas presentes em `src/monitoring/`
+- [x] Drift detection batch com Evidently, PSI e relatório HTML
+- [x] Gatilho placeholder de retreino para drift crítico
 - [ ] Dashboard operacional Prometheus/Grafana
-- [ ] Drift detection operacional e automatizado
 - [ ] RAGAS com 4 métricas efetivamente executadas
 - [ ] LLM-as-judge com pelo menos 3 critérios efetivamente executados
-- [ ] Alertas automáticos
+- [ ] Alertas automáticos integrados a canal externo
 - [ ] Observabilidade LLM com Langfuse ou TruLens
 
 ### Etapa 4: Segurança e governança

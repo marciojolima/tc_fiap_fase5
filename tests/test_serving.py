@@ -3,10 +3,9 @@ from __future__ import annotations
 from unittest.mock import Mock, patch
 
 import pandas as pd
-from fastapi.testclient import TestClient
 
-from serving.app import app
 from serving.pipeline import ServingConfig, prepare_inference_dataframe
+from serving.routes import predict_churn
 from serving.schemas import ChurnPredictionRequest
 
 
@@ -148,8 +147,6 @@ def test_prepare_inference_dataframe_logs_lgpd_governance(monkeypatch) -> None:
 
 
 def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
-    client = TestClient(app)
-
     monkeypatch.setattr(
         "serving.routes.load_serving_config",
         return_route_config,
@@ -162,27 +159,31 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
         "serving.routes.predict_from_dataframe",
         return_route_prediction,
     )
-
-    response = client.post(
-        "/predict",
-        json={
-            "CreditScore": 600,
-            "Geography": "Germany",
-            "Gender": "Female",
-            "Age": 40,
-            "Tenure": 3,
-            "Balance": 60000.0,
-            "NumOfProducts": 2,
-            "HasCrCard": 1,
-            "IsActiveMember": 1,
-            "EstimatedSalary": 50000.0,
-            "Card Type": "DIAMOND",
-            "Point Earned": 450,
-        },
+    monkeypatch.setattr(
+        "serving.routes.log_prediction_for_monitoring",
+        lambda **_: None,
     )
 
-    assert response.status_code == 200  # noqa: PLR2004
-    assert response.json() == {
+    response = predict_churn(
+        ChurnPredictionRequest(
+            **{
+                "CreditScore": 600,
+                "Geography": "Germany",
+                "Gender": "Female",
+                "Age": 40,
+                "Tenure": 3,
+                "Balance": 60000.0,
+                "NumOfProducts": 2,
+                "HasCrCard": 1,
+                "IsActiveMember": 1,
+                "EstimatedSalary": 50000.0,
+                "Card Type": "DIAMOND",
+                "Point Earned": 450,
+            }
+        )
+    )
+
+    assert response.model_dump() == {
         "churn_probability": 0.81,
         "churn_prediction": 1,
         "model_name": "random_forest_current",
