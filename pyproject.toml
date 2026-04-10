@@ -28,6 +28,7 @@ dependencies = [
     "cryptography (>=41.0.0)",
     "evidently>=0.7.21,<0.8",
     "rich>=13.9.0,<14",
+    "xgboost>=2.1.0,<3",
 ]
 
 [tool.poetry]
@@ -77,4 +78,4 @@ mlflow = 'mlflow ui --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
 
 pre_mlrunall = 'task mlfeateng'
-mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
+mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'

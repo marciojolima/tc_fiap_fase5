@@ -1,8 +1,8 @@
 experiment:
-  name: random_forest_v2
-  run_name: random_forest_v2
-  version: 0.1.0
-  algorithm: random_forest
+  name: xgboost_v1
+  run_name: xgboost_v1
+  version: 0.3.0
+  algorithm: xgboost
   flavor: sklearn
 
 dataset:
@@ -11,17 +11,19 @@ dataset:
 
 training:
   params:
-    n_estimators: 200
-    max_depth: 15
+    n_estimators: 300
+    max_depth: 8
+    learning_rate: 0.05
     random_state: 42
-    class_weight: balanced
-    min_samples_leaf: 5
+    scale_pos_weight: __neg_pos_ratio__
+    eval_metric: auc
+    verbosity: 0
 
 inference:
   threshold: 0.5
 
 artifacts:
-  model_path: artifacts/models/random_forest_v2.pkl
+  model_path: artifacts/models/xgboost_v1.pkl
 
 mlflow:
   experiment_name: datathon-churn-baseline
@@ -29,8 +31,8 @@ mlflow:
     owner: datathon-grupo
     phase: datathon-fase05
     dataset_name: bank-customer-churn
-    model_family: random_forest
-    candidate_type: baseline
+    model_family: xgboost
+    candidate_type: challenger
 
 registry:
   enabled: false

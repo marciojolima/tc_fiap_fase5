@@ -211,6 +211,23 @@ def build_model_spec(cfg: ExperimentTrainingConfig) -> ModelSpec:
     )
 
 
+def resolve_runtime_model_params(
+    model_params: dict[str, Any],
+    y_train: pd.Series,
+) -> dict[str, Any]:
+    """Resolve parâmetros dependentes dos dados de treino."""
+
+    resolved_params = dict(model_params)
+    negative_count = int((y_train == 0).sum())
+    positive_count = int((y_train == 1).sum())
+
+    for key, value in resolved_params.items():
+        if value == "__neg_pos_ratio__":
+            resolved_params[key] = negative_count / max(positive_count, 1)
+
+    return resolved_params
+
+
 def load_training_data(target_col: str) -> DatasetSplits:
     """Carrega os dados processados e separa atributos e variável alvo."""
 
@@ -253,11 +270,16 @@ def configure_mlflow(mlflow_cfg: dict[str, Any]) -> None:
     )
 
 
-def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, float]:
+def evaluate_model(
+    model,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    threshold: float,
+) -> dict[str, float]:
     """Calcula métricas de classificação no conjunto de teste."""
 
-    y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)[:, 1]
+    y_pred = (y_pred_proba >= threshold).astype(int)
 
     return {
         "auc": roc_auc_score(y_test, y_pred_proba),
@@ -313,7 +335,12 @@ def train_and_log_model(
         model = build_model(spec.algorithm, spec.params)
         model.fit(datasets.X_train, datasets.y_train)
 
-        metrics = evaluate_model(model, datasets.X_test, datasets.y_test)
+        metrics = evaluate_model(
+            model,
+            datasets.X_test,
+            datasets.y_test,
+            threshold=cfg.threshold,
+        )
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(model, name="model")
 
@@ -379,7 +406,9 @@ def run_training(
     datasets = load_training_data(cfg.target_col)
     configure_mlflow(cfg.mlflow_cfg)
 
-    spec = build_model_spec(cfg)
+    spec = build_model_spec(cfg)._replace(
+        params=resolve_runtime_model_params(cfg.model_params, datasets.y_train)
+    )
     return train_and_log_model(
         spec=spec,
         cfg=cfg,

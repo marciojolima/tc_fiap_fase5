@@ -1,8 +1,8 @@
 experiment:
-  name: random_forest_v2
-  run_name: random_forest_v2
-  version: 0.1.0
-  algorithm: random_forest
+  name: gradient_boosting_v1
+  run_name: gradient_boosting_v1
+  version: 0.3.0
+  algorithm: gradient_boosting
   flavor: sklearn
 
 dataset:
@@ -11,17 +11,18 @@ dataset:
 
 training:
   params:
-    n_estimators: 200
-    max_depth: 15
+    n_estimators: 250
+    learning_rate: 0.05
+    max_depth: 3
+    min_samples_leaf: 10
+    subsample: 0.9
     random_state: 42
-    class_weight: balanced
-    min_samples_leaf: 5
 
 inference:
   threshold: 0.5
 
 artifacts:
-  model_path: artifacts/models/random_forest_v2.pkl
+  model_path: artifacts/models/gradient_boosting_v1.pkl
 
 mlflow:
   experiment_name: datathon-churn-baseline
@@ -29,8 +30,8 @@ mlflow:
     owner: datathon-grupo
     phase: datathon-fase05
     dataset_name: bank-customer-churn
-    model_family: random_forest
-    candidate_type: baseline
+    model_family: gradient_boosting
+    candidate_type: challenger
 
 registry:
   enabled: false

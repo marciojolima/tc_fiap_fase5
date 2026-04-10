@@ -17,6 +17,7 @@ from models.train import (
     resolve_git_nearest_tag,
     resolve_git_sha,
     resolve_git_tag,
+    resolve_runtime_model_params,
     run_training,
     train_and_log_model,
 )
@@ -193,6 +194,10 @@ _METADATA_LOG: list[tuple[dict, ExperimentTrainingConfig, DatasetSplits]] = []
 _TRAIN_CALLS: list[tuple[ModelSpec, ExperimentTrainingConfig, DatasetSplits]] = []
 _PARAM_LOG: list[tuple[str, object]] = []
 _TAG_LOG: list[tuple[str, str]] = []
+EXPECTED_NEG_POS_RATIO = 3.0
+EXPECTED_N_ESTIMATORS = 300
+EXPECTED_HIGH_THRESHOLD_ACCURACY = 0.75
+EXPECTED_HIGH_THRESHOLD_RECALL = 0.5
 
 
 def return_data_hash() -> str:
@@ -229,6 +234,19 @@ def test_build_model_returns_supported_sklearn_estimator() -> None:
     assert model.__class__.__name__ == "RandomForestClassifier"
 
 
+def test_resolve_runtime_model_params_supports_neg_pos_ratio_token() -> None:
+    resolved_params = resolve_runtime_model_params(
+        {
+            "scale_pos_weight": "__neg_pos_ratio__",
+            "n_estimators": EXPECTED_N_ESTIMATORS,
+        },
+        pd.Series([0, 0, 0, 1]),
+    )
+
+    assert resolved_params["scale_pos_weight"] == EXPECTED_NEG_POS_RATIO
+    assert resolved_params["n_estimators"] == EXPECTED_N_ESTIMATORS
+
+
 def test_build_model_spec_uses_experiment_contract() -> None:
     cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
 
@@ -246,13 +264,26 @@ def test_evaluate_model_returns_expected_metrics() -> None:
     X_test = pd.DataFrame({"f1": [1, 2, 3, 4]})
     y_test = pd.Series([0, 1, 0, 1])
 
-    metrics = evaluate_model(model, X_test, y_test)
+    metrics = evaluate_model(model, X_test, y_test, threshold=0.5)
 
     assert metrics["accuracy"] == 1.0
     assert metrics["precision"] == 1.0
     assert metrics["recall"] == 1.0
     assert metrics["f1"] == 1.0
     assert 0.0 <= metrics["auc"] <= 1.0
+
+
+def test_evaluate_model_respects_configured_threshold() -> None:
+    model = DummyClassifier()
+    X_test = pd.DataFrame({"f1": [1, 2, 3, 4]})
+    y_test = pd.Series([0, 1, 0, 1])
+
+    metrics = evaluate_model(model, X_test, y_test, threshold=0.85)
+
+    assert metrics["accuracy"] == EXPECTED_HIGH_THRESHOLD_ACCURACY
+    assert metrics["precision"] == 1.0
+    assert metrics["recall"] == EXPECTED_HIGH_THRESHOLD_RECALL
+    assert metrics["f1"] == 2 / 3
 
 
 def test_load_experiment_training_config_merges_global_and_experiment(

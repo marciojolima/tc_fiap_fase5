@@ -1,6 +1,6 @@
 experiment:
-  name: random_forest_v2
-  run_name: random_forest_v2
+  name: random_forest_v3
+  run_name: random_forest_v3
   version: 0.1.0
   algorithm: random_forest
   flavor: sklearn
@@ -11,17 +11,17 @@ dataset:
 
 training:
   params:
-    n_estimators: 200
-    max_depth: 15
+    n_estimators: 300
+    max_depth: 8
     random_state: 42
     class_weight: balanced
-    min_samples_leaf: 5
+    min_samples_leaf: 10
 
 inference:
-  threshold: 0.5
+  threshold: 0.4
 
 artifacts:
-  model_path: artifacts/models/random_forest_v2.pkl
+  model_path: artifacts/models/random_forest_v3.pkl
 
 mlflow:
   experiment_name: datathon-churn-baseline
