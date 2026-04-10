@@ -26,7 +26,7 @@ from serving.pipeline import (
     load_prediction_model,
 )
 
-DEFAULT_OUTPUT_DIR = Path("artifacts/evaluation/monitoring")
+DEFAULT_OUTPUT_DIR = Path("artifacts/scenario_analysis/drift")
 DEFAULT_BATCH_SIZE = 60
 INPUT_COLUMNS = [
     "CreditScore",
@@ -50,7 +50,7 @@ SCENARIO_NAMES = (
     "mixed_extreme_drift",
 )
 
-logger = get_logger("monitoring.synthetic_drift")
+logger = get_logger("scenario_analysis.synthetic_drifts")
 
 
 @dataclass(frozen=True)
@@ -411,7 +411,7 @@ def log_batch_generation_run(
 
     mlflow.set_tracking_uri(cfg.tracking_uri)
     mlflow.set_experiment(cfg.mlflow_experiment_name)
-    run_name = f"monitoring_drift::{scenario_name}"
+    run_name = f"scenario_analysis_drift::{scenario_name}"
     with mlflow.start_run(run_name=run_name):
         mlflow.log_param("scenario_name", scenario_name)
         mlflow.log_param("batch_size", result.row_count)
@@ -419,15 +419,15 @@ def log_batch_generation_run(
         mlflow.log_param("experiment_config_path", cfg.experiment_config_path)
         mlflow.log_metric("mean_probability", result.mean_probability)
         mlflow.log_metric("positive_rate", result.positive_rate)
-        mlflow.set_tag("flow", "monitoring_drift_generation")
-        mlflow.set_tag("artifact_type", "synthetic_drift")
+        mlflow.set_tag("flow", "scenario_analysis_drift_generation")
+        mlflow.set_tag("artifact_type", "synthetic_drift_scenario")
         mlflow.log_artifact(
             str(output_path),
-            artifact_path=f"monitoring_drifts/{scenario_name}",
+            artifact_path=f"scenario_analysis/drift/{scenario_name}",
         )
         mlflow.log_artifact(
             str(manifest_path),
-            artifact_path=f"monitoring_drifts/{scenario_name}",
+            artifact_path=f"scenario_analysis/drift/{scenario_name}",
         )
 
 

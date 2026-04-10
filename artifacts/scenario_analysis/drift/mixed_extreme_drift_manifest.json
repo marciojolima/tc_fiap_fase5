@@ -1,0 +1,8 @@
+{
+  "scenario_name": "mixed_extreme_drift",
+  "output_path": "artifacts/scenario_analysis/drift/mixed_extreme_drift.jsonl",
+  "row_count": 60,
+  "mean_probability": 0.7359404648173116,
+  "positive_rate": 0.9666666666666667,
+  "created_at": "2026-04-10T17:00:15.534245+00:00"
+}

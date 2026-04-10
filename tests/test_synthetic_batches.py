@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from monitoring.synthetic_batches import (
+from scenario_analysis.synthetic_drifts import (
     INPUT_COLUMNS,
     SyntheticBatchConfig,
     build_high_risk_prediction_drift_batch,
@@ -112,11 +112,11 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
     logged_artifacts: list[tuple[str, str]] = []
 
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.load_generation_base_dataframe",
+        "scenario_analysis.synthetic_drifts.load_generation_base_dataframe",
         build_base_dataframe,
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.score_batch_predictions",
+        "scenario_analysis.synthetic_drifts.score_batch_predictions",
         lambda batch_dataframe, experiment_config_path: (
             np.array([0.1, 0.2, 0.7, 0.9]),
             np.array([0, 0, 1, 1]),
@@ -125,11 +125,11 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
         ),
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.set_tracking_uri",
+        "scenario_analysis.synthetic_drifts.mlflow.set_tracking_uri",
         lambda uri: None,
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.set_experiment",
+        "scenario_analysis.synthetic_drifts.mlflow.set_experiment",
         lambda name: None,
     )
 
@@ -141,23 +141,23 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
             return None
 
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.start_run",
+        "scenario_analysis.synthetic_drifts.mlflow.start_run",
         lambda run_name: DummyRun(),
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.log_param",
+        "scenario_analysis.synthetic_drifts.mlflow.log_param",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.log_metric",
+        "scenario_analysis.synthetic_drifts.mlflow.log_metric",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.set_tag",
+        "scenario_analysis.synthetic_drifts.mlflow.set_tag",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "monitoring.synthetic_batches.mlflow.log_artifact",
+        "scenario_analysis.synthetic_drifts.mlflow.log_artifact",
         lambda path, artifact_path: logged_artifacts.append((path, artifact_path)),
     )
 

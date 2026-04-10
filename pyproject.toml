@@ -37,6 +37,7 @@ packages = [
     { include = "inference", from = "src" },
     { include = "models", from = "src" },
     { include = "monitoring", from = "src" },
+    { include = "scenario_analysis", from = "src" },
     { include = "security", from = "src" },
     { include = "serving", from = "src" },
 ]
@@ -64,11 +65,10 @@ pre_format = 'ruff check --fix'
 format = 'ruff format'
 mlfeateng = 'python -m src.features.feature_engineering'
 mltrain = 'python -m src.models.train'
-mlscenario = 'python -m src.inference.scenario_analysis --suite-file artifacts/evaluation/scenario_analysis/churn_validation_suite.json'
+mlscenarios = 'python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
 mldrift = 'python -m src.monitoring.drift'
 mldriftdemo = 'python -m src.monitoring.drift --current data/processed/test.parquet'
-mlsyntheticdrift = 'python -m src.monitoring.synthetic_batches --all'
-mlsyntheticbatches = 'python -m src.monitoring.synthetic_batches --all'
+mlsyntheticdrift = 'python -m src.scenario_analysis.synthetic_drifts --all'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
@@ -76,4 +76,4 @@ mlflow = 'mlflow ui --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
 
 pre_mlrunall = 'task mlfeateng'
-mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.inference.scenario_analysis --suite-file artifacts/evaluation/scenario_analysis/churn_validation_suite.json'
+mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 import mlflow
+import yaml
 
 from common.config_loader import (
     DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
@@ -22,7 +23,8 @@ from serving.pipeline import (
 )
 from serving.schemas import ChurnPredictionRequest
 
-logger = get_logger("inference.scenario_analysis")
+logger = get_logger("scenario_analysis.inference_cases")
+SUPPORTED_SCENARIO_FILE_SUFFIXES = {".yaml", ".yml", ".json"}
 
 
 class ScenarioAnalysisConfig(NamedTuple):
@@ -152,7 +154,7 @@ def log_scenario_analysis_run(
         mlflow.set_tag("scenario_name", scenario.name)
         mlflow.set_tag("model_name", result.model_name)
 
-        artifact_dir = f"scenario_analysis/{scenario.name}"
+        artifact_dir = f"scenario_analysis/inference/{scenario.name}"
         _log_json_artifact(
             scenario.payload,
             filename="payload.json",
@@ -186,10 +188,9 @@ def run_scenario_analysis(
 
 
 def load_scenario_suite(suite_path: str) -> list[AnalysisScenario]:
-    """Carrega uma suíte versionada de cenários hipotéticos em JSON."""
+    """Carrega uma suíte versionada de cenários hipotéticos em YAML ou JSON."""
 
-    with open(suite_path, "r", encoding="utf-8") as file_obj:
-        content = json.load(file_obj)
+    content = _load_structured_payload(Path(suite_path))
 
     scenario_items = content["scenarios"] if isinstance(content, dict) else content
     return [
@@ -241,15 +242,30 @@ def parse_args() -> argparse.Namespace:
     )
     input_group.add_argument(
         "--payload-file",
-        help="Caminho para um payload único em JSON.",
+        help="Caminho para um payload único em YAML ou JSON.",
     )
     input_group.add_argument(
         "--suite-file",
         default=None,
-        help="Caminho para uma suíte de cenários em JSON.",
+        help="Caminho para uma suíte de cenários em YAML ou JSON.",
     )
 
     return parser.parse_args()
+
+
+def _load_structured_payload(path: Path) -> Any:
+    """Carrega YAML ou JSON de acordo com a extensão do arquivo."""
+
+    if path.suffix not in SUPPORTED_SCENARIO_FILE_SUFFIXES:
+        raise ValueError(
+            f"Formato não suportado para cenário: {path}. "
+            "Use arquivos .yaml, .yml ou .json."
+        )
+
+    with open(path, "r", encoding="utf-8") as file_obj:
+        if path.suffix in {".yaml", ".yml"}:
+            return yaml.safe_load(file_obj)
+        return json.load(file_obj)
 
 
 def _load_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
@@ -258,8 +274,7 @@ def _load_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
     if args.payload_json:
         return json.loads(args.payload_json)
 
-    with open(args.payload_file, "r", encoding="utf-8") as file_obj:
-        return json.load(file_obj)
+    return _load_structured_payload(Path(args.payload_file))
 
 
 def main() -> None:

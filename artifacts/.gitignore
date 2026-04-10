@@ -3,6 +3,7 @@
 # Except these files
 !.gitkeep
 !.gitignore
-!evaluation/
-!evaluation/scenario_analysis/
-!evaluation/scenario_analysis/*.json
+!scenario_analysis/
+!scenario_analysis/drift/
+!scenario_analysis/drift/*.jsonl
+!scenario_analysis/drift/*_manifest.json

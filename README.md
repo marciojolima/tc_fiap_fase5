@@ -60,13 +60,13 @@ Os principais itens ainda não concluídos para aderência mais forte ao guia s�
 - API FastAPI em [src/serving/app.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/app.py)
 - rota `/predict` com schemas Pydantic em [src/serving/routes.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/routes.py) e [src/serving/schemas.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/schemas.py)
 - reutilização do mesmo pipeline de features no treino e na inferência em [src/serving/pipeline.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/pipeline.py)
-- análise de cenários com logging dedicado no MLflow em [src/inference/scenario_analysis.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/inference/scenario_analysis.py)
+- análise de cenários com logging dedicado no MLflow em [src/scenario_analysis/inference_cases.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/inference_cases.py)
 
 ### Monitoramento e governança técnica
 
 - registro de inferências para monitoramento em [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py)
 - detecção batch de drift com Evidently e PSI em [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py)
-- geração de lotes sintéticos para validar drift em [src/monitoring/synthetic_batches.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/synthetic_batches.py)
+- geração de drifts sintéticos para validar o fluxo experimental em [src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py)
 - gatilho auditável de retreino via `artifacts/monitoring/retraining/retrain_request.json`
 - versionamento de metadados de modelo em [docs/MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md)
 
@@ -98,6 +98,7 @@ tc_fiap_fase5/
 │   ├── inference/
 │   ├── models/
 │   ├── monitoring/
+│   ├── scenario_analysis/
 │   ├── security/
 │   └── serving/
 ├── tests/
@@ -185,7 +186,8 @@ poetry run task test
 - `artifacts/monitoring/drift/drift_metrics.json`: PSI por feature e consolidação
 - `artifacts/monitoring/drift/drift_status.json`: status do monitoramento
 - `artifacts/monitoring/retraining/retrain_request.json`: gatilho auditável de retreino
-- `artifacts/evaluation/scenario_analysis/*.json`: cenários e payloads de validação
+- `configs/scenario_analysis/inference_cases.yaml`: suíte versionada de cenários de inferência
+- `artifacts/scenario_analysis/drift/*.jsonl`: cenários sintéticos para simulação de drift
 
 ## Documentação Disponível
 

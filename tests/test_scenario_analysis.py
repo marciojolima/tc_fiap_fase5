@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from inference.scenario_analysis import (
+import yaml
+
+from scenario_analysis.inference_cases import (
     ScenarioAnalysisConfig,
     ScenarioAnalysisResult,
     build_scenario,
@@ -125,15 +127,15 @@ def test_run_scenario_prediction_returns_standardized_output(monkeypatch) -> Non
     )
 
     monkeypatch.setattr(
-        "inference.scenario_analysis.build_serving_config",
+        "scenario_analysis.inference_cases.build_serving_config",
         return_serving_config,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.predict_from_dataframe_with_config",
+        "scenario_analysis.inference_cases.predict_from_dataframe_with_config",
         return_prediction,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.prepare_inference_dataframe",
+        "scenario_analysis.inference_cases.prepare_inference_dataframe",
         return_transformed_features,
     )
 
@@ -149,18 +151,31 @@ def test_run_scenario_prediction_returns_standardized_output(monkeypatch) -> Non
     assert result.model_name == "random_forest_v2"
 
 
-def test_load_scenario_suite_supports_dict_wrapper(tmp_path: Path) -> None:
-    suite_path = tmp_path / "suite.json"
+def test_load_scenario_suite_supports_yaml_dict_wrapper(tmp_path: Path) -> None:
+    suite_path = tmp_path / "suite.yaml"
     suite_path.write_text(
-        (
-            '{"scenarios": ['
-            '{"name": "high_risk", "payload": {"Age": 60, "Balance": 0, '
-            '"Card Type": "SILVER", "CreditScore": 400, '
-            '"EstimatedSalary": 30000, "Gender": "Female", '
-            '"Geography": "Germany", "HasCrCard": 0, '
-            '"IsActiveMember": 0, "NumOfProducts": 1, '
-            '"Point Earned": 100, "Tenure": 1}}'
-            "]}"
+        yaml.safe_dump(
+            {
+                "scenarios": [
+                    {
+                        "name": "high_risk",
+                        "payload": {
+                            "Age": 60,
+                            "Balance": 0,
+                            "Card Type": "SILVER",
+                            "CreditScore": 400,
+                            "EstimatedSalary": 30000,
+                            "Gender": "Female",
+                            "Geography": "Germany",
+                            "HasCrCard": 0,
+                            "IsActiveMember": 0,
+                            "NumOfProducts": 1,
+                            "Point Earned": 100,
+                            "Tenure": 1,
+                        },
+                    }
+                ]
+            }
         ),
         encoding="utf-8",
     )
@@ -175,29 +190,51 @@ def test_run_scenario_analysis_suite_executes_all_scenarios(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    suite_path = tmp_path / "suite.json"
+    suite_path = tmp_path / "suite.yaml"
     suite_path.write_text(
-        (
-            "["
-            '{"name": "high_risk", "payload": {"Age": 60, "Balance": 0, '
-            '"Card Type": "SILVER", "CreditScore": 400, '
-            '"EstimatedSalary": 30000, "Gender": "Female", '
-            '"Geography": "Germany", "HasCrCard": 0, '
-            '"IsActiveMember": 0, "NumOfProducts": 1, '
-            '"Point Earned": 100, "Tenure": 1}},'
-            '{"name": "low_risk", "payload": {"Age": 35, "Balance": 70000, '
-            '"Card Type": "DIAMOND", "CreditScore": 780, '
-            '"EstimatedSalary": 120000, "Gender": "Male", '
-            '"Geography": "France", "HasCrCard": 1, '
-            '"IsActiveMember": 1, "NumOfProducts": 2, '
-            '"Point Earned": 800, "Tenure": 8}}'
-            "]"
+        yaml.safe_dump(
+            [
+                {
+                    "name": "high_risk",
+                    "payload": {
+                        "Age": 60,
+                        "Balance": 0,
+                        "Card Type": "SILVER",
+                        "CreditScore": 400,
+                        "EstimatedSalary": 30000,
+                        "Gender": "Female",
+                        "Geography": "Germany",
+                        "HasCrCard": 0,
+                        "IsActiveMember": 0,
+                        "NumOfProducts": 1,
+                        "Point Earned": 100,
+                        "Tenure": 1,
+                    },
+                },
+                {
+                    "name": "low_risk",
+                    "payload": {
+                        "Age": 35,
+                        "Balance": 70000,
+                        "Card Type": "DIAMOND",
+                        "CreditScore": 780,
+                        "EstimatedSalary": 120000,
+                        "Gender": "Male",
+                        "Geography": "France",
+                        "HasCrCard": 1,
+                        "IsActiveMember": 1,
+                        "NumOfProducts": 2,
+                        "Point Earned": 800,
+                        "Tenure": 8,
+                    },
+                },
+            ]
         ),
         encoding="utf-8",
     )
 
     monkeypatch.setattr(
-        "inference.scenario_analysis.run_scenario_analysis",
+        "scenario_analysis.inference_cases.run_scenario_analysis",
         return_suite_result,
     )
 
@@ -245,31 +282,31 @@ def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
     _ARTIFACT_LOG.clear()
 
     monkeypatch.setattr(
-        "inference.scenario_analysis.mlflow.set_tracking_uri",
+        "scenario_analysis.inference_cases.mlflow.set_tracking_uri",
         ignore_tracking_uri,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.mlflow.set_experiment",
+        "scenario_analysis.inference_cases.mlflow.set_experiment",
         ignore_experiment_name,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.mlflow.start_run",
+        "scenario_analysis.inference_cases.mlflow.start_run",
         return_dummy_run,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.mlflow.log_param",
+        "scenario_analysis.inference_cases.mlflow.log_param",
         return_logged_param,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.mlflow.log_metric",
+        "scenario_analysis.inference_cases.mlflow.log_metric",
         return_logged_metric,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis.mlflow.set_tag",
+        "scenario_analysis.inference_cases.mlflow.set_tag",
         return_logged_tag,
     )
     monkeypatch.setattr(
-        "inference.scenario_analysis._log_json_artifact",
+        "scenario_analysis.inference_cases._log_json_artifact",
         return_json_artifact,
     )
 
@@ -278,4 +315,7 @@ def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
     assert ("threshold", 0.5) in _PARAM_LOG  # noqa: PLR2004
     assert ("churn_probability", 0.69) in _METRIC_LOG  # noqa: PLR2004
     assert ("flow", "scenario_analysis") in _TAG_LOG
-    assert ("payload.json", "scenario_analysis/high_risk_profile") in _ARTIFACT_LOG
+    assert (
+        "payload.json",
+        "scenario_analysis/inference/high_risk_profile",
+    ) in _ARTIFACT_LOG

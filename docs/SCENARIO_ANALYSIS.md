@@ -1,49 +1,43 @@
 # Scenario Analysis
 
-O modulo `src.inference.scenario_analysis` executa cenarios hipoteticos
+O modulo `src.scenario_analysis.inference_cases` executa cenarios hipoteticos
 de churn e registra cada execucao em um experimento separado no MLflow.
+
+## Executar a suite principal
+
+```bash
+python -m src.scenario_analysis.inference_cases \
+  --config configs/training/model_current.yaml \
+  --suite-file configs/scenario_analysis/inference_cases.yaml
+```
 
 ## Executar um cenario unico
 
 ```bash
-python -m src.inference.scenario_analysis \
+python -m src.scenario_analysis.inference_cases \
   --config configs/training/model_current.yaml \
   --scenario-name high_churn_manual \
-  --payload-file artifacts/evaluation/scenario_analysis/high_churn_customer.json
-```
-
-## Executar uma suite de cenarios
-
-```bash
-python -m src.inference.scenario_analysis \
-  --config configs/training/model_current.yaml \
-  --suite-file artifacts/evaluation/scenario_analysis/churn_validation_suite.json
+  --payload-json '{"Age": 92, "Balance": 0, "Card Type": "SILVER", "CreditScore": 350, "EstimatedSalary": 11.58, "Gender": "Female", "Geography": "Germany", "HasCrCard": 0, "IsActiveMember": 0, "NumOfProducts": 4, "Point Earned": 119, "Tenure": 0}'
 ```
 
 ## Formato da suite
 
-```json
-{
-  "scenarios": [
-    {
-      "name": "high_risk_profile",
-      "payload": {
-        "Age": 92,
-        "Balance": 0,
-        "Card Type": "SILVER",
-        "CreditScore": 350,
-        "EstimatedSalary": 11.58,
-        "Gender": "Female",
-        "Geography": "Germany",
-        "HasCrCard": 0,
-        "IsActiveMember": 0,
-        "NumOfProducts": 1,
-        "Point Earned": 119,
-        "Tenure": 0
-      }
-    }
-  ]
-}
+```yaml
+scenarios:
+  - name: high_risk_profile
+    payload:
+      Age: 92
+      Balance: 0
+      Card Type: SILVER
+      CreditScore: 350
+      EstimatedSalary: 11.58
+      Gender: Female
+      Geography: Germany
+      HasCrCard: 0
+      IsActiveMember: 0
+      NumOfProducts: 4
+      Point Earned: 119
+      Tenure: 0
 ```
 
 Cada cenario registra no MLflow:
