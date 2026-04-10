@@ -88,7 +88,7 @@ evaluation/results/
 # NOTEBOOKS
 # =============================================================
 # Outputs de células (mantém o .ipynb limpo no Git)
-notebooks/**/*.ipynb
+# notebooks/**/*.ipynb
 
 # Se quiser versionar os notebooks sem outputs, use nbstripout
 # e então re-adicione: !notebooks/
