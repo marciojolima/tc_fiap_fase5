@@ -27,11 +27,19 @@ ENV/
 # DVC
 # =============================================================
 # O DVC gerencia os dados — o Git só versiona os .dvc pointers
-data/raw/*
+data/**
+!data/
+!data/.gitignore
+!data/**/.gitkeep
+!data/raw/
+!data/raw/.gitignore
 !data/raw/*.dvc
-data/interim/*
-data/processed/*
-data/monitoring/*
+!data/interim/
+!data/interim/.gitignore
+!data/processed/
+!data/processed/.gitignore
+!data/monitoring/
+!data/monitoring/.gitkeep
 data/external/*
 
 # Cache interno do DVC
@@ -59,14 +67,8 @@ mlartifacts/
 *.parquet
 data/**/*.csv
 *.json
-# Exceções — schemas e configs leves que fazem sentido versionar
-!data/processed/feature_columns.json
-!data/processed/schema_report.json
+# Exceções — configs leves que fazem sentido versionar
 !configs/*.yaml
-!artifacts/
-!artifacts/evaluation/
-!artifacts/evaluation/scenario_analysis/
-!artifacts/evaluation/scenario_analysis/*.json
 .config/dvc/gdrive_credentials.json
 
 *.pkl
@@ -78,9 +80,10 @@ data/**/*.csv
 # =============================================================
 # ARTIFACTS E OUTPUTS
 # =============================================================
-artifacts/*
-!artifacts/.gitkeep
+artifacts/**
+!artifacts/
 !artifacts/.gitignore
+!artifacts/**/.gitkeep
 reports/figures/
 evaluation/results/
 

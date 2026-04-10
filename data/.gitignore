@@ -1,0 +1,14 @@
+# Ignore everything in this directory
+*
+# Except these files
+!.gitignore
+!**/.gitkeep
+!raw/
+!raw/.gitignore
+!raw/*.dvc
+!interim/
+!interim/.gitignore
+!processed/
+!processed/.gitignore
+!monitoring/
+!monitoring/.gitkeep

@@ -20,6 +20,14 @@ from common.config_loader import (
 from common.data_loader import load_raw_data
 from common.logger import get_logger
 from common.seed import set_global_seed
+from monitoring.drift import (
+    DEFAULT_MONITORING_CONFIG_PATH,
+    build_evidently_report,
+    load_dataset,
+    load_feature_columns,
+    load_monitoring_config,
+    prepare_feature_matrix,
+)
 from serving.pipeline import (
     build_serving_config,
     load_feature_pipeline,
@@ -63,6 +71,7 @@ class SyntheticBatchConfig:
     output_dir: Path
     batch_size: int
     experiment_config_path: str
+    monitoring_config_path: str = DEFAULT_MONITORING_CONFIG_PATH
 
 
 @dataclass(frozen=True)
@@ -74,6 +83,7 @@ class SyntheticBatchResult:
     row_count: int
     mean_probability: float
     positive_rate: float
+    report_path: Path | None = None
 
 
 def load_synthetic_batch_config(
@@ -376,11 +386,42 @@ def save_jsonl_records(records: list[dict[str, Any]], output_path: Path) -> None
             file_obj.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def build_drift_report_for_scenario(
+    scenario_output_path: Path,
+    report_output_path: Path,
+    monitoring_config_path: str,
+) -> Path:
+    """Gera um relatório HTML do Evidently para o cenário sintético."""
+
+    drift_config = load_monitoring_config(monitoring_config_path)["drift"]
+    reference_dataset = load_dataset(drift_config["reference_data_path"])
+    current_dataset = load_dataset(scenario_output_path)
+    feature_columns = load_feature_columns(drift_config["feature_columns_path"])
+
+    reference_features = prepare_feature_matrix(
+        dataset=reference_dataset,
+        feature_columns=feature_columns,
+        feature_pipeline_path=drift_config["feature_pipeline_path"],
+    )
+    current_features = prepare_feature_matrix(
+        dataset=current_dataset,
+        feature_columns=feature_columns,
+        feature_pipeline_path=drift_config["feature_pipeline_path"],
+    )
+    build_evidently_report(
+        reference_features=reference_features,
+        current_features=current_features,
+        output_path=report_output_path,
+    )
+    return report_output_path
+
+
 def write_batch_manifest(
     scenario_name: str,
     output_path: Path,
     probabilities: np.ndarray,
     predictions: np.ndarray,
+    report_path: Path | None = None,
 ) -> Path:
     """Cria um resumo JSON do lote gerado."""
 
@@ -391,6 +432,7 @@ def write_batch_manifest(
         "row_count": int(len(probabilities)),
         "mean_probability": float(probabilities.mean()),
         "positive_rate": float(predictions.mean()),
+        "report_path": str(report_path) if report_path is not None else None,
         "created_at": datetime.now(UTC).isoformat(),
     }
     manifest_path.write_text(
@@ -429,6 +471,11 @@ def log_batch_generation_run(
             str(manifest_path),
             artifact_path=f"scenario_analysis/drift/{scenario_name}",
         )
+        if result.report_path is not None:
+            mlflow.log_artifact(
+                str(result.report_path),
+                artifact_path=f"scenario_analysis/drift/{scenario_name}",
+            )
 
 
 def generate_and_log_synthetic_batch(
@@ -461,11 +508,17 @@ def generate_and_log_synthetic_batch(
     )
     output_path = cfg.output_dir / f"{scenario_name}.jsonl"
     save_jsonl_records(records, output_path)
+    report_path = build_drift_report_for_scenario(
+        scenario_output_path=output_path,
+        report_output_path=cfg.output_dir / f"{scenario_name}_report.html",
+        monitoring_config_path=cfg.monitoring_config_path,
+    )
     manifest_path = write_batch_manifest(
         scenario_name=scenario_name,
         output_path=output_path,
         probabilities=probabilities,
         predictions=predictions,
+        report_path=report_path,
     )
     result = SyntheticBatchResult(
         scenario_name=scenario_name,
@@ -473,6 +526,7 @@ def generate_and_log_synthetic_batch(
         row_count=len(records),
         mean_probability=float(probabilities.mean()),
         positive_rate=float(predictions.mean()),
+        report_path=report_path,
     )
     log_batch_generation_run(
         scenario_name=scenario_name,
@@ -483,12 +537,13 @@ def generate_and_log_synthetic_batch(
     )
     logger.info(
         "Lote sintético gerado — cenário=%s | linhas=%d | prob_media=%.4f | "
-        "taxa_positiva=%.4f | saída=%s",
+        "taxa_positiva=%.4f | saída=%s | relatório=%s",
         result.scenario_name,
         result.row_count,
         result.mean_probability,
         result.positive_rate,
         result.output_path,
+        result.report_path,
     )
     return result
 

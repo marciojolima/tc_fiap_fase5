@@ -188,6 +188,7 @@ poetry run task test
 - `artifacts/monitoring/retraining/retrain_request.json`: gatilho auditável de retreino
 - `configs/scenario_analysis/inference_cases.yaml`: suíte versionada de cenários de inferência
 - `artifacts/scenario_analysis/drift/*.jsonl`: cenários sintéticos para simulação de drift
+- `artifacts/scenario_analysis/drift/*_report.html`: relatórios HTML do Evidently para drifts sintéticos
 
 ## Documentação Disponível
 

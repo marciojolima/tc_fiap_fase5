@@ -3,7 +3,9 @@
 # Except these files
 !.gitkeep
 !.gitignore
+!models/
+!models/.gitkeep
+!monitoring/
+!monitoring/.gitkeep
 !scenario_analysis/
-!scenario_analysis/drift/
-!scenario_analysis/drift/*.jsonl
-!scenario_analysis/drift/*_manifest.json
+!scenario_analysis/.gitkeep

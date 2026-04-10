@@ -111,6 +111,14 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
     config = build_batch_config(tmp_path)
     logged_artifacts: list[tuple[str, str]] = []
 
+    def write_dummy_report(
+        scenario_output_path: Path,
+        report_output_path: Path,
+        monitoring_config_path: str,
+    ) -> Path:
+        report_output_path.write_text("<html></html>", encoding="utf-8")
+        return report_output_path
+
     monkeypatch.setattr(
         "scenario_analysis.synthetic_drifts.load_generation_base_dataframe",
         build_base_dataframe,
@@ -123,6 +131,10 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
             "random_forest_current",
             0.5,
         ),
+    )
+    monkeypatch.setattr(
+        "scenario_analysis.synthetic_drifts.build_drift_report_for_scenario",
+        write_dummy_report,
     )
     monkeypatch.setattr(
         "scenario_analysis.synthetic_drifts.mlflow.set_tracking_uri",
@@ -168,12 +180,14 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
     manifest_path = result.output_path.with_name(
         f"{result.output_path.stem}_manifest.json"
     )
+    report_path = result.output_path.with_name(f"{result.output_path.stem}_report.html")
     assert manifest_path.exists()
+    assert report_path.exists()
     assert (
         len(result.output_path.read_text(encoding="utf-8").splitlines())
         == EXPECTED_BATCH_LINES
     )
-    assert json.loads(manifest_path.read_text(encoding="utf-8"))["scenario_name"] == (
-        "baseline_like"
-    )
+    manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest_payload["scenario_name"] == "baseline_like"
+    assert manifest_payload["report_path"] == str(report_path)
     assert logged_artifacts
