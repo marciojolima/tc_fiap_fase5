@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from monitoring.inference_log import PredictionLogContext, log_prediction_for_monitoring
+from monitoring.metrics import finish_predict_request, start_predict_request
 from serving.pipeline import (
     load_serving_config,
     predict_from_dataframe,
@@ -45,22 +46,32 @@ def healthcheck() -> dict[str, str]:
     ),
 )
 def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
+    start_time = start_predict_request()
+    status_code = "500"
+
     cfg = load_serving_config()
-    transformed_features = prepare_inference_dataframe(payload, cfg)
-    probability, prediction = predict_from_dataframe(transformed_features)
-    log_prediction_for_monitoring(
-        payload=payload,
-        prediction_context=PredictionLogContext(
-            probability=probability,
-            prediction=prediction,
+    try:
+        transformed_features = prepare_inference_dataframe(payload, cfg)
+        probability, prediction = predict_from_dataframe(transformed_features)
+        log_prediction_for_monitoring(
+            payload=payload,
+            prediction_context=PredictionLogContext(
+                probability=probability,
+                prediction=prediction,
+                model_name=cfg.model_name,
+                threshold=cfg.threshold,
+            ),
+        )
+        status_code = "200"
+        return ChurnPredictionResponse(
+            churn_probability=probability,
+            churn_prediction=prediction,
             model_name=cfg.model_name,
             threshold=cfg.threshold,
-        ),
-    )
-
-    return ChurnPredictionResponse(
-        churn_probability=probability,
-        churn_prediction=prediction,
-        model_name=cfg.model_name,
-        threshold=cfg.threshold,
-    )
+        )
+    finally:
+        finish_predict_request(
+            start_time,
+            method="POST",
+            status_code=status_code,
+        )

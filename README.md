@@ -77,7 +77,7 @@ Os arquivos abaixo existem, mas ainda não caracterizam entrega completa segundo
 - agente e tools: [src/agent/react_agent.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/agent/react_agent.py), [src/agent/tools.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/agent/tools.py)
 - RAG: [src/agent/rag_pipeline.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/agent/rag_pipeline.py)
 - guardrails e PII: [src/security/guardrails.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/security/guardrails.py), [src/security/pii_detection.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/security/pii_detection.py)
-- métricas Prometheus: [src/monitoring/metrics.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/metrics.py)
+- dashboard operacional Prometheus/Grafana e métricas do serving em [src/monitoring/metrics.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/metrics.py)
 - avaliação RAG/LLM: [evaluation/ragas_eval.py](/home/marcio/dev/projects/python/tc_fiap_fase5/evaluation/ragas_eval.py), [evaluation/llm_judge.py](/home/marcio/dev/projects/python/tc_fiap_fase5/evaluation/llm_judge.py), [evaluation/ab_test_prompts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/evaluation/ab_test_prompts.py)
 - documentação ainda muito inicial: [docs/SYSTEM_CARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/SYSTEM_CARD.md), [docs/OWASP_MAPPING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OWASP_MAPPING.md), [docs/RED_TEAM_REPORT.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/RED_TEAM_REPORT.md)
 
@@ -143,6 +143,19 @@ poetry run task mlrunall
 poetry run task serving
 ```
 
+### Dashboard operacional
+
+```bash
+poetry run task observability
+```
+
+Depois acesse:
+
+- Grafana: `http://localhost:3000`
+- Prometheus: `http://localhost:9090`
+
+O dashboard provisionado acompanha inicialmente a latência, o volume, a taxa de erro e as requisições em andamento do endpoint `/predict`.
+
 ### Drift batch
 
 ```bash
@@ -189,6 +202,7 @@ poetry run task test
 - `configs/scenario_analysis/inference_cases.yaml`: suíte versionada de cenários de inferência
 - `artifacts/scenario_analysis/drift/*.jsonl`: cenários sintéticos para simulação de drift
 - `artifacts/scenario_analysis/drift/*_report.html`: relatórios HTML do Evidently para drifts sintéticos
+- `docs/OPERATIONS_DASHBOARD.md`: instruções do dashboard operacional Prometheus/Grafana
 
 ## Documentação Disponível
 
@@ -199,6 +213,7 @@ poetry run task test
 - [docs/MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md)
 - [docs/SCENARIO_ANALYSIS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/SCENARIO_ANALYSIS.md)
 - [docs/EVALUATION_METRICS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/EVALUATION_METRICS.md)
+- [docs/OPERATIONS_DASHBOARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OPERATIONS_DASHBOARD.md)
 
 ### Ainda precisam evoluir para o padrão esperado da banca
 

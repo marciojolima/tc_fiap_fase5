@@ -3,10 +3,15 @@ from __future__ import annotations
 from unittest.mock import Mock, patch
 
 import pandas as pd
+from prometheus_client import generate_latest
 
+from monitoring.metrics import finish_predict_request, start_predict_request
+from serving.app import create_app
 from serving.pipeline import ServingConfig, prepare_inference_dataframe
 from serving.routes import predict_churn
 from serving.schemas import ChurnPredictionRequest
+
+HTTP_OK = 200
 
 
 class DummyFeaturePipeline:
@@ -189,3 +194,18 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
         "model_name": "random_forest_current",
         "threshold": 0.5,
     }
+
+
+def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
+    app = create_app()
+    start_time = start_predict_request()
+    finish_predict_request(
+        start_time,
+        method="POST",
+        status_code=str(HTTP_OK),
+    )
+    metrics_payload = generate_latest().decode("utf-8")
+
+    assert any(getattr(route, "path", None) == "/metrics" for route in app.routes)
+    assert "churn_serving_predict_latency_seconds" in metrics_payload
+    assert "churn_serving_predict_requests_total" in metrics_payload
