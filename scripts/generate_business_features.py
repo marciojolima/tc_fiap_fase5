@@ -230,8 +230,8 @@ def save_metadata(metadata: dict, metadata_output_path: Path) -> None:
         json.dump(metadata, file_obj, indent=2, ensure_ascii=False)
 
 
-def execute() -> None:
-    """Executa a geração das features sintéticas de negócio."""
+def main() -> None:
+    """Ponto de entrada para a geração das features sintéticas de negócio."""
 
     args = parse_args()
 
@@ -270,4 +270,4 @@ def execute() -> None:
 
 
 if __name__ == "__main__":
-    execute()
+    main()
