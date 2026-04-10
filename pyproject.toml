@@ -27,6 +27,7 @@ dependencies = [
     "pyopenssl (>=23.0.0)",
     "cryptography (>=41.0.0)",
     "evidently>=0.7.21,<0.8",
+    "rich>=13.9.0,<14",
 ]
 
 [tool.poetry]
