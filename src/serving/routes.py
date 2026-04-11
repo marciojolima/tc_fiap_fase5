@@ -3,7 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from monitoring.inference_log import PredictionLogContext, log_prediction_for_monitoring
-from monitoring.metrics import finish_predict_request, start_predict_request
+from monitoring.metrics import (
+    finish_predict_request_for_monitor,
+    start_predict_request_for_monitor,
+)
 from serving.pipeline import (
     load_serving_config,
     predict_from_dataframe,
@@ -46,7 +49,7 @@ def healthcheck() -> dict[str, str]:
     ),
 )
 def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
-    start_time = start_predict_request()
+    start_time = start_predict_request_for_monitor()
     status_code = "500"
 
     cfg = load_serving_config()
@@ -70,7 +73,7 @@ def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
             threshold=cfg.threshold,
         )
     finally:
-        finish_predict_request(
+        finish_predict_request_for_monitor(
             start_time,
             method="POST",
             status_code=status_code,

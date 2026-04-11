@@ -5,7 +5,10 @@ from unittest.mock import Mock, patch
 import pandas as pd
 from prometheus_client import generate_latest
 
-from monitoring.metrics import finish_predict_request, start_predict_request
+from monitoring.metrics import (
+    finish_predict_request_for_monitor,
+    start_predict_request_for_monitor,
+)
 from serving.app import create_app
 from serving.pipeline import ServingConfig, prepare_inference_dataframe
 from serving.routes import predict_churn
@@ -198,8 +201,8 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
 
 def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
     app = create_app()
-    start_time = start_predict_request()
-    finish_predict_request(
+    start_time = start_predict_request_for_monitor()
+    finish_predict_request_for_monitor(
         start_time,
         method="POST",
         status_code=str(HTTP_OK),

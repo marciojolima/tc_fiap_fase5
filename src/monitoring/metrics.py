@@ -48,14 +48,14 @@ def register_prometheus_metrics(app: FastAPI) -> None:
     )
 
 
-def start_predict_request() -> float:
+def start_predict_request_for_monitor() -> float:
     """Marca o inicio de uma requisicao de predicao."""
 
     PREDICT_REQUESTS_IN_PROGRESS.inc()
     return perf_counter()
 
 
-def finish_predict_request(
+def finish_predict_request_for_monitor(
     start_time: float,
     *,
     method: str,
