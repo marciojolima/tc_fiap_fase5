@@ -72,6 +72,138 @@ Mapeamento no código:
 
 Esse log é justamente o insumo que depois será lido pela rotina de drift.
 
+## Passo a Passo Operacional
+
+O fluxo principal de análise de drift no projeto hoje pode ser resumido assim:
+
+1. subir o serving
+2. gerar predições reais pela API
+3. acumular a base corrente em `predictions.jsonl`
+4. executar a rotina batch de drift
+5. ler os artefatos gerados
+6. verificar se houve abertura e execução de retreino
+
+Comandos típicos:
+
+```bash
+poetry run task serving
+poetry run task mldrift
+```
+
+## O Que Acontece em Cada Passo
+
+### 1. Serving
+
+O serving responde à rota `/predict` e registra uma linha por inferência.
+
+Arquivos envolvidos:
+
+- [src/serving/routes.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/routes.py:51)
+- [src/serving/pipeline.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/pipeline.py:31)
+- [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:44)
+
+O arquivo gerado nessa fase é:
+
+- `data/monitoring/current/predictions.jsonl`
+
+Esse arquivo contém:
+
+- metadados de inferência como `timestamp`, `model_name`, `model_version`
+- `churn_probability` e `churn_prediction`
+- payload de entrada usado na predição
+
+### 2. Execução do Drift
+
+A rotina batch é executada por:
+
+```bash
+poetry run task mldrift
+```
+
+Ponto de entrada:
+
+- [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:429)
+
+Essa rotina:
+
+- carrega a base de referência
+- carrega a base corrente
+- prepara as features no mesmo padrão do treino
+- gera relatório HTML com Evidently
+- calcula PSI por feature
+- calcula `prediction_psi`, quando habilitado
+- consolida o status em `ok`, `warning` ou `critical`
+
+Mapeamento principal:
+
+- carga de datasets: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:58)
+- preparação dos dados de monitoramento: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:127)
+- cálculo de PSI numérico: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:156)
+- cálculo de PSI categórico: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:193)
+- PSI por feature: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:223)
+- consolidação do status: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:246)
+
+### 3. Artefatos Gerados
+
+Após rodar o drift, os arquivos principais são:
+
+- `artifacts/monitoring/drift/drift_report.html`
+- `artifacts/monitoring/drift/drift_metrics.json`
+- `artifacts/monitoring/drift/drift_status.json`
+- `artifacts/monitoring/drift/drift_runs.jsonl`
+
+Onde isso acontece:
+
+- gravação dos JSONs principais: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:478)
+- histórico de execuções: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:517)
+
+Leitura rápida:
+
+- `drift_report.html`: evidência visual detalhada
+- `drift_metrics.json`: métricas detalhadas da última execução
+- `drift_status.json`: resumo operacional da última execução
+- `drift_runs.jsonl`: histórico das execuções de monitoramento
+
+### 4. Gatilho de Retreino
+
+Se o status final for `critical`, o sistema abre uma solicitação auditável de
+retreino e, no modo atual, também executa o retreino.
+
+Configuração:
+
+- [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:1)
+
+Implementação:
+
+- abertura da solicitação: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:367)
+- política de disparo: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:401)
+- executor dedicado: [src/models/retraining.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/retraining.py:130)
+
+Artefatos dessa fase:
+
+- `artifacts/monitoring/retraining/retrain_request.json`
+- `artifacts/monitoring/retraining/retrain_run.json`
+
+### 5. Interpretação Correta do Resultado
+
+Ao testar com poucas predições, o mais importante é validar o fluxo
+operacional, não tirar conclusão estatística forte sobre o negócio.
+
+Em amostras pequenas:
+
+- o PSI pode ficar artificialmente alto
+- o status pode virar `critical` com facilidade
+- isso valida a engenharia do pipeline, mas ainda não prova drift real robusto
+
+Na prática, o pipeline já demonstra:
+
+- captura online de inferências
+- monitoramento batch separado do serving
+- cálculo de drift com PSI
+- histórico de execuções
+- gatilho auditável de retreino
+- execução automática do retreino no modo atual
+
 ## PSI em Termos Intuitivos
 
 O PSI, no contexto deste projeto, responde a uma pergunta simples:
