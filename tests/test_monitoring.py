@@ -19,6 +19,8 @@ from monitoring.inference_log import (
 )
 from serving.schemas import ChurnPredictionRequest
 
+EXPECTED_BATCH_ROW_COUNT = 10
+
 
 def test_build_inference_log_record_preserves_payload_aliases() -> None:
     payload = ChurnPredictionRequest(
@@ -102,6 +104,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     report_path = tmp_path / "reports" / "drift_report.html"
     metrics_path = tmp_path / "reports" / "drift_metrics.json"
     status_path = tmp_path / "artifacts" / "monitoring" / "drift_status.json"
+    runs_history_path = tmp_path / "artifacts" / "monitoring" / "drift_runs.jsonl"
     retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
     retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
     config_path = tmp_path / "monitoring_config.yaml"
@@ -136,6 +139,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                     "report_html_path": str(report_path),
                     "metrics_json_path": str(metrics_path),
                     "status_path": str(status_path),
+                    "runs_history_path": str(runs_history_path),
                     "data_drift": {
                         "enabled": True,
                         "warning_threshold": 0.10,
@@ -179,6 +183,12 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
         == "configs/training/model_current.yaml"
     )
     assert retrain_payload["promotion_policy"] == "manual_approval_required"
+    history_payload = json.loads(
+        runs_history_path.read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert history_payload["status"] == "critical"
+    assert history_payload["current_row_count"] == EXPECTED_BATCH_ROW_COUNT
+    assert history_payload["retraining_request_id"] == retrain_payload["request_id"]
 
 
 def test_run_drift_monitoring_executes_retraining_for_auto_mode(
@@ -192,6 +202,7 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
     report_path = tmp_path / "reports" / "drift_report.html"
     metrics_path = tmp_path / "reports" / "drift_metrics.json"
     status_path = tmp_path / "artifacts" / "monitoring" / "drift_status.json"
+    runs_history_path = tmp_path / "artifacts" / "monitoring" / "drift_runs.jsonl"
     retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
     retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
     config_path = tmp_path / "monitoring_config.yaml"
@@ -227,6 +238,7 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
                     "report_html_path": str(report_path),
                     "metrics_json_path": str(metrics_path),
                     "status_path": str(status_path),
+                    "runs_history_path": str(runs_history_path),
                     "data_drift": {
                         "enabled": True,
                         "warning_threshold": 0.10,
@@ -262,3 +274,8 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
 
     assert decision.status == "critical"
     assert retraining_calls == [(str(retrain_path), str(retrain_run_path))]
+    history_payload = json.loads(
+        runs_history_path.read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert history_payload["status"] == "critical"
+    assert history_payload["retraining_recommended"] is True

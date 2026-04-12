@@ -8,6 +8,7 @@ drift:
   report_html_path: artifacts/monitoring/drift/drift_report.html
   metrics_json_path: artifacts/monitoring/drift/drift_metrics.json
   status_path: artifacts/monitoring/drift/drift_status.json
+  runs_history_path: artifacts/monitoring/drift/drift_runs.jsonl
 
   data_drift:
     enabled: true

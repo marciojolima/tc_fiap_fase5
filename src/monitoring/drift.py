@@ -54,6 +54,19 @@ class DriftDecision:
         return self.status == "critical"
 
 
+@dataclass(frozen=True)
+class MonitoringPreparedInputs:
+    """Conjuntos e metadados já resolvidos para uma execução de monitoramento."""
+
+    current_path: str
+    reference_dataset: pd.DataFrame
+    current_dataset: pd.DataFrame
+    reference_features: pd.DataFrame
+    current_features: pd.DataFrame
+    reference_row_count: int
+    current_row_count: int
+
+
 def load_monitoring_config(
     config_path: str = DEFAULT_MONITORING_CONFIG_PATH,
 ) -> dict[str, Any]:
@@ -134,6 +147,39 @@ def build_reference_predictions(
     return pd.Series(
         model.predict_proba(reference_features)[:, 1],
         name=PREDICTION_PROBABILITY_COLUMN,
+    )
+
+
+def prepare_monitoring_inputs(
+    drift_config: dict[str, Any],
+    current_data_path: str | None,
+) -> MonitoringPreparedInputs:
+    """Carrega datasets e matrizes de features necessárias para o drift."""
+
+    current_path = current_data_path or drift_config["current_data_path"]
+    reference_dataset = load_dataset(drift_config["reference_data_path"])
+    current_dataset = load_dataset(current_path)
+    feature_columns = load_feature_columns(drift_config["feature_columns_path"])
+
+    reference_features = prepare_feature_matrix(
+        dataset=reference_dataset,
+        feature_columns=feature_columns,
+        feature_pipeline_path=drift_config["feature_pipeline_path"],
+    )
+    current_features = prepare_feature_matrix(
+        dataset=current_dataset,
+        feature_columns=feature_columns,
+        feature_pipeline_path=drift_config["feature_pipeline_path"],
+    )
+
+    return MonitoringPreparedInputs(
+        current_path=current_path,
+        reference_dataset=reference_dataset,
+        current_dataset=current_dataset,
+        reference_features=reference_features,
+        current_features=current_features,
+        reference_row_count=len(reference_dataset),
+        current_row_count=len(current_dataset),
     )
 
 
@@ -328,32 +374,105 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     )
 
 
+def append_jsonl(path: str | Path, payload: dict[str, Any]) -> None:
+    """Acrescenta uma linha JSON em um histórico orientado a eventos."""
+
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "a", encoding="utf-8") as file_obj:
+        file_obj.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
+
+def build_metrics_payload(
+    decision: DriftDecision,
+    psi_by_feature: dict[str, float],
+    *,
+    created_at: str,
+    reference_row_count: int,
+    current_row_count: int,
+) -> dict[str, Any]:
+    """Monta o payload consolidado de métricas da execução de drift."""
+
+    return {
+        "created_at": created_at,
+        "status": decision.status,
+        "retraining_recommended": decision.retraining_recommended,
+        "max_feature_psi": decision.max_feature_psi,
+        "mean_feature_psi": decision.mean_feature_psi,
+        "drifted_feature_share": decision.drifted_feature_share,
+        "prediction_psi": decision.prediction_psi,
+        "drifted_features": decision.drifted_features,
+        "feature_psi": psi_by_feature,
+        "reference_row_count": reference_row_count,
+        "current_row_count": current_row_count,
+    }
+
+
 def write_retraining_placeholder(
     path: str | Path,
     decision: DriftDecision,
     model_path: str | Path,
     trigger_mode: str,
     training_config_path: str,
-) -> None:
+) -> dict[str, Any]:
     """Registra uma solicitação auditável de retreino."""
 
-    write_json(
-        path,
-        {
-            "request_id": str(uuid4()),
-            "status": "requested",
-            "reason": "critical_data_or_prediction_drift",
-            "model_path": str(model_path),
-            "training_config_path": training_config_path,
-            "created_at": datetime.now(UTC).isoformat(),
-            "trigger_mode": trigger_mode,
-            "promotion_policy": "manual_approval_required",
-            "drift_status": decision.status,
-            "max_feature_psi": decision.max_feature_psi,
-            "prediction_psi": decision.prediction_psi,
-            "drifted_features": decision.drifted_features,
-        },
+    payload = {
+        "request_id": str(uuid4()),
+        "status": "requested",
+        "reason": "critical_data_or_prediction_drift",
+        "model_path": str(model_path),
+        "training_config_path": training_config_path,
+        "created_at": datetime.now(UTC).isoformat(),
+        "trigger_mode": trigger_mode,
+        "promotion_policy": "manual_approval_required",
+        "drift_status": decision.status,
+        "max_feature_psi": decision.max_feature_psi,
+        "prediction_psi": decision.prediction_psi,
+        "drifted_features": decision.drifted_features,
+    }
+    write_json(path, payload)
+    return payload
+
+
+def append_drift_run_history(path: str | Path, payload: dict[str, Any]) -> None:
+    """Acrescenta uma linha com o resumo operacional de uma execução de drift."""
+
+    append_jsonl(path, payload)
+
+
+def maybe_trigger_retraining(
+    decision: DriftDecision,
+    *,
+    retraining_config: dict[str, Any],
+    model_path: str,
+) -> dict[str, Any] | None:
+    """Executa o fluxo de retreino quando a política atual assim exigir."""
+
+    if not (
+        decision.retraining_recommended
+        and retraining_config.get("enabled", False)
+    ):
+        return None
+
+    retraining_request_payload = write_retraining_placeholder(
+        path=retraining_config["request_path"],
+        decision=decision,
+        model_path=model_path,
+        trigger_mode=retraining_config.get("trigger_mode", "manual"),
+        training_config_path=retraining_config.get(
+            "training_config_path",
+            DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+        ),
     )
+    trigger_mode = retraining_config.get("trigger_mode", "manual")
+    if trigger_mode != "manual":
+        run_retraining_request(
+            request_path=retraining_config["request_path"],
+            output_path=retraining_config.get("run_path"),
+        )
+
+    return retraining_request_payload
 
 
 def run_drift_monitoring(
@@ -368,43 +487,33 @@ def run_drift_monitoring(
         logger.info("Monitoramento de drift desabilitado")
         return DriftDecision("ok", 0.0, 0.0, 0.0, None, [])
 
-    current_path = current_data_path or drift_config["current_data_path"]
-    reference_dataset = load_dataset(drift_config["reference_data_path"])
-    current_dataset = load_dataset(current_path)
-    feature_columns = load_feature_columns(drift_config["feature_columns_path"])
-
-    reference_features = prepare_feature_matrix(
-        dataset=reference_dataset,
-        feature_columns=feature_columns,
-        feature_pipeline_path=drift_config["feature_pipeline_path"],
-    )
-    current_features = prepare_feature_matrix(
-        dataset=current_dataset,
-        feature_columns=feature_columns,
-        feature_pipeline_path=drift_config["feature_pipeline_path"],
-    )
+    prepared_inputs = prepare_monitoring_inputs(drift_config, current_data_path)
 
     build_evidently_report(
-        reference_features=reference_features,
-        current_features=current_features,
+        reference_features=prepared_inputs.reference_features,
+        current_features=prepared_inputs.current_features,
         output_path=drift_config["report_html_path"],
     )
 
-    psi_by_feature = calculate_feature_psi(reference_features, current_features)
+    psi_by_feature = calculate_feature_psi(
+        prepared_inputs.reference_features,
+        prepared_inputs.current_features,
+    )
     prediction_psi = None
     if drift_config.get("prediction_drift", {}).get("enabled", False):
         reference_predictions = build_reference_predictions(
-            reference_features=reference_features,
-            reference_dataset=reference_dataset,
+            reference_features=prepared_inputs.reference_features,
+            reference_dataset=prepared_inputs.reference_dataset,
             model_path=drift_config["model_path"],
         )
         if (
             reference_predictions is not None
-            and PREDICTION_PROBABILITY_COLUMN in current_dataset.columns
+            and PREDICTION_PROBABILITY_COLUMN
+            in prepared_inputs.current_dataset.columns
         ):
             prediction_psi = calculate_numeric_psi(
                 reference_predictions,
-                current_dataset[PREDICTION_PROBABILITY_COLUMN],
+                prepared_inputs.current_dataset[PREDICTION_PROBABILITY_COLUMN],
             )
 
     decision = decide_drift_status(
@@ -413,38 +522,45 @@ def run_drift_monitoring(
         critical_threshold=drift_config["data_drift"]["critical_threshold"],
         prediction_psi=prediction_psi,
     )
-    metrics_payload = {
-        "created_at": datetime.now(UTC).isoformat(),
-        "status": decision.status,
-        "retraining_recommended": decision.retraining_recommended,
-        "max_feature_psi": decision.max_feature_psi,
-        "mean_feature_psi": decision.mean_feature_psi,
-        "drifted_feature_share": decision.drifted_feature_share,
-        "prediction_psi": decision.prediction_psi,
-        "drifted_features": decision.drifted_features,
-        "feature_psi": psi_by_feature,
-    }
+    created_at = datetime.now(UTC).isoformat()
+    metrics_payload = build_metrics_payload(
+        decision,
+        psi_by_feature,
+        created_at=created_at,
+        reference_row_count=prepared_inputs.reference_row_count,
+        current_row_count=prepared_inputs.current_row_count,
+    )
     write_json(drift_config["metrics_json_path"], metrics_payload)
     write_json(drift_config["status_path"], metrics_payload)
 
-    retraining_config = drift_config.get("retraining", {})
-    if decision.retraining_recommended and retraining_config.get("enabled", False):
-        write_retraining_placeholder(
-            path=retraining_config["request_path"],
-            decision=decision,
-            model_path=drift_config["model_path"],
-            trigger_mode=retraining_config.get("trigger_mode", "manual"),
-            training_config_path=retraining_config.get(
-                "training_config_path",
-                DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    retraining_request_payload = maybe_trigger_retraining(
+        decision,
+        retraining_config=drift_config.get("retraining", {}),
+        model_path=drift_config["model_path"],
+    )
+
+    append_drift_run_history(
+        drift_config["runs_history_path"],
+        {
+            "created_at": created_at,
+            "status": decision.status,
+            "reference_data_path": drift_config["reference_data_path"],
+            "current_data_path": prepared_inputs.current_path,
+            "reference_row_count": prepared_inputs.reference_row_count,
+            "current_row_count": prepared_inputs.current_row_count,
+            "max_feature_psi": decision.max_feature_psi,
+            "mean_feature_psi": decision.mean_feature_psi,
+            "drifted_feature_share": decision.drifted_feature_share,
+            "prediction_psi": decision.prediction_psi,
+            "drifted_features": decision.drifted_features,
+            "retraining_recommended": decision.retraining_recommended,
+            "retraining_request_id": (
+                retraining_request_payload["request_id"]
+                if retraining_request_payload is not None
+                else None
             ),
-        )
-        trigger_mode = retraining_config.get("trigger_mode", "manual")
-        if trigger_mode != "manual":
-            run_retraining_request(
-                request_path=retraining_config["request_path"],
-                output_path=retraining_config.get("run_path"),
-            )
+        },
+    )
 
     logger.info("Drift monitoring finalizado com status=%s", decision.status)
     return decision
