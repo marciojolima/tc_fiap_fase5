@@ -68,8 +68,8 @@ Os principais itens ainda não concluídos para aderência mais forte ao guia s�
 - detecção batch de drift com Evidently e PSI em [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py)
 - geração de drifts sintéticos para validar o fluxo experimental em [src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py)
 - gatilho auditável de retreino via `artifacts/monitoring/retraining/retrain_request.json`
-- estratégia e fluxo documentados em [docs/DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md)
-- versionamento de metadados de modelo em [docs/MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md)
+- estratégia e fluxo documentados em [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
+- versionamento de metadados de modelo em [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
 
 ## O Que Está Parcial ou Placeholder
 
@@ -211,19 +211,19 @@ poetry run task test
 
 ### Mais consistentes hoje
 
-- [docs/MODEL_CARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_CARD.md)
-- [docs/LGPD_PLAN.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/LGPD_PLAN.md)
-- [docs/MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md)
-- [docs/SCENARIO_ANALYSIS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/SCENARIO_ANALYSIS.md)
-- [docs/EVALUATION_METRICS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/EVALUATION_METRICS.md)
-- [docs/DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md)
-- [docs/OPERATIONS_DASHBOARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OPERATIONS_DASHBOARD.md)
+- [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
+- [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
+- [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
+- [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
+- [docs/EVALUATION_METRICS.md](docs/EVALUATION_METRICS.md)
+- [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
+- [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
 
 ### Ainda precisam evoluir para o padrão esperado da banca
 
-- [docs/SYSTEM_CARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/SYSTEM_CARD.md)
-- [docs/OWASP_MAPPING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OWASP_MAPPING.md)
-- [docs/RED_TEAM_REPORT.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/RED_TEAM_REPORT.md)
+- [docs/SYSTEM_CARD.md](docs/SYSTEM_CARD.md)
+- [docs/OWASP_MAPPING.md](docs/OWASP_MAPPING.md)
+- [docs/RED_TEAM_REPORT.md](docs/RED_TEAM_REPORT.md)
 
 ## Checklist Revisado da Datathon
 
