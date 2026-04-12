@@ -175,6 +175,16 @@ poetry run task mldriftdemo
 poetry run task mlsyntheticdrift
 ```
 
+### Predições sintéticas para monitoramento
+
+```bash
+poetry run python -m scripts.generate_synthetic_predictions --num-predictions 50 --drift no_drift
+```
+
+Documentação:
+
+- [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
+
 ### MLflow UI
 
 ```bash
