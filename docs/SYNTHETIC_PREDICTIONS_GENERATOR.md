@@ -84,6 +84,77 @@ crédito, idade, saldo, salário estimado, geografia e perfil de cartão. Esse
 modo reaproveita a mesma lógica de drift sintético usada nos cenários de
 validação do projeto.
 
+Mais especificamente, o `with_drift` não cria linhas totalmente artificiais do
+zero. Ele segue esta estratégia:
+
+1. carrega a base bruta de referência em `data/raw/Customer-Churn-Records.csv`
+2. mantém apenas as colunas aceitas pelo serving e pelo monitoramento
+3. faz uma amostragem inicial com reposição para preservar o domínio real das
+   features
+4. aplica deslocamentos fortes e intencionais em colunas que influenciam a
+   distribuição observada pelo monitoramento
+5. usa o modelo atual para calcular `churn_probability` e `churn_prediction`
+
+Isso é importante porque o objetivo do modo `with_drift` não é apenas gerar
+inputs válidos, mas gerar uma base corrente cuja distribuição fique
+propositalmente diferente da base de referência usada no treino.
+
+Na implementação atual, o gerador reaproveita o cenário
+`build_mixed_extreme_drift_batch` de
+[src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py:260).
+Esse cenário foi pensado para deslocar a distribuição de forma suficientemente
+forte para que o monitoramento batch tenha alta chance de detectar drift.
+
+As principais mudanças aplicadas hoje são:
+
+- `CreditScore`: deslocado para uma distribuição com valores mais baixos e mais
+  dispersos
+- `Age`: deslocada para uma população significativamente mais velha
+- `Balance`: concentrado em extremos, combinando valores próximos de zero e
+  valores muito altos
+- `NumOfProducts`: redistribuído para privilegiar combinações menos comuns
+- `IsActiveMember`: maior concentração de clientes inativos
+- `EstimatedSalary`: mistura de faixas muito baixas e muito altas
+- `Geography`: concentração maior em `Germany` e `Spain`
+- `Card Type`: concentração em perfis mais específicos
+- `Point Earned`: deslocamento para extremos baixos e altos
+
+Na prática, isso tende a impactar:
+
+- o PSI das features monitoradas
+- a distribuição das probabilidades previstas
+- a taxa de predições positivas no lote corrente
+
+## Preciso analisar a camada raw?
+
+Para usar o módulo, não.
+
+O script já usa a camada raw como base de domínio para:
+
+- preservar categorias válidas como `Geography`, `Gender` e `Card Type`
+- manter o formato esperado pelo serving
+- evitar geração de combinações absurdas ou fora do contrato
+
+Mas para avaliar a qualidade do cenário `with_drift`, vale a pena analisar a
+camada raw e comparar:
+
+- distribuição original das features na base bruta
+- distribuição do lote gerado com `no_drift`
+- distribuição do lote gerado com `with_drift`
+
+Essa análise ajuda a responder se o drift sintético está:
+
+- forte o suficiente para ser detectado
+- realista para o domínio do problema
+- coerente com o comportamento que você quer demonstrar no monitoramento
+
+Em resumo:
+
+- a raw não precisa ser reestudada para executar o gerador
+- a raw é usada como base de domínio pelo próprio script
+- a análise comparativa da raw é recomendada quando você quiser calibrar melhor
+  a intensidade e o realismo do `with_drift`
+
 ## Exemplo de integração com o monitoramento
 
 Depois de gerar um arquivo sintético, você pode usá-lo como base corrente para
