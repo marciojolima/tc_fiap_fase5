@@ -39,8 +39,11 @@ O fluxo atual é:
 2. a rotina de drift carrega base de referência e base corrente
 3. o sistema compara distribuições de features e, quando habilitado, das
    probabilidades previstas
-4. o sistema consolida um status final: `ok`, `warning` ou `critical`
-5. em caso crítico, é gerada uma solicitação auditável de retreino
+4. o sistema valida se a base corrente já atingiu o tamanho mínimo para decisão
+5. o sistema consolida um status final: `ok`, `warning`, `critical` ou
+   `insufficient_data`
+6. em caso crítico e com amostra elegível, é gerada uma solicitação auditável
+   de retreino
 6. dependendo do modo configurado, o retreino pode ser executado automaticamente
 
 ## Como Pensar no Passo 1
@@ -132,7 +135,8 @@ Essa rotina:
 - gera relatório HTML com Evidently
 - calcula PSI por feature
 - calcula `prediction_psi`, quando habilitado
-- consolida o status em `ok`, `warning` ou `critical`
+- aplica a política de amostra mínima para decisão
+- consolida o status em `ok`, `warning`, `critical` ou `insufficient_data`
 
 Mapeamento principal:
 
@@ -142,6 +146,7 @@ Mapeamento principal:
 - cálculo de PSI categórico: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:193)
 - PSI por feature: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:223)
 - consolidação do status: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:246)
+- bloqueio operacional por amostra pequena: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:284)
 
 ### 3. Artefatos Gerados
 
@@ -169,6 +174,12 @@ Leitura rápida:
 Se o status final for `critical`, o sistema abre uma solicitação auditável de
 retreino e, no modo atual, também executa o retreino.
 
+Antes disso, existe uma guarda operacional importante: se a base corrente tiver
+menos linhas do que o mínimo configurado em
+`minimum_current_sample_size_for_decision`, o PSI ainda é calculado e salvo
+para observabilidade, mas o status vira `insufficient_data` e nenhum retreino é
+aberto.
+
 Configuração:
 
 - [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:1)
@@ -192,8 +203,18 @@ operacional, não tirar conclusão estatística forte sobre o negócio.
 Em amostras pequenas:
 
 - o PSI pode ficar artificialmente alto
-- o status pode virar `critical` com facilidade
-- isso valida a engenharia do pipeline, mas ainda não prova drift real robusto
+- o projeto continua registrando métricas e histórico
+- o status operacional passa a ser `insufficient_data`
+- o retreino fica bloqueado até haver volume mínimo
+
+Hoje o mínimo operacional está configurado em:
+
+```yaml
+minimum_current_sample_size_for_decision: 30
+```
+
+Isso evita que uma amostra muito pequena dispare retreino automático com base
+em um PSI estatisticamente frágil.
 
 Na prática, o pipeline já demonstra:
 
@@ -219,6 +240,10 @@ Leitura prática adotada hoje:
 - `PSI < 0.10`: sem sinal forte de drift
 - `0.10 <= PSI < 0.20`: alerta
 - `PSI >= 0.20`: drift crítico
+
+Mas essa régua só vale para decisão operacional quando a base corrente já
+atingiu o tamanho mínimo configurado. Antes disso, o PSI é tratado como sinal
+exploratório e não como justificativa para retreino.
 
 Esses thresholds são os mesmos usados pela rotina de decisão operacional e
 estão definidos em [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:12).

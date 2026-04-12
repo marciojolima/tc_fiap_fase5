@@ -9,6 +9,7 @@ drift:
   metrics_json_path: artifacts/monitoring/drift/drift_metrics.json
   status_path: artifacts/monitoring/drift/drift_status.json
   runs_history_path: artifacts/monitoring/drift/drift_runs.jsonl
+  minimum_current_sample_size_for_decision: 30
 
   data_drift:
     enabled: true

@@ -34,6 +34,7 @@ MONITORING_METADATA_COLUMNS = {
 }
 MIN_BIN_EDGE_COUNT = 2
 MIN_CURRENT_SAMPLE_SIZE_FOR_REPORT = 30
+DEFAULT_MIN_CURRENT_SAMPLE_SIZE_FOR_DECISION = 30
 
 logger = get_logger("monitoring.drift")
 
@@ -65,6 +66,16 @@ class MonitoringPreparedInputs:
     current_features: pd.DataFrame
     reference_row_count: int
     current_row_count: int
+
+
+@dataclass(frozen=True)
+class MonitoringExecutionContext:
+    """Contexto resumido da execução para persistência dos artefatos."""
+
+    created_at: str
+    reference_row_count: int
+    current_row_count: int
+    minimum_current_sample_size_for_decision: int
 
 
 @dataclass(frozen=True)
@@ -328,6 +339,34 @@ def decide_drift_status(
     )
 
 
+def apply_minimum_sample_size_policy(
+    decision: DriftDecision,
+    *,
+    current_row_count: int,
+    minimum_current_sample_size_for_decision: int,
+) -> DriftDecision:
+    """Bloqueia decisão operacional quando a amostra current é insuficiente."""
+
+    if current_row_count >= minimum_current_sample_size_for_decision:
+        return decision
+
+    logger.warning(
+        "Amostra current insuficiente para decisão operacional de drift "
+        "(%d linhas). Mínimo configurado: %d. O PSI será registrado apenas "
+        "para observabilidade, sem abrir retreino.",
+        current_row_count,
+        minimum_current_sample_size_for_decision,
+    )
+    return DriftDecision(
+        status="insufficient_data",
+        max_feature_psi=decision.max_feature_psi,
+        mean_feature_psi=decision.mean_feature_psi,
+        drifted_feature_share=decision.drifted_feature_share,
+        prediction_psi=decision.prediction_psi,
+        drifted_features=decision.drifted_features,
+    )
+
+
 def build_evidently_report(
     reference_features: pd.DataFrame,
     current_features: pd.DataFrame,
@@ -397,15 +436,12 @@ def append_jsonl(path: str | Path, payload: dict[str, Any]) -> None:
 def build_metrics_payload(
     decision: DriftDecision,
     psi_by_feature: dict[str, float],
-    *,
-    created_at: str,
-    reference_row_count: int,
-    current_row_count: int,
+    context: MonitoringExecutionContext,
 ) -> dict[str, Any]:
     """Monta o payload consolidado de métricas da execução de drift."""
 
     return {
-        "created_at": created_at,
+        "created_at": context.created_at,
         "status": decision.status,
         "retraining_recommended": decision.retraining_recommended,
         "max_feature_psi": decision.max_feature_psi,
@@ -414,8 +450,15 @@ def build_metrics_payload(
         "prediction_psi": decision.prediction_psi,
         "drifted_features": decision.drifted_features,
         "feature_psi": psi_by_feature,
-        "reference_row_count": reference_row_count,
-        "current_row_count": current_row_count,
+        "reference_row_count": context.reference_row_count,
+        "current_row_count": context.current_row_count,
+        "minimum_current_sample_size_for_decision": (
+            context.minimum_current_sample_size_for_decision
+        ),
+        "decision_eligible": (
+            context.current_row_count
+            >= context.minimum_current_sample_size_for_decision
+        ),
     }
 
 
@@ -539,13 +582,29 @@ def run_drift_monitoring(
         critical_threshold=drift_config["data_drift"]["critical_threshold"],
         prediction_psi=prediction_psi,
     )
-    created_at = datetime.now(UTC).isoformat()
+    minimum_current_sample_size_for_decision = drift_config.get(
+        "minimum_current_sample_size_for_decision",
+        DEFAULT_MIN_CURRENT_SAMPLE_SIZE_FOR_DECISION,
+    )
+    decision = apply_minimum_sample_size_policy(
+        decision,
+        current_row_count=prepared_inputs.current_row_count,
+        minimum_current_sample_size_for_decision=(
+            minimum_current_sample_size_for_decision
+        ),
+    )
+    execution_context = MonitoringExecutionContext(
+        created_at=datetime.now(UTC).isoformat(),
+        reference_row_count=prepared_inputs.reference_row_count,
+        current_row_count=prepared_inputs.current_row_count,
+        minimum_current_sample_size_for_decision=(
+            minimum_current_sample_size_for_decision
+        ),
+    )
     metrics_payload = build_metrics_payload(
         decision,
         psi_by_feature,
-        created_at=created_at,
-        reference_row_count=prepared_inputs.reference_row_count,
-        current_row_count=prepared_inputs.current_row_count,
+        execution_context,
     )
     write_json(drift_config["metrics_json_path"], metrics_payload)
     write_json(drift_config["status_path"], metrics_payload)
@@ -561,7 +620,7 @@ def run_drift_monitoring(
     append_drift_run_history(
         drift_config["runs_history_path"],
         {
-            "created_at": created_at,
+            "created_at": execution_context.created_at,
             "status": decision.status,
             "reference_data_path": drift_config["reference_data_path"],
             "current_data_path": prepared_inputs.current_path,
@@ -573,6 +632,13 @@ def run_drift_monitoring(
             "prediction_psi": decision.prediction_psi,
             "drifted_features": decision.drifted_features,
             "retraining_recommended": decision.retraining_recommended,
+            "decision_eligible": (
+                prepared_inputs.current_row_count
+                >= minimum_current_sample_size_for_decision
+            ),
+            "minimum_current_sample_size_for_decision": (
+                minimum_current_sample_size_for_decision
+            ),
             "retraining_request_id": (
                 retraining_request_payload["request_id"]
                 if retraining_request_payload is not None

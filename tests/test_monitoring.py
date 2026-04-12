@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from monitoring.drift import (
+    apply_minimum_sample_size_policy,
     calculate_numeric_psi,
     decide_drift_status,
     load_dataset,
@@ -83,6 +84,24 @@ def test_calculate_numeric_psi_detects_distribution_change() -> None:
     assert calculate_numeric_psi(reference, current) > 0.20  # noqa: PLR2004
 
 
+def test_apply_minimum_sample_size_policy_blocks_operational_decision() -> None:
+    decision = decide_drift_status(
+        psi_by_feature={"Age": 0.25, "Balance": 0.03},
+        warning_threshold=0.10,
+        critical_threshold=0.20,
+    )
+
+    adjusted_decision = apply_minimum_sample_size_policy(
+        decision,
+        current_row_count=4,
+        minimum_current_sample_size_for_decision=30,
+    )
+
+    assert adjusted_decision.status == "insufficient_data"
+    assert adjusted_decision.retraining_recommended is False
+    assert adjusted_decision.max_feature_psi == decision.max_feature_psi
+
+
 def test_load_dataset_raises_clear_error_for_missing_file(tmp_path) -> None:
     missing_path = tmp_path / "predictions.jsonl"
 
@@ -140,6 +159,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                     "metrics_json_path": str(metrics_path),
                     "status_path": str(status_path),
                     "runs_history_path": str(runs_history_path),
+                    "minimum_current_sample_size_for_decision": 10,
                     "data_drift": {
                         "enabled": True,
                         "warning_threshold": 0.10,
@@ -188,6 +208,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     )
     assert history_payload["status"] == "critical"
     assert history_payload["current_row_count"] == EXPECTED_BATCH_ROW_COUNT
+    assert history_payload["decision_eligible"] is True
     assert history_payload["retraining_request_id"] == retrain_payload["request_id"]
 
 
@@ -239,6 +260,7 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
                     "metrics_json_path": str(metrics_path),
                     "status_path": str(status_path),
                     "runs_history_path": str(runs_history_path),
+                    "minimum_current_sample_size_for_decision": 10,
                     "data_drift": {
                         "enabled": True,
                         "warning_threshold": 0.10,
@@ -279,3 +301,98 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
     )
     assert history_payload["status"] == "critical"
     assert history_payload["retraining_recommended"] is True
+
+
+def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    feature_columns = ["Age", "Balance"]
+    reference_path = tmp_path / "reference.parquet"
+    current_path = tmp_path / "current.parquet"
+    feature_columns_path = tmp_path / "feature_columns.json"
+    report_path = tmp_path / "reports" / "drift_report.html"
+    metrics_path = tmp_path / "reports" / "drift_metrics.json"
+    status_path = tmp_path / "artifacts" / "monitoring" / "drift_status.json"
+    runs_history_path = tmp_path / "artifacts" / "monitoring" / "drift_runs.jsonl"
+    retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
+    retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
+    config_path = tmp_path / "monitoring_config.yaml"
+    retraining_calls: list[tuple[str, str]] = []
+
+    pd.DataFrame(
+        {
+            "Age": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39],
+            "Balance": [100.0] * 10,
+            "Exited": [0, 1] * 5,
+        }
+    ).to_parquet(reference_path, index=False)
+    pd.DataFrame(
+        {
+            "Age": [70, 71, 72, 73],
+            "Balance": [100.0] * 4,
+        }
+    ).to_parquet(current_path, index=False)
+    feature_columns_path.write_text(
+        json.dumps(feature_columns),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "drift": {
+                    "enabled": True,
+                    "reference_data_path": str(reference_path),
+                    "current_data_path": str(current_path),
+                    "feature_columns_path": str(feature_columns_path),
+                    "feature_pipeline_path": str(tmp_path / "feature_pipeline.joblib"),
+                    "model_path": str(tmp_path / "model.pkl"),
+                    "report_html_path": str(report_path),
+                    "metrics_json_path": str(metrics_path),
+                    "status_path": str(status_path),
+                    "runs_history_path": str(runs_history_path),
+                    "minimum_current_sample_size_for_decision": 30,
+                    "data_drift": {
+                        "enabled": True,
+                        "warning_threshold": 0.10,
+                        "critical_threshold": 0.20,
+                    },
+                    "prediction_drift": {"enabled": False},
+                    "retraining": {
+                        "enabled": True,
+                        "trigger_mode": "auto_train_manual_promote",
+                        "training_config_path": "configs/training/model_current.yaml",
+                        "request_path": str(retrain_path),
+                        "run_path": str(retrain_run_path),
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "monitoring.drift.build_evidently_report",
+        lambda **_: report_path.parent.mkdir(parents=True, exist_ok=True)
+        or report_path.write_text("<html></html>", encoding="utf-8"),
+    )
+    monkeypatch.setattr(
+        "monitoring.drift.run_retraining_request",
+        lambda request_path, output_path: retraining_calls.append(
+            (request_path, output_path)
+        ),
+    )
+
+    decision = run_drift_monitoring(config_path=str(config_path))
+
+    assert decision.status == "insufficient_data"
+    assert retraining_calls == []
+    assert not retrain_path.exists()
+    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    assert metrics_payload["decision_eligible"] is False
+    assert metrics_payload["current_row_count"] == 4  # noqa: PLR2004
+    history_payload = json.loads(
+        runs_history_path.read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert history_payload["status"] == "insufficient_data"
+    assert history_payload["retraining_request_id"] is None
