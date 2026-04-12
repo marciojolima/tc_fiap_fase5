@@ -172,6 +172,16 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                         "training_config_path": "configs/training/model_current.yaml",
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
+                        "promotion_decision_path": str(
+                            tmp_path
+                            / "artifacts"
+                            / "retraining"
+                            / "promotion_decision.json"
+                        ),
+                        "promotion_rules": {
+                            "primary_metric": "auc",
+                            "minimum_improvement": 0.005,
+                        },
                     },
                 }
             }
@@ -203,6 +213,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
         == "configs/training/model_current.yaml"
     )
     assert retrain_payload["promotion_policy"] == "manual_approval_required"
+    assert retrain_payload["promotion_rules"]["primary_metric"] == "auc"
     history_payload = json.loads(
         runs_history_path.read_text(encoding="utf-8").splitlines()[0]
     )
@@ -273,6 +284,16 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
                         "training_config_path": "configs/training/model_current.yaml",
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
+                        "promotion_decision_path": str(
+                            tmp_path
+                            / "artifacts"
+                            / "retraining"
+                            / "promotion_decision.json"
+                        ),
+                        "promotion_rules": {
+                            "primary_metric": "auc",
+                            "minimum_improvement": 0.005,
+                        },
                     },
                 }
             }
@@ -364,6 +385,16 @@ def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small
                         "training_config_path": "configs/training/model_current.yaml",
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
+                        "promotion_decision_path": str(
+                            tmp_path
+                            / "artifacts"
+                            / "retraining"
+                            / "promotion_decision.json"
+                        ),
+                        "promotion_rules": {
+                            "primary_metric": "auc",
+                            "minimum_improvement": 0.005,
+                        },
                     },
                 }
             }

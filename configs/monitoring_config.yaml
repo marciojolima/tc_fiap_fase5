@@ -27,3 +27,7 @@ drift:
     training_config_path: configs/training/model_current.yaml
     request_path: artifacts/monitoring/retraining/retrain_request.json
     run_path: artifacts/monitoring/retraining/retrain_run.json
+    promotion_decision_path: artifacts/monitoring/retraining/promotion_decision.json
+    promotion_rules:
+      primary_metric: auc
+      minimum_improvement: 0.005

@@ -373,6 +373,10 @@ retraining:
   training_config_path: configs/training/model_current.yaml
   request_path: artifacts/monitoring/retraining/retrain_request.json
   run_path: artifacts/monitoring/retraining/retrain_run.json
+  promotion_decision_path: artifacts/monitoring/retraining/promotion_decision.json
+  promotion_rules:
+    primary_metric: auc
+    minimum_improvement: 0.005
 ```
 
 Interpretacao dos campos:
@@ -382,6 +386,8 @@ Interpretacao dos campos:
 - `training_config_path`: qual experimento de treino sera executado
 - `request_path`: onde fica a solicitacao auditavel
 - `run_path`: onde fica o resultado da execucao do retreino
+- `promotion_decision_path`: onde fica a decisao auditavel champion vs challenger
+- `promotion_rules`: regra minima para considerar o challenger elegivel
 
 ## Estrategia Atual de Automacao
 
@@ -395,6 +401,8 @@ Isso significa:
 
 - o drift critico abre a solicitacao de retreino
 - o retreino pode ser executado automaticamente
+- o retreino gera um challenger separado
+- o challenger e comparado com o champion atual
 - a promocao do novo modelo ainda nao e automatica
 
 Essa decisao e proposital. Ela reduz risco e combina melhor com o momento atual
@@ -417,6 +425,11 @@ Exemplo conceitual:
   "created_at": "2026-04-12T00:00:00+00:00",
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
+  "promotion_decision_path": "artifacts/monitoring/retraining/promotion_decision.json",
+  "promotion_rules": {
+    "primary_metric": "auc",
+    "minimum_improvement": 0.005
+  },
   "drift_status": "critical",
   "max_feature_psi": 0.25,
   "prediction_psi": 0.14,
@@ -447,15 +460,50 @@ Exemplo conceitual:
   "promotion_policy": "manual_approval_required",
   "drift_status": "critical",
   "training_config_path": "configs/training/model_current.yaml",
+  "challenger_training_config_path": "artifacts/monitoring/retraining/generated_configs/retrain_<request_id>.yaml",
   "experiment_name": "random_forest_current",
-  "model_output_path": "artifacts/models/model_current.pkl",
-  "model_version": "0.2.0",
+  "model_output_path": "artifacts/models/challengers/model_current_<request_id>.pkl",
+  "model_version": "0.2.0-challenger-<request_id>",
   "metrics": {
     "auc": 0.91,
     "f1": 0.80
+  },
+  "promotion_decision": {
+    "status": "eligible",
+    "eligible_for_promotion": true,
+    "recommended_action": "manual_review_for_promotion"
   }
 }
 ```
+
+## Comparacao Champion vs Challenger
+
+Depois que o retreino termina, o projeto agora executa uma comparacao auditavel
+entre:
+
+- o champion atual, representado pelo metadata sidecar de `model_current.pkl`
+- o challenger recem-treinado, salvo em `artifacts/models/challengers/`
+
+Arquivos envolvidos:
+
+- [src/models/retraining.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/retraining.py:1)
+- [src/models/promotion.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/promotion.py:1)
+- [artifacts/models/model_current_metadata.json](/home/marcio/dev/projects/python/tc_fiap_fase5/artifacts/models/model_current_metadata.json)
+
+O resultado dessa etapa vai para:
+
+- `artifacts/monitoring/retraining/promotion_decision.json`
+
+Essa decisao ainda nao promove nada sozinha. Ela apenas responde:
+
+- o challenger ficou elegivel para promocao?
+- qual foi a regra usada?
+- qual o delta entre champion e challenger?
+
+No estado atual, a regra minima padrao e:
+
+- `primary_metric = auc`
+- `minimum_improvement = 0.005`
 
 ## Leitura Atual do Core
 
@@ -464,11 +512,12 @@ hoje pode ser resumido assim:
 
 - monitoramos `data drift` e `prediction drift`
 - usamos `PSI` como metrica principal de decisao
-- classificamos o estado em `ok`, `warning` e `critical`
+- classificamos o estado em `ok`, `warning`, `critical` ou `insufficient_data`
 - `critical` abre solicitacao de retreino
 - no modo atual, o retreino pode ser disparado automaticamente
+- o retreino agora gera um challenger separado
+- o challenger e comparado com o champion antes de qualquer promocao
 - a promocao ainda permanece manual e auditavel
 
 Essa base deve continuar a mesma nas proximas etapas. O que deve evoluir depois
-e principalmente o "depois do treino": comparacao champion vs challenger e
-promocao controlada.
+e principalmente a promocao controlada do challenger aprovado.

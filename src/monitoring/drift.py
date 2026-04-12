@@ -85,6 +85,8 @@ class RetrainingRequestContext:
     model_path: str
     trigger_mode: str
     training_config_path: str
+    promotion_decision_path: str
+    promotion_rules: dict[str, Any]
     reference_row_count: int
     current_row_count: int
 
@@ -478,6 +480,8 @@ def write_retraining_placeholder(
         "created_at": datetime.now(UTC).isoformat(),
         "trigger_mode": context.trigger_mode,
         "promotion_policy": "manual_approval_required",
+        "promotion_decision_path": context.promotion_decision_path,
+        "promotion_rules": context.promotion_rules,
         "drift_status": decision.status,
         "max_feature_psi": decision.max_feature_psi,
         "prediction_psi": decision.prediction_psi,
@@ -521,6 +525,11 @@ def maybe_trigger_retraining(
                 "training_config_path",
                 DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
             ),
+            promotion_decision_path=retraining_config.get(
+                "promotion_decision_path",
+                "artifacts/monitoring/retraining/promotion_decision.json",
+            ),
+            promotion_rules=dict(retraining_config.get("promotion_rules", {})),
             reference_row_count=reference_row_count,
             current_row_count=current_row_count,
         ),
