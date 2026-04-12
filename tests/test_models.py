@@ -9,6 +9,7 @@ from models.train import (
     DatasetSplits,
     ExperimentTrainingConfig,
     ModelSpec,
+    RetrainingMlflowContext,
     build_model_spec,
     compute_training_data_version,
     evaluate_model,
@@ -136,6 +137,7 @@ def return_experiment_training_config(_: str) -> dict:
 
 
 def return_dummy_run(run_name: str) -> DummyRun:
+    _START_RUN_NAMES.append(run_name)
     return DummyRun()
 
 
@@ -159,16 +161,18 @@ def return_logged_metadata(
     params: dict,
     cfg: ExperimentTrainingConfig,
     datasets: DatasetSplits,
+    retraining_context=None,
 ) -> None:
-    _METADATA_LOG.append((params, cfg, datasets))
+    _METADATA_LOG.append((params, cfg, datasets, retraining_context))
 
 
 def return_train_call(
     spec: ModelSpec,
     cfg: ExperimentTrainingConfig,
     datasets: DatasetSplits,
+    retraining_context=None,
 ) -> dict[str, float]:
-    _TRAIN_CALLS.append((spec, cfg, datasets))
+    _TRAIN_CALLS.append((spec, cfg, datasets, retraining_context))
     return {"accuracy": 1.0}
 
 
@@ -190,10 +194,16 @@ def return_experiment_cfg_for_run(
 _METRICS_LOG: list[dict[str, float]] = []
 _MODEL_LOG: list[tuple[object, str]] = []
 _DUMP_LOG: list[tuple[object, Path]] = []
-_METADATA_LOG: list[tuple[dict, ExperimentTrainingConfig, DatasetSplits]] = []
-_TRAIN_CALLS: list[tuple[ModelSpec, ExperimentTrainingConfig, DatasetSplits]] = []
+_METADATA_LOG: list[
+    tuple[dict, ExperimentTrainingConfig, DatasetSplits, object]
+] = []
+_TRAIN_CALLS: list[
+    tuple[ModelSpec, ExperimentTrainingConfig, DatasetSplits, object]
+] = []
 _PARAM_LOG: list[tuple[str, object]] = []
 _TAG_LOG: list[tuple[str, str]] = []
+_ARTIFACT_LOG: list[tuple[str, str]] = []
+_START_RUN_NAMES: list[str] = []
 EXPECTED_NEG_POS_RATIO = 3.0
 EXPECTED_N_ESTIMATORS = 300
 EXPECTED_HIGH_THRESHOLD_ACCURACY = 0.75
@@ -226,6 +236,10 @@ def return_logged_param(key: str, value: object) -> None:
 
 def return_logged_tag(key: str, value: str) -> None:
     _TAG_LOG.append((key, value))
+
+
+def return_logged_artifact(local_path: str, artifact_path: str) -> None:
+    _ARTIFACT_LOG.append((Path(local_path).name, artifact_path))
 
 
 def test_build_model_returns_supported_sklearn_estimator() -> None:
@@ -390,6 +404,10 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
         "models.train.mlflow.set_tag",
         return_logged_tag,
     )
+    monkeypatch.setattr(
+        "models.train.mlflow.log_artifact",
+        return_logged_artifact,
+    )
 
     log_run_metadata(cfg.model_params, cfg, datasets)
 
@@ -401,6 +419,55 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
     assert ("git_tag", "post_release_commits") in _TAG_LOG
     assert ("git_nearest_tag", "v0.2.0") in _TAG_LOG
     assert ("risk_level", "high") in _TAG_LOG
+    assert ("retrain", "false") in _TAG_LOG
+
+
+def test_log_run_metadata_registers_retraining_context(monkeypatch) -> None:
+    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    datasets = DatasetSplits(
+        X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
+        y_train=pd.Series([0, 1, 0, 1]),
+        X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
+        y_test=pd.Series([0, 1, 0, 1]),
+    )
+    retraining_context = RetrainingMlflowContext(
+        request_id="req-123",
+        reason="critical_data_or_prediction_drift",
+        trigger_mode="auto_train_manual_promote",
+        promotion_policy="manual_approval_required",
+        drift_status="critical",
+        max_feature_psi=0.25,
+        prediction_psi=0.14,
+        drifted_features=["Age"],
+        reference_row_count=8000,
+        current_row_count=4,
+    )
+    _PARAM_LOG.clear()
+    _TAG_LOG.clear()
+    _ARTIFACT_LOG.clear()
+
+    monkeypatch.setattr("models.train.mlflow.log_params", ignore_logged_params)
+    monkeypatch.setattr("models.train.mlflow.log_param", return_logged_param)
+    monkeypatch.setattr("models.train.mlflow.set_tag", return_logged_tag)
+    monkeypatch.setattr("models.train.mlflow.log_artifact", return_logged_artifact)
+
+    log_run_metadata(
+        cfg.model_params,
+        cfg,
+        datasets,
+        retraining_context=retraining_context,
+    )
+
+    assert ("retrain", "true") in _TAG_LOG
+    assert ("training_trigger", "drift_monitoring") in _TAG_LOG
+    assert ("retraining_request_id", "req-123") in _TAG_LOG
+    assert ("drift_status", "critical") in _TAG_LOG
+    assert ("drift_max_feature_psi", 0.25) in _PARAM_LOG
+    assert ("drift_prediction_psi", 0.14) in _PARAM_LOG
+    assert ("drifted_feature_count", 1) in _PARAM_LOG
+    assert ("drift_reference_row_count", 8000) in _PARAM_LOG
+    assert ("drift_current_row_count", 4) in _PARAM_LOG
+    assert ("retraining_context.json", "retraining") in _ARTIFACT_LOG
 
 
 def test_train_and_log_model_trains_logs_and_saves(
@@ -420,6 +487,7 @@ def test_train_and_log_model_trains_logs_and_saves(
     _MODEL_LOG.clear()
     _DUMP_LOG.clear()
     _METADATA_LOG.clear()
+    _START_RUN_NAMES.clear()
 
     monkeypatch.setattr("models.train.mlflow.start_run", return_dummy_run)
     monkeypatch.setattr("models.train.mlflow.log_metrics", return_logged_metrics)
@@ -430,11 +498,56 @@ def test_train_and_log_model_trains_logs_and_saves(
 
     metrics = train_and_log_model(spec, cfg, datasets)
 
-    assert _METADATA_LOG == [(spec.params, cfg, datasets)]
+    assert _METADATA_LOG == [(spec.params, cfg, datasets, None)]
     assert len(_METRICS_LOG) == 1
     assert len(_MODEL_LOG) == 1
     assert len(_DUMP_LOG) == 1
+    assert _START_RUN_NAMES == ["rf_candidate"]
     assert metrics["accuracy"] == 1.0
+
+
+def test_train_and_log_model_uses_retrain_suffix_in_mlflow_run_name(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    datasets = DatasetSplits(
+        X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
+        y_train=pd.Series([0, 1, 0, 1]),
+        X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
+        y_test=pd.Series([0, 1, 0, 1]),
+    )
+    cfg = build_experiment_training_config(tmp_path / "candidate_model.pkl")
+    spec = build_model_spec(cfg)
+    retraining_context = RetrainingMlflowContext(
+        request_id="req-123",
+        reason="critical_data_or_prediction_drift",
+        trigger_mode="auto_train_manual_promote",
+        promotion_policy="manual_approval_required",
+        drift_status="critical",
+        max_feature_psi=0.25,
+        prediction_psi=0.14,
+        drifted_features=["Age"],
+        reference_row_count=8000,
+        current_row_count=4,
+    )
+
+    _START_RUN_NAMES.clear()
+
+    monkeypatch.setattr("models.train.mlflow.start_run", return_dummy_run)
+    monkeypatch.setattr("models.train.mlflow.log_metrics", return_logged_metrics)
+    monkeypatch.setattr("models.train.mlflow.sklearn.log_model", return_logged_model)
+    monkeypatch.setattr("models.train.dump", return_dump_call)
+    monkeypatch.setattr("models.train.log_run_metadata", return_logged_metadata)
+    monkeypatch.setattr("models.train.build_model", return_dummy_classifier)
+
+    train_and_log_model(
+        spec,
+        cfg,
+        datasets,
+        retraining_context=retraining_context,
+    )
+
+    assert _START_RUN_NAMES == ["rf_candidate_retrain"]
 
 
 def test_run_training_executes_single_experiment(monkeypatch) -> None:
@@ -456,3 +569,4 @@ def test_run_training_executes_single_experiment(monkeypatch) -> None:
     assert seed_calls == [42]
     assert len(mlflow_cfg_calls) == 1
     assert len(_TRAIN_CALLS) == 1
+    assert _TRAIN_CALLS[0][3] is None

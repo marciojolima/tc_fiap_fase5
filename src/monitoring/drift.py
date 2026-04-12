@@ -67,6 +67,17 @@ class MonitoringPreparedInputs:
     current_row_count: int
 
 
+@dataclass(frozen=True)
+class RetrainingRequestContext:
+    """Metadados extras usados para abrir uma solicitação de retreino."""
+
+    model_path: str
+    trigger_mode: str
+    training_config_path: str
+    reference_row_count: int
+    current_row_count: int
+
+
 def load_monitoring_config(
     config_path: str = DEFAULT_MONITORING_CONFIG_PATH,
 ) -> dict[str, Any]:
@@ -411,9 +422,7 @@ def build_metrics_payload(
 def write_retraining_placeholder(
     path: str | Path,
     decision: DriftDecision,
-    model_path: str | Path,
-    trigger_mode: str,
-    training_config_path: str,
+    context: RetrainingRequestContext,
 ) -> dict[str, Any]:
     """Registra uma solicitação auditável de retreino."""
 
@@ -421,15 +430,17 @@ def write_retraining_placeholder(
         "request_id": str(uuid4()),
         "status": "requested",
         "reason": "critical_data_or_prediction_drift",
-        "model_path": str(model_path),
-        "training_config_path": training_config_path,
+        "model_path": context.model_path,
+        "training_config_path": context.training_config_path,
         "created_at": datetime.now(UTC).isoformat(),
-        "trigger_mode": trigger_mode,
+        "trigger_mode": context.trigger_mode,
         "promotion_policy": "manual_approval_required",
         "drift_status": decision.status,
         "max_feature_psi": decision.max_feature_psi,
         "prediction_psi": decision.prediction_psi,
         "drifted_features": decision.drifted_features,
+        "reference_row_count": context.reference_row_count,
+        "current_row_count": context.current_row_count,
     }
     write_json(path, payload)
     return payload
@@ -446,6 +457,8 @@ def maybe_trigger_retraining(
     *,
     retraining_config: dict[str, Any],
     model_path: str,
+    reference_row_count: int,
+    current_row_count: int,
 ) -> dict[str, Any] | None:
     """Executa o fluxo de retreino quando a política atual assim exigir."""
 
@@ -458,11 +471,15 @@ def maybe_trigger_retraining(
     retraining_request_payload = write_retraining_placeholder(
         path=retraining_config["request_path"],
         decision=decision,
-        model_path=model_path,
-        trigger_mode=retraining_config.get("trigger_mode", "manual"),
-        training_config_path=retraining_config.get(
-            "training_config_path",
-            DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+        context=RetrainingRequestContext(
+            model_path=model_path,
+            trigger_mode=retraining_config.get("trigger_mode", "manual"),
+            training_config_path=retraining_config.get(
+                "training_config_path",
+                DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+            ),
+            reference_row_count=reference_row_count,
+            current_row_count=current_row_count,
         ),
     )
     trigger_mode = retraining_config.get("trigger_mode", "manual")
@@ -537,6 +554,8 @@ def run_drift_monitoring(
         decision,
         retraining_config=drift_config.get("retraining", {}),
         model_path=drift_config["model_path"],
+        reference_row_count=prepared_inputs.reference_row_count,
+        current_row_count=prepared_inputs.current_row_count,
     )
 
     append_drift_run_history(

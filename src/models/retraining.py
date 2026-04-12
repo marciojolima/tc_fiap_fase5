@@ -10,7 +10,11 @@ from typing import Any, NamedTuple
 
 from common.config_loader import DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH
 from common.logger import get_logger
-from models.train import load_experiment_training_config, run_training
+from models.train import (
+    RetrainingMlflowContext,
+    load_experiment_training_config,
+    run_training,
+)
 
 DEFAULT_RETRAIN_REQUEST_PATH = "artifacts/monitoring/retraining/retrain_request.json"
 DEFAULT_RETRAIN_RUN_PATH = "artifacts/monitoring/retraining/retrain_run.json"
@@ -33,6 +37,8 @@ class RetrainingRequest(NamedTuple):
     max_feature_psi: float
     prediction_psi: float | None
     drifted_features: list[str]
+    reference_row_count: int
+    current_row_count: int
 
 
 class RetrainingRunContext(NamedTuple):
@@ -79,6 +85,8 @@ def load_retraining_request(path: str | Path) -> RetrainingRequest:
             else None
         ),
         drifted_features=list(payload.get("drifted_features", [])),
+        reference_row_count=int(payload.get("reference_row_count", 0)),
+        current_row_count=int(payload.get("current_row_count", 0)),
     )
 
 
@@ -158,7 +166,21 @@ def run_retraining_request(
     )
 
     try:
-        metrics = run_training(request.training_config_path)
+        metrics = run_training(
+            request.training_config_path,
+            retraining_context=RetrainingMlflowContext(
+                request_id=request.request_id,
+                reason=request.reason,
+                trigger_mode=request.trigger_mode,
+                promotion_policy=request.promotion_policy,
+                drift_status=request.drift_status,
+                max_feature_psi=request.max_feature_psi,
+                prediction_psi=request.prediction_psi,
+                drifted_features=request.drifted_features,
+                reference_row_count=request.reference_row_count,
+                current_row_count=request.current_row_count,
+            ),
+        )
         training_cfg = load_experiment_training_config(request.training_config_path)
         completed_at = datetime.now(UTC).isoformat()
         result = build_retraining_run_payload(

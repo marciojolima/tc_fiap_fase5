@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -75,6 +76,21 @@ class ModelSpec(NamedTuple):
     algorithm: str
     params: dict[str, Any]
     output_path: Path
+
+
+class RetrainingMlflowContext(NamedTuple):
+    """Contexto opcional para etiquetar runs de treino disparadas por retreino."""
+
+    request_id: str
+    reason: str
+    trigger_mode: str
+    promotion_policy: str
+    drift_status: str
+    max_feature_psi: float
+    prediction_psi: float | None
+    drifted_features: list[str]
+    reference_row_count: int
+    current_row_count: int
 
 
 def build_metadata_output_path(model_output_path: Path) -> Path:
@@ -294,6 +310,7 @@ def log_run_metadata(
     params: dict[str, Any],
     cfg: ExperimentTrainingConfig,
     datasets: DatasetSplits,
+    retraining_context: RetrainingMlflowContext | None = None,
 ) -> None:
     """Registra parâmetros e metadados padrão no MLflow."""
 
@@ -318,17 +335,63 @@ def log_run_metadata(
     mlflow.set_tag("fairness_checked", str(cfg.fairness_checked).lower())
     for key, value in cfg.mlflow_cfg["tags"].items():
         mlflow.set_tag(key, value)
+    if retraining_context is not None:
+        mlflow.set_tag("retrain", "true")
+        mlflow.set_tag("training_trigger", "drift_monitoring")
+        mlflow.set_tag("retraining_request_id", retraining_context.request_id)
+        mlflow.set_tag("drift_status", retraining_context.drift_status)
+        mlflow.log_param("drift_max_feature_psi", retraining_context.max_feature_psi)
+        if retraining_context.prediction_psi is not None:
+            mlflow.log_param(
+                "drift_prediction_psi",
+                retraining_context.prediction_psi,
+            )
+        mlflow.log_param(
+            "drifted_feature_count",
+            len(retraining_context.drifted_features),
+        )
+        mlflow.log_param(
+            "drift_reference_row_count",
+            retraining_context.reference_row_count,
+        )
+        mlflow.log_param(
+            "drift_current_row_count",
+            retraining_context.current_row_count,
+        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            context_path = Path(tmp_dir) / "retraining_context.json"
+            context_path.write_text(
+                json.dumps(retraining_context._asdict(), indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            mlflow.log_artifact(
+                str(context_path),
+                artifact_path="retraining",
+            )
+    else:
+        mlflow.set_tag("retrain", "false")
 
 
 def train_and_log_model(
     spec: ModelSpec,
     cfg: ExperimentTrainingConfig,
     datasets: DatasetSplits,
+    retraining_context: RetrainingMlflowContext | None = None,
 ) -> dict[str, float]:
     """Treina um modelo, registra no MLflow e salva o artefato serializado."""
 
-    with mlflow.start_run(run_name=spec.run_name) as run:
-        log_run_metadata(spec.params, cfg, datasets)
+    run_name = (
+        f"{spec.run_name}_retrain"
+        if retraining_context is not None
+        else spec.run_name
+    )
+    with mlflow.start_run(run_name=run_name) as run:
+        log_run_metadata(
+            spec.params,
+            cfg,
+            datasets,
+            retraining_context=retraining_context,
+        )
 
         logger.info("Iniciando treino %s — %s", spec.algorithm, spec.params)
 
@@ -397,6 +460,7 @@ def parse_args() -> argparse.Namespace:
 
 def run_training(
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    retraining_context: RetrainingMlflowContext | None = None,
 ) -> dict[str, float]:
     """Executa o treino atômico de um experimento individual."""
 
@@ -413,6 +477,7 @@ def run_training(
         spec=spec,
         cfg=cfg,
         datasets=datasets,
+        retraining_context=retraining_context,
     )
 
 

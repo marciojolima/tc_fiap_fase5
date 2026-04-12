@@ -9,6 +9,8 @@ from models.retraining import load_retraining_request, run_retraining_request
 from models.train import ExperimentTrainingConfig
 
 EXPECTED_RETRAIN_AUC = 0.91
+EXPECTED_REFERENCE_ROW_COUNT = 8000
+EXPECTED_CURRENT_ROW_COUNT = 4
 
 
 def build_request_payload() -> dict[str, object]:
@@ -25,6 +27,8 @@ def build_request_payload() -> dict[str, object]:
         "max_feature_psi": 0.25,
         "prediction_psi": 0.14,
         "drifted_features": ["Age"],
+        "reference_row_count": EXPECTED_REFERENCE_ROW_COUNT,
+        "current_row_count": EXPECTED_CURRENT_ROW_COUNT,
     }
 
 
@@ -70,6 +74,8 @@ def test_load_retraining_request_parses_contract(tmp_path: Path) -> None:
     assert request.status == "requested"
     assert request.training_config_path == "configs/training/model_current.yaml"
     assert request.drifted_features == ["Age"]
+    assert request.reference_row_count == EXPECTED_REFERENCE_ROW_COUNT
+    assert request.current_row_count == EXPECTED_CURRENT_ROW_COUNT
 
 
 def test_run_retraining_request_executes_training_and_writes_result(
@@ -85,7 +91,7 @@ def test_run_retraining_request_executes_training_and_writes_result(
 
     monkeypatch.setattr(
         "models.retraining.run_training",
-        lambda config_path: {"auc": 0.91, "f1": 0.80},
+        lambda config_path, retraining_context=None: {"auc": 0.91, "f1": 0.80},
     )
     monkeypatch.setattr(
         "models.retraining.load_experiment_training_config",
@@ -125,7 +131,9 @@ def test_run_retraining_request_marks_failure_when_training_breaks(
 
     monkeypatch.setattr(
         "models.retraining.run_training",
-        lambda config_path: (_ for _ in ()).throw(RuntimeError("falha no treino")),
+        lambda config_path, retraining_context=None: (_ for _ in ()).throw(
+            RuntimeError("falha no treino")
+        ),
     )
 
     with pytest.raises(RuntimeError, match="falha no treino"):
