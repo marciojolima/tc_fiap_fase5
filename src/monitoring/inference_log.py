@@ -24,6 +24,7 @@ class PredictionLogContext:
     probability: float
     prediction: int
     model_name: str
+    model_version: str
     threshold: float
 
 
@@ -44,11 +45,12 @@ def is_inference_logging_enabled(config: dict[str, Any]) -> bool:
     )
 
 
-def build_inference_log_record(
+def build_inference_log_record(  # noqa: PLR0913, PLR0917
     payload: ChurnPredictionRequest,
     probability: float,
     prediction: int,
     model_name: str,
+    model_version: str,
     threshold: float,
 ) -> dict[str, Any]:
     """Monta uma linha auditável com entrada, predição e metadados mínimos."""
@@ -56,6 +58,7 @@ def build_inference_log_record(
     return {
         "timestamp": datetime.now(UTC).isoformat(),
         "model_name": model_name,
+        "model_version": model_version,
         "threshold": threshold,
         "churn_probability": probability,
         "churn_prediction": prediction,
@@ -92,6 +95,7 @@ def log_prediction_for_monitoring(
             probability=prediction_context.probability,
             prediction=prediction_context.prediction,
             model_name=prediction_context.model_name,
+            model_version=prediction_context.model_version,
             threshold=prediction_context.threshold,
         )
         append_inference_log(

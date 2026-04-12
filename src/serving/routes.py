@@ -62,6 +62,7 @@ def predict_churn(payload: ChurnPredictionRequest) -> ChurnPredictionResponse:
                 probability=probability,
                 prediction=prediction,
                 model_name=cfg.model_name,
+                model_version=cfg.model_version,
                 threshold=cfg.threshold,
             ),
         )

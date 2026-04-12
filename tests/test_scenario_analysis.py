@@ -38,6 +38,7 @@ def return_serving_config(experiment_config_path: str) -> ServingConfig:
         feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=0.5,
         model_name="random_forest_v2",
+        model_version="0.1.0",
         run_name="random_forest_v2",
     )
 

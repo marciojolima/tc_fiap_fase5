@@ -32,6 +32,7 @@ class ServingConfig:
     feature_pipeline_path: Path
     threshold: float
     model_name: str
+    model_version: str
     run_name: str
 
 
@@ -52,6 +53,7 @@ def build_serving_config(
         feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=experiment_config["inference"]["threshold"],
         model_name=experiment_config["experiment"]["name"],
+        model_version=experiment_config["experiment"]["version"],
         run_name=experiment_config["experiment"]["run_name"],
     )
 

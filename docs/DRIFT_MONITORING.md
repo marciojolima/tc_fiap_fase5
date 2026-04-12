@@ -43,6 +43,54 @@ O fluxo atual é:
 5. em caso crítico, é gerada uma solicitação auditável de retreino
 6. dependendo do modo configurado, o retreino pode ser executado automaticamente
 
+## Como Pensar no Passo 1
+
+Antes mesmo de executar a rotina de drift, o primeiro passo para entender o
+raciocínio do projeto é subir o serving.
+
+Comando:
+
+```bash
+poetry run task serving
+```
+
+Isso é importante porque a base corrente do monitoramento não nasce sozinha.
+Ela é construída a partir das predições recebidas pela API.
+
+No desenho atual do projeto, o drift compara:
+
+- a base de referência: `data/processed/train.parquet`
+- a base corrente: `data/monitoring/current/predictions.jsonl`
+
+Ou seja: sem serving e sem predição, não existe base corrente para comparar.
+
+Mapeamento no código:
+
+- rota de predição: [src/serving/routes.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/routes.py:51)
+- preparação da configuração de serving: [src/serving/pipeline.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/pipeline.py:31)
+- log de inferência que alimenta a base corrente: [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:43)
+
+Esse log é justamente o insumo que depois será lido pela rotina de drift.
+
+## PSI em Termos Intuitivos
+
+O PSI, no contexto deste projeto, responde a uma pergunta simples:
+
+- a distribuição atual está parecida com a distribuição que o modelo viu no
+  treinamento?
+
+Se a resposta for "sim", o PSI tende a ficar baixo.
+Se a resposta for "não", o PSI sobe.
+
+Leitura prática adotada hoje:
+
+- `PSI < 0.10`: sem sinal forte de drift
+- `0.10 <= PSI < 0.20`: alerta
+- `PSI >= 0.20`: drift crítico
+
+Esses thresholds são os mesmos usados pela rotina de decisão operacional e
+estão definidos em [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:12).
+
 ## Tipos de Drift Monitorados Hoje
 
 Atualmente o projeto monitora dois tipos principais:

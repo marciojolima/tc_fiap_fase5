@@ -53,6 +53,7 @@ def return_route_config() -> ServingConfig:
         feature_pipeline_path=Mock(),
         threshold=0.5,
         model_name="random_forest_current",
+        model_version="0.2.0",
         run_name="random_forest_current",
     )
 
@@ -91,6 +92,7 @@ def test_prepare_inference_dataframe_uses_feature_pipeline(monkeypatch) -> None:
         feature_pipeline_path=Mock(),
         threshold=0.5,
         model_name="random_forest_current",
+        model_version="0.2.0",
         run_name="random_forest_current",
     )
     monkeypatch.setattr(
@@ -133,6 +135,7 @@ def test_prepare_inference_dataframe_logs_lgpd_governance(monkeypatch) -> None:
         feature_pipeline_path=Mock(),
         threshold=0.5,
         model_name="random_forest_current",
+        model_version="0.2.0",
         run_name="random_forest_current",
     )
     monkeypatch.setattr(

@@ -104,6 +104,7 @@ def build_serving_config() -> ServingConfig:
         feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=0.5,
         model_name="random_forest_current",
+        model_version="0.2.0",
         run_name="random_forest_current",
     )
 

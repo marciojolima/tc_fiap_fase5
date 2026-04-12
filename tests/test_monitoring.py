@@ -40,11 +40,13 @@ def test_build_inference_log_record_preserves_payload_aliases() -> None:
         probability=0.82,
         prediction=1,
         model_name="random_forest_current",
+        model_version="0.2.0",
         threshold=0.5,
     )
 
     assert record["churn_probability"] == 0.82  # noqa: PLR2004
     assert record["churn_prediction"] == 1
+    assert record["model_version"] == "0.2.0"
     assert record["Card Type"] == "GOLD"
     assert record["Point Earned"] == 200  # noqa: PLR2004
     assert "timestamp" in record
