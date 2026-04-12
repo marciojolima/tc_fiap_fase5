@@ -19,6 +19,9 @@ from scripts.generate_synthetic_predictions import (
     validate_generation_config,
 )
 
+EXPECTED_ROUNDED_BALANCE = 10000.12
+EXPECTED_ROUNDED_ESTIMATED_SALARY = 50000.99
+
 
 def build_base_dataframe() -> pd.DataFrame:
     return pd.DataFrame(
@@ -87,8 +90,12 @@ def test_generate_input_batch_supports_both_modes() -> None:
 
 
 def test_build_prediction_records_includes_full_monitoring_contract() -> None:
+    batch_dataframe = build_base_dataframe()
+    batch_dataframe.loc[0, "Balance"] = 10000.12345
+    batch_dataframe.loc[0, "EstimatedSalary"] = 50000.98765
+
     records = build_prediction_records(
-        batch_dataframe=build_base_dataframe(),
+        batch_dataframe=batch_dataframe,
         probabilities=np.array([0.2, 0.8]),
         predictions=np.array([0, 1]),
         context=PredictionOutputContext(
@@ -101,6 +108,8 @@ def test_build_prediction_records_includes_full_monitoring_contract() -> None:
     assert len(records) == 2  # noqa: PLR2004
     assert records[0]["model_version"] == "0.2.0"
     assert records[1]["churn_prediction"] == 1
+    assert records[0]["Balance"] == EXPECTED_ROUNDED_BALANCE
+    assert records[0]["EstimatedSalary"] == EXPECTED_ROUNDED_ESTIMATED_SALARY
     assert "timestamp" in records[0]
 
 

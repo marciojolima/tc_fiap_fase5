@@ -222,6 +222,13 @@ def build_prediction_records(
         predictions,
         strict=True,
     ):
+        normalized_row = row.copy()
+        for numeric_column in ("Balance", "EstimatedSalary"):
+            normalized_row[numeric_column] = round(
+                float(normalized_row[numeric_column]),
+                2,
+            )
+
         records.append(
             {
                 "timestamp": created_at,
@@ -230,7 +237,7 @@ def build_prediction_records(
                 "threshold": float(context.threshold),
                 "churn_probability": float(probability),
                 "churn_prediction": int(prediction),
-                **row,
+                **normalized_row,
             }
         )
     return records
