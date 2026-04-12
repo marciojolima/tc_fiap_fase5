@@ -68,6 +68,7 @@ Os principais itens ainda não concluídos para aderência mais forte ao guia s�
 - detecção batch de drift com Evidently e PSI em [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py)
 - geração de drifts sintéticos para validar o fluxo experimental em [src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py)
 - gatilho auditável de retreino via `artifacts/monitoring/retraining/retrain_request.json`
+- estratégia e fluxo documentados em [docs/DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md)
 - versionamento de metadados de modelo em [docs/MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md)
 
 ## O Que Está Parcial ou Placeholder
@@ -199,9 +200,11 @@ poetry run task test
 - `artifacts/monitoring/drift/drift_metrics.json`: PSI por feature e consolidação
 - `artifacts/monitoring/drift/drift_status.json`: status do monitoramento
 - `artifacts/monitoring/retraining/retrain_request.json`: gatilho auditável de retreino
+- `artifacts/monitoring/retraining/retrain_run.json`: resultado auditável da execução do retreino
 - `configs/scenario_analysis/inference_cases.yaml`: suíte versionada de cenários de inferência
 - `artifacts/scenario_analysis/drift/*.jsonl`: cenários sintéticos para simulação de drift
 - `artifacts/scenario_analysis/drift/*_report.html`: relatórios HTML do Evidently para drifts sintéticos
+- `docs/DRIFT_MONITORING.md`: estratégia atual de drift, PSI e fluxo de retreino
 - `docs/OPERATIONS_DASHBOARD.md`: instruções do dashboard operacional Prometheus/Grafana
 
 ## Documentação Disponível
@@ -213,6 +216,7 @@ poetry run task test
 - [docs/MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md)
 - [docs/SCENARIO_ANALYSIS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/SCENARIO_ANALYSIS.md)
 - [docs/EVALUATION_METRICS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/EVALUATION_METRICS.md)
+- [docs/DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md)
 - [docs/OPERATIONS_DASHBOARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OPERATIONS_DASHBOARD.md)
 
 ### Ainda precisam evoluir para o padrão esperado da banca

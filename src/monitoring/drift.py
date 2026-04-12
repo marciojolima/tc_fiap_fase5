@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -16,8 +17,9 @@ from evidently import Report
 from evidently.presets import DataDriftPreset
 from joblib import load
 
-from common.config_loader import load_config
+from common.config_loader import DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH, load_config
 from common.logger import get_logger
+from models.retraining import run_retraining_request
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
 TARGET_COLUMN = "Exited"
@@ -330,20 +332,26 @@ def write_retraining_placeholder(
     path: str | Path,
     decision: DriftDecision,
     model_path: str | Path,
+    trigger_mode: str,
+    training_config_path: str,
 ) -> None:
-    """Registra uma solicitação de retreino sem executar promoção automática."""
+    """Registra uma solicitação auditável de retreino."""
 
     write_json(
         path,
         {
+            "request_id": str(uuid4()),
             "status": "requested",
             "reason": "critical_data_or_prediction_drift",
             "model_path": str(model_path),
+            "training_config_path": training_config_path,
             "created_at": datetime.now(UTC).isoformat(),
-            "action": "manual_approval_required",
+            "trigger_mode": trigger_mode,
+            "promotion_policy": "manual_approval_required",
             "drift_status": decision.status,
             "max_feature_psi": decision.max_feature_psi,
             "prediction_psi": decision.prediction_psi,
+            "drifted_features": decision.drifted_features,
         },
     )
 
@@ -425,7 +433,18 @@ def run_drift_monitoring(
             path=retraining_config["request_path"],
             decision=decision,
             model_path=drift_config["model_path"],
+            trigger_mode=retraining_config.get("trigger_mode", "manual"),
+            training_config_path=retraining_config.get(
+                "training_config_path",
+                DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+            ),
         )
+        trigger_mode = retraining_config.get("trigger_mode", "manual")
+        if trigger_mode != "manual":
+            run_retraining_request(
+                request_path=retraining_config["request_path"],
+                output_path=retraining_config.get("run_path"),
+            )
 
     logger.info("Drift monitoring finalizado com status=%s", decision.status)
     return decision

@@ -101,6 +101,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     metrics_path = tmp_path / "reports" / "drift_metrics.json"
     status_path = tmp_path / "artifacts" / "monitoring" / "drift_status.json"
     retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
+    retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
     config_path = tmp_path / "monitoring_config.yaml"
 
     pd.DataFrame(
@@ -141,8 +142,10 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                     "prediction_drift": {"enabled": False},
                     "retraining": {
                         "enabled": True,
-                        "trigger_mode": "placeholder",
+                        "trigger_mode": "manual",
+                        "training_config_path": "configs/training/model_current.yaml",
                         "request_path": str(retrain_path),
+                        "run_path": str(retrain_run_path),
                     },
                 }
             }
@@ -166,4 +169,94 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     assert decision.status == "critical"
     assert report_path.exists()
     assert json.loads(metrics_path.read_text(encoding="utf-8"))["status"] == "critical"
-    assert json.loads(retrain_path.read_text(encoding="utf-8"))["status"] == "requested"
+    retrain_payload = json.loads(retrain_path.read_text(encoding="utf-8"))
+    assert retrain_payload["status"] == "requested"
+    assert retrain_payload["trigger_mode"] == "manual"
+    assert (
+        retrain_payload["training_config_path"]
+        == "configs/training/model_current.yaml"
+    )
+    assert retrain_payload["promotion_policy"] == "manual_approval_required"
+
+
+def test_run_drift_monitoring_executes_retraining_for_auto_mode(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    feature_columns = ["Age", "Balance"]
+    reference_path = tmp_path / "reference.parquet"
+    current_path = tmp_path / "current.parquet"
+    feature_columns_path = tmp_path / "feature_columns.json"
+    report_path = tmp_path / "reports" / "drift_report.html"
+    metrics_path = tmp_path / "reports" / "drift_metrics.json"
+    status_path = tmp_path / "artifacts" / "monitoring" / "drift_status.json"
+    retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
+    retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
+    config_path = tmp_path / "monitoring_config.yaml"
+    retraining_calls: list[tuple[str, str]] = []
+
+    pd.DataFrame(
+        {
+            "Age": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39],
+            "Balance": [100.0] * 10,
+            "Exited": [0, 1] * 5,
+        }
+    ).to_parquet(reference_path, index=False)
+    pd.DataFrame(
+        {
+            "Age": [70, 71, 72, 73, 74, 75, 76, 77, 78, 79],
+            "Balance": [100.0] * 10,
+        }
+    ).to_parquet(current_path, index=False)
+    feature_columns_path.write_text(
+        json.dumps(feature_columns),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "drift": {
+                    "enabled": True,
+                    "reference_data_path": str(reference_path),
+                    "current_data_path": str(current_path),
+                    "feature_columns_path": str(feature_columns_path),
+                    "feature_pipeline_path": str(tmp_path / "feature_pipeline.joblib"),
+                    "model_path": str(tmp_path / "model.pkl"),
+                    "report_html_path": str(report_path),
+                    "metrics_json_path": str(metrics_path),
+                    "status_path": str(status_path),
+                    "data_drift": {
+                        "enabled": True,
+                        "warning_threshold": 0.10,
+                        "critical_threshold": 0.20,
+                    },
+                    "prediction_drift": {"enabled": False},
+                    "retraining": {
+                        "enabled": True,
+                        "trigger_mode": "auto_train_manual_promote",
+                        "training_config_path": "configs/training/model_current.yaml",
+                        "request_path": str(retrain_path),
+                        "run_path": str(retrain_run_path),
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "monitoring.drift.build_evidently_report",
+        lambda **_: report_path.parent.mkdir(parents=True, exist_ok=True)
+        or report_path.write_text("<html></html>", encoding="utf-8"),
+    )
+    monkeypatch.setattr(
+        "monitoring.drift.run_retraining_request",
+        lambda request_path, output_path: retraining_calls.append(
+            (request_path, output_path)
+        ),
+    )
+
+    decision = run_drift_monitoring(config_path=str(config_path))
+
+    assert decision.status == "critical"
+    assert retraining_calls == [(str(retrain_path), str(retrain_run_path))]

@@ -21,5 +21,7 @@ drift:
 
   retraining:
     enabled: true
-    trigger_mode: placeholder
+    trigger_mode: auto_train_manual_promote
+    training_config_path: configs/training/model_current.yaml
     request_path: artifacts/monitoring/retraining/retrain_request.json
+    run_path: artifacts/monitoring/retraining/retrain_run.json

@@ -72,6 +72,7 @@ mlscenarios = 'python -m src.scenario_analysis.inference_cases --suite-file conf
 mldrift = 'python -m src.monitoring.drift'
 mldriftdemo = 'python -m src.monitoring.drift --current data/processed/test.parquet'
 mlsyntheticdrift = 'python -m src.scenario_analysis.synthetic_drifts --all'
+mlretrain = 'python -m src.models.retraining'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
