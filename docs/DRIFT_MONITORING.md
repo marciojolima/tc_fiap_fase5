@@ -44,7 +44,7 @@ O fluxo atual é:
    `insufficient_data`
 6. em caso crítico e com amostra elegível, é gerada uma solicitação auditável
    de retreino
-6. dependendo do modo configurado, o retreino pode ser executado automaticamente
+7. dependendo do modo configurado, o retreino pode ser executado automaticamente
 
 ## Como Pensar no Passo 1
 
@@ -194,6 +194,11 @@ Artefatos dessa fase:
 
 - `artifacts/monitoring/retraining/retrain_request.json`
 - `artifacts/monitoring/retraining/retrain_run.json`
+
+Formas atuais de acionamento:
+
+- fluxo batch automático, quando o drift crítico atende a política configurada
+- chamada explícita do executor
 
 ### 5. Interpretação Correta do Resultado
 

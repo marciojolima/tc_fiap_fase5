@@ -12,7 +12,10 @@ from serving.pipeline import (
     predict_from_dataframe,
     prepare_inference_dataframe,
 )
-from serving.schemas import ChurnPredictionRequest, ChurnPredictionResponse
+from serving.schemas import (
+    ChurnPredictionRequest,
+    ChurnPredictionResponse,
+)
 
 router = APIRouter()
 

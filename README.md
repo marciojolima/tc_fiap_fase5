@@ -2,15 +2,6 @@
 
 Projeto integrador da Fase 05 do curso MLET da FIAP, estruturado como uma entrega de Datathon com foco em churn bancario, MLOps, observabilidade, governanca e evolucao gradual para componentes com LLMs e agentes.
 
-Este `README.md` principal foi consolidado a partir de:
-
-- `REQUISITOS_DATATHON.md`
-- `REQUISITOS_DATATHON_LIVE_EXPLANATION.md`
-- estado real do repositorio
-- conteudo existente em `STATUS_ATUAL_PROJETO.md`
-
-O objetivo aqui e documentar com clareza o que ja foi feito, o que esta parcial e o que ainda nao foi implementado.
-
 ## Grupo
 
 Turma 6MLET - FIAP
@@ -34,6 +25,10 @@ Construir uma solucao de predicao de churn com base em praticas de engenharia de
 - documentacao tecnica e de governanca em evolucao
 
 ## Visao Geral do Estado Atual
+
+Este README reflete a documentacao e o desenho implementado do projeto como um
+todo. Em particular, o fluxo de retreino ja existe e funciona de forma batch e
+auditavel, mesmo sem um endpoint HTTP dedicado de `retrain` no serving.
 
 Hoje o projeto entrega com boa consistencia:
 
@@ -84,9 +79,15 @@ Ao mesmo tempo, ainda faltam varias entregas para aderencia mais forte ao guia d
 - deteccao batch de drift com Evidently e PSI em `src/monitoring/drift.py`
 - geracao de lotes sinteticos para simulacao de drift em `src/scenario_analysis/synthetic_drifts.py`
 - relatorios HTML e arquivos JSON de drift em `artifacts/monitoring/drift/`
-- fluxo de retreino em `src/models/retraining.py`
+- fluxo de retreino batch e auditavel em `src/models/retraining.py`
 - decisao de promocao champion-challenger em `src/models/promotion.py`
 - artefatos auditaveis em `artifacts/monitoring/retraining/`
+
+Observacao importante:
+
+- o retreino ja acontece no projeto por meio do fluxo de monitoramento e do executor dedicado de retreino
+- hoje isso nao depende de um endpoint HTTP especifico de `retrain` no serving
+- o serving segue focado em inferencia; o retreino atual e disparado pelo fluxo batch de drift
 
 ### 5. Observabilidade e operacao
 
