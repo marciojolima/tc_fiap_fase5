@@ -35,7 +35,7 @@ Arquivos principais do fluxo:
 
 O fluxo atual é:
 
-1. a API registra as inferências em `data/monitoring/current/predictions.jsonl`
+1. a API registra as inferências em `artifacts/monitoring/inference_logs/predictions.jsonl`
 2. a rotina de drift carrega base de referência e base corrente
 3. o sistema compara distribuições de features e, quando habilitado, das
    probabilidades previstas
@@ -63,7 +63,7 @@ Ela é construída a partir das predições recebidas pela API.
 No desenho atual do projeto, o drift compara:
 
 - a base de referência: `data/processed/train.parquet`
-- a base corrente: `data/monitoring/current/predictions.jsonl`
+- a base corrente: `artifacts/monitoring/inference_logs/predictions.jsonl`
 
 Ou seja: sem serving e sem predição, não existe base corrente para comparar.
 
@@ -107,7 +107,7 @@ Arquivos envolvidos:
 
 O arquivo gerado nessa fase é:
 
-- `data/monitoring/current/predictions.jsonl`
+- `artifacts/monitoring/inference_logs/predictions.jsonl`
 
 Esse arquivo contém:
 
@@ -319,7 +319,7 @@ Trecho central da configuracao atual:
 drift:
   enabled: true
   reference_data_path: data/processed/train.parquet
-  current_data_path: data/monitoring/current/predictions.jsonl
+  current_data_path: artifacts/monitoring/inference_logs/predictions.jsonl
   feature_columns_path: data/processed/feature_columns.json
   feature_pipeline_path: artifacts/models/feature_pipeline.joblib
   model_path: artifacts/models/model_current.pkl

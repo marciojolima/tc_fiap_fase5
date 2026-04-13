@@ -127,7 +127,7 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 tc_fiap_fase5/
 ├── artifacts/          # modelos, relatórios de drift e saídas de retreino
 ├── configs/            # treino, cenários, monitoramento e observabilidade
-├── data/               # camadas raw, interim, processed e logs de inferência
+├── data/               # camadas raw, interim e processed
 ├── docs/               # documentação técnica e de governança
 ├── evaluation/         # scripts de avaliação para trilhas com LLM
 ├── notebooks/          # notebooks exploratórios e de apoio
@@ -264,7 +264,7 @@ Essas métricas são consumidas pela stack local de Prometheus e Grafana configu
 
 #### Logging de inferências
 
-As inferências podem ser registradas em `data/monitoring/current/predictions.jsonl`, criando uma trilha de execução útil para:
+As inferências podem ser registradas em `artifacts/monitoring/inference_logs/predictions.jsonl`, criando uma trilha de execução útil para:
 
 - auditoria de predições
 - composição do dataset corrente de monitoramento
@@ -340,7 +340,7 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `artifacts/models/model_current.pkl` | Modelo champion atualmente mantido como versão principal para inferência. |
 | `artifacts/models/model_current_metadata.json` | Metadados do champion atual, incluindo informações de versão, configuração e métricas relevantes. |
 | `artifacts/models/challengers/` | Diretório reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promoção. |
-| `data/monitoring/current/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior, principalmente nos fluxos de drift. |
+| `artifacts/monitoring/inference_logs/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior, principalmente nos fluxos de drift. |
 | `artifacts/monitoring/drift/drift_report.html` | Relatório HTML do Evidently para inspeção visual do comportamento das features e das distribuições monitoradas. |
 | `artifacts/monitoring/drift/drift_metrics.json` | Consolidação das métricas de drift, incluindo PSI por feature e resumo para automação de decisão. |
 | `artifacts/monitoring/drift/drift_status.json` | Estado mais recente do monitoramento de drift, com classificação para apoio ao gatilho de retreino. |

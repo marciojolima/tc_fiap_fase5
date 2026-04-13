@@ -1,7 +1,7 @@
 drift:
   enabled: true
   reference_data_path: data/processed/train.parquet
-  current_data_path: data/monitoring/current/predictions.jsonl
+  current_data_path: artifacts/monitoring/inference_logs/predictions.jsonl
   feature_columns_path: data/processed/feature_columns.json
   feature_pipeline_path: artifacts/models/feature_pipeline.joblib
   model_path: artifacts/models/model_current.pkl
