@@ -30,6 +30,10 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 
 Este projeto foi organizado como uma plataforma de machine learning aplicada a churn bancário. A proposta é cobrir uma trilha de ponta a ponta, desde dados versionados e engenharia de features até serving, monitoramento de drift e retreino auditável.
 
+Um ponto importante da narrativa do repositório é a transformação de um experimento centrado em notebook para uma solução mais robusta de engenharia de ML. O notebook [notebooks/churn_bancario_sem_mlops.ipynb](notebooks/churn_bancario_sem_mlops.ipynb) representa essa base inicial, mais próxima de um fluxo exploratório executado em Jupyter ou Colab. A partir dele, o projeto evolui para uma estrutura com separação de responsabilidades, versionamento de dados, treino rastreável, serving, monitoramento, governança e documentação operacional.
+
+Em outras palavras, este repositório não busca apenas mostrar um modelo de churn funcionando, mas também evidenciar a diferença entre um experimento isolado e uma solução com preocupações reais de MLOps.
+
 O foco principal está em demonstrar práticas de engenharia de ML esperadas no contexto do Datathon:
 
 - pipeline de dados reproduzível
