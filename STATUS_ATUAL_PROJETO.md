@@ -15,7 +15,7 @@ O projeto está mais maduro na trilha de MLOps para modelo tabular de churn do q
 - análise de cenários de inferência
 - monitoramento batch de drift com Evidently e PSI
 - fluxo auditável de retreino com decisão champion-challenger
-- base inicial de observabilidade com Prometheus e Grafana
+- stack local reproduzível com Docker Compose para serving, MLflow, Prometheus e Grafana
 - suíte relevante de testes automatizados
 
 Os maiores gaps frente ao que a banca enfatizou na live continuam concentrados em:
@@ -85,10 +85,11 @@ Atendido ou bem encaminhado:
 - gatilho auditável de retreino
 - comparação champion-challenger
 - dashboard e stack local de observabilidade configurados
+- `docker-compose.yml` ampliado para subir serving, MLflow, Prometheus e Grafana com volumes e rede interna
 
 Parcial:
 
-- a base de observabilidade existe, mas ainda não representa uma operação completa com alertas externos e maior profundidade de acompanhamento
+- a base de observabilidade e operação local está mais madura e reproduzível, mas ainda não representa uma operação completa com alertas externos e maior profundidade de acompanhamento
 - o workflow de CI atual cobre lint, checagem sintática e testes, mas ainda não fecha uma esteira completa de staging/deploy
 
 Pendente:
@@ -177,6 +178,7 @@ Pendente:
 - o fluxo de retreino já gera `retrain_request.json`, `retrain_run.json` e `promotion_decision.json`
 - existe challenger registrado em `artifacts/models/challengers/`
 - o modelo atual e seus metadados estão materializados em `artifacts/models/model_current.pkl` e `model_current_metadata.json`
+- a stack Docker local agora sobe serving, MLflow, Prometheus e Grafana de forma integrada
 - o `Makefile` ainda é placeholder e não representa a forma principal de operação do projeto
 
 ## Prioridades Recomendadas

@@ -10,22 +10,23 @@ As métricas operacionais iniciais são:
 
 ## Como subir localmente
 
-1. Inicie a API:
+1. Suba a stack local:
 
 ```bash
-poetry run task serving
-```
-
-2. Em outro terminal, suba Prometheus e Grafana:
-
-```bash
+cp .env.example .env
 poetry run task observability
 ```
 
+2. Gere tráfego no endpoint de predição:
+
+Use o Swagger em `http://127.0.0.1:8000/docs` ou faça chamadas para `POST /predict`.
+
 ## Acessos
 
+- Serving: `http://127.0.0.1:8000`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
+- MLflow: `http://127.0.0.1:5000`
 - Usuário padrão Grafana: `admin`
 - Senha padrão Grafana: `admin`
 
@@ -33,4 +34,4 @@ O dashboard `Serving Operacional - Churn API` é provisionado automaticamente.
 
 ## Observação
 
-O Prometheus foi configurado para fazer scrape da API local em `host.docker.internal:8000`. Em Linux moderno com Docker, o `host-gateway` do `docker-compose.yml` cobre esse roteamento.
+O Prometheus foi configurado para fazer scrape do serviço `serving` diretamente pela rede interna do Docker Compose, usando o alvo `serving:8000`.

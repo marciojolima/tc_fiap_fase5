@@ -1,27 +1,99 @@
 services:
+  serving:
+    build:
+      context: .
+      dockerfile: src/serving/Dockerfile
+    image: tc-fiap-fase5-app:latest
+    container_name: tc-fiap-serving
+    restart: unless-stopped
+    command:
+      - uvicorn
+      - serving.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "${SERVING_PORT:-8000}:8000"
+    environment:
+      PROJECT_ROOT: /app
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./artifacts:/app/artifacts
+    networks:
+      - ml_platform
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: src/serving/Dockerfile
+    image: tc-fiap-fase5-app:latest
+    container_name: tc-fiap-mlflow
+    restart: unless-stopped
+    depends_on:
+      - serving
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - file:/app/mlruns
+      - --default-artifact-root
+      - /app/mlruns
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    environment:
+      PROJECT_ROOT: /app
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./mlruns:/app/mlruns
+    networks:
+      - ml_platform
+
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: tc-fiap-prometheus
+    restart: unless-stopped
+    depends_on:
+      - serving
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./configs/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - prometheus_data:/prometheus
+    networks:
+      - ml_platform
 
   grafana:
     image: grafana/grafana:11.2.0
     container_name: tc-fiap-grafana
+    restart: unless-stopped
     depends_on:
       - prometheus
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./configs/observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./configs/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - ml_platform
+
+networks:
+  ml_platform:
+    driver: bridge
+
+volumes:
+  grafana_data:
+  prometheus_data:

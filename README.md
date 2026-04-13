@@ -38,7 +38,7 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - serving desacoplado via FastAPI
 - cenários de negócio versionados
 - monitoramento batch de drift com artefatos auditáveis
-- trilha inicial de observabilidade operacional
+- stack local reproduzível com serving, MLflow, Prometheus e Grafana
 
 Além da trilha tabular principal, o repositório também mantém módulos em evolução para agente, RAG, avaliação de LLM e segurança aplicada. Esses componentes fazem parte da direção do projeto, mas seu andamento detalhado está no documento de status.
 
@@ -82,7 +82,7 @@ Hoje o repositório já possui uma base funcional e demonstrável nas seguintes 
 - métricas operacionais expostas em [src/monitoring/metrics.py](src/monitoring/metrics.py)
 - detecção batch de drift com Evidently e PSI em [src/monitoring/drift.py](src/monitoring/drift.py)
 - relatórios HTML e arquivos JSON para auditoria em `artifacts/monitoring/`
-- stack local de observabilidade com Prometheus e Grafana
+- stack local reproduzível com serving, MLflow, Prometheus e Grafana
 - workflow básico de CI em [/.github/workflows/ci.yml](/home/marcio/dev/projects/python/tc_fiap_fase5/.github/workflows/ci.yml)
 
 ## Arquitetura da Solução
@@ -119,7 +119,7 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 - **Monitoramento de drift:** Evidently
 - **Observabilidade:** Prometheus, Grafana
 - **Qualidade de código:** Pytest, Ruff
-- **Orquestração local de observabilidade:** Docker Compose
+- **Orquestração local:** Docker Compose
 
 ## Estrutura do Repositório
 
@@ -193,15 +193,48 @@ Execução ampliada com múltiplos experimentos e cenários:
 poetry run task mlrunall
 ```
 
-### 4. API de serving
+### 4. Stack local com Docker Compose
+
+O arquivo `.env.example` é apenas um modelo versionado com valores de referência.
+O arquivo efetivamente lido pelo `docker compose` é o `.env`, que você cria a partir dele.
+
+```bash
+cp .env.example .env
+poetry run task observability
+```
+
+A stack local sobe os seguintes serviços de forma integrada:
+
+- serving FastAPI
+- MLflow server
+- Prometheus
+- Grafana
+
+Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local.
+
+Para encerrar os serviços:
+
+```bash
+poetry run task observability_down
+```
+
+### 5. Execução manual isolada
+
+Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
+
+Serving:
 
 ```bash
 poetry run task serving
 ```
 
-Com a aplicação em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local.
+MLflow:
 
-### 5. Monitoramento e demonstração de drift
+```bash
+poetry run task mlflow
+```
+
+### 6. Monitoramento e demonstração de drift
 
 Monitoramento batch:
 
@@ -221,25 +254,7 @@ Geração de cenários sintéticos:
 poetry run task mlsyntheticdrift
 ```
 
-### 6. Observabilidade local
-
-```bash
-poetry run task observability
-```
-
-Para encerrar os serviços:
-
-```bash
-poetry run task observability_down
-```
-
-### 7. MLflow UI
-
-```bash
-poetry run task mlflow
-```
-
-### 8. Testes
+### 7. Testes
 
 ```bash
 poetry run task test
@@ -260,7 +275,7 @@ As métricas expostas pela aplicação permitem acompanhar o comportamento da AP
 - taxa de erro
 - requisições em andamento
 
-Essas métricas são consumidas pela stack local de Prometheus e Grafana configurada em `configs/observability/`.
+Essas métricas são consumidas pela stack local configurada em `configs/observability/`, agora orquestrada pelo Docker Compose junto com o serving e o MLflow.
 
 #### Logging de inferências
 
@@ -303,7 +318,7 @@ Essa trilha documenta:
 - resultado consolidado da execução
 - decisão final de promoção ou manutenção do champion
 
-### Stack local de observabilidade
+### Stack local reproduzível
 
 Quando a stack é iniciada com `poetry run task observability`, os serviços ficam disponíveis em:
 
@@ -311,19 +326,27 @@ Quando a stack é iniciada com `poetry run task observability`, os serviços fic
 |---|---|---|
 | FastAPI | `http://127.0.0.1:8000` | Serving da aplicação de inferência |
 | Swagger UI | `http://127.0.0.1:8000/docs` | Teste interativo do endpoint |
+| MLflow UI | `http://127.0.0.1:5000` | Rastreamento de experimentos |
 | Prometheus | `http://localhost:9090` | Coleta e exploração das métricas |
 | Grafana | `http://localhost:3000` | Dashboards operacionais |
-| MLflow UI | `http://127.0.0.1:5000` | Rastreamento de experimentos |
+
+O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis com o código do projeto. Com isso, o serving carrega o mesmo modelo champion e o mesmo pipeline de features já materializados localmente, enquanto o MLflow expõe os experimentos rastreados em `mlruns/`.
 
 ### Fluxo sugerido para validação local
 
-1. Suba a API com `poetry run task serving`.
-2. Suba a observabilidade com `poetry run task observability`.
+1. Copie `.env.example` para `.env`, se quiser customizar portas ou credenciais.
+2. Suba a stack com `poetry run task observability`.
 3. Gere tráfego pelo Swagger ou por chamadas ao endpoint de predição.
 4. Consulte as métricas no Prometheus.
 5. Abra o Grafana para visualizar os painéis provisionados.
-6. Rode `poetry run task mldriftdemo` para produzir uma execução de drift demonstrável.
-7. Abra os relatórios HTML e os arquivos JSON em `artifacts/monitoring/` para inspecionar as evidências geradas.
+6. Abra o MLflow para revisar runs, parâmetros, métricas e artefatos.
+7. Rode `poetry run task mldriftdemo` ou `poetry run task mldrift` para produzir uma execução de drift.
+8. Abra os relatórios HTML e os arquivos JSON em `artifacts/monitoring/` para inspecionar as evidências geradas.
+
+Resumo rápido:
+
+- `.env.example`: template versionado, usado como referência para o time
+- `.env`: arquivo local efetivamente lido pelo `docker compose`
 
 ## Artefatos Relevantes
 

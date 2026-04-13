@@ -54,7 +54,7 @@ raciocínio do projeto é subir o serving.
 Comando:
 
 ```bash
-poetry run task serving
+poetry run task observability
 ```
 
 Isso é importante porque a base corrente do monitoramento não nasce sozinha.
@@ -89,7 +89,7 @@ O fluxo principal de análise de drift no projeto hoje pode ser resumido assim:
 Comandos típicos:
 
 ```bash
-poetry run task serving
+poetry run task observability
 poetry run task mldrift
 ```
 
@@ -98,6 +98,8 @@ poetry run task mldrift
 ### 1. Serving
 
 O serving responde à rota `/predict` e registra uma linha por inferência.
+
+No fluxo recomendado do projeto, ele sobe junto com MLflow, Prometheus e Grafana via Docker Compose.
 
 Arquivos envolvidos:
 

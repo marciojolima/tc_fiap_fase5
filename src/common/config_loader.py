@@ -1,9 +1,11 @@
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(os.getenv("PROJECT_ROOT", DEFAULT_ROOT_DIR)).resolve()
 DEFAULT_GLOBAL_CONFIG_PATH = "configs/pipeline_global_config.yaml"
 DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH = "configs/training/model_current.yaml"
 
