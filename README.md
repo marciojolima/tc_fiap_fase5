@@ -1,6 +1,8 @@
 # TC FIAP Fase 5
 
-Projeto integrador da Fase 05 do curso MLET da FIAP, estruturado como uma entrega de Datathon com foco em churn bancario, MLOps, observabilidade, governanca e evolucao gradual para componentes com LLMs e agentes.
+Projeto integrador da Fase 05 do curso MLET da FIAP, desenvolvido no formato de Datathon. O repositório reúne uma solução de predição de churn bancário com foco em engenharia de machine learning, rastreabilidade, observabilidade e evolução arquitetural para componentes de LLMOps e agentes.
+
+O objetivo deste `README` é apresentar o projeto, sua estrutura e a forma de execução. O acompanhamento de progresso, aderência aos requisitos e pendências fica concentrado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
 
 ## Grupo
 
@@ -11,390 +13,208 @@ Turma 6MLET - FIAP
 - Luciana Ferreira - RM366171
 - Marcio Lima - RM365919
 
-## Objetivo do Projeto
+## Visão Geral
 
-Construir uma solucao de predicao de churn com base em praticas de engenharia de machine learning esperadas no Datathon:
-
-- pipeline de dados reproduzivel e versionado
-- engenharia de features com validacao
-- treino rastreavel com MLflow
-- API de inferencia com FastAPI
-- cenarios de negocio para validacao do comportamento do modelo
-- monitoramento de drift com Evidently e PSI
-- gatilho auditavel de retreino
-- documentacao tecnica e de governanca em evolucao
-
-## Visao Geral do Estado Atual
-
-Este README reflete a documentacao e o desenho implementado do projeto como um
-todo. Em particular, o fluxo de retreino ja existe e funciona de forma batch e
-auditavel, mesmo sem um endpoint HTTP dedicado de `retrain` no serving.
-
-Hoje o projeto entrega com boa consistencia:
-
-- pipeline de dados, features e treino
-- experimento rastreado com MLflow
-- serving via FastAPI
-- testes automatizados para partes importantes do fluxo
-- monitoramento batch de drift
-- fluxo auditavel de retreino com decisao de promocao champion-challenger
-- observabilidade inicial com Prometheus e Grafana
-
-Ao mesmo tempo, ainda faltam varias entregas para aderencia mais forte ao guia do Datathon e ao que foi enfatizado na live, especialmente nas frentes de LLMOps, agentes, guardrails efetivos, fairness e maturidade de deploy.
-
-## Funcionalidades Implementadas
-
-### 1. Dados, features e treino
+O projeto foi organizado como uma plataforma de ML aplicada a churn bancário. A trilha principal hoje cobre:
 
 - versionamento de dados com DVC
-- organizacao das camadas `raw`, `interim` e `processed`
-- pipeline de engenharia de features em `src/features/feature_engineering.py`
-- componentes de pipeline em `src/features/pipeline_components.py`
-- validacao de schema com Pandera em `src/features/schema_validation.py`
-- separacao treino/teste antes do ajuste do pipeline de transformacao
-- persistencia de datasets processados e pipeline de features
-- multiplos experimentos configurados em YAML
-- treino e rastreabilidade com MLflow em `src/models/train.py`
-- artefatos de modelo e metadados versionados em `artifacts/models/`
+- engenharia de features com validação de schema
+- treinamento rastreável com MLflow
+- serving de inferência com FastAPI
+- análise de cenários de negócio
+- monitoramento batch de drift com Evidently e PSI
+- fluxo auditável de retreino com avaliação champion-challenger
+- observabilidade operacional com Prometheus e Grafana
 
-### 2. Serving e inferencia
+Além da trilha principal tabular, o repositório também possui módulos em evolução para agente, RAG, avaliação de LLM e segurança aplicada. Esses componentes fazem parte da direção arquitetural do projeto, mas o andamento detalhado deles está documentado no arquivo de status.
 
-- API FastAPI em `src/serving/app.py`
-- endpoint `/predict`
-- schemas de entrada e saida com Pydantic
-- reutilizacao do mesmo pipeline de features entre treino e inferencia
-- testes de API e serving em `tests/test_api.py` e `tests/test_serving.py`
+## Objetivo do Projeto
 
-### 3. Analise de cenarios
+Construir uma solução reproduzível de churn bancário que demonstre práticas esperadas de MLOps no contexto do Datathon:
 
-- suite versionada de cenarios em `configs/scenario_analysis/inference_cases.yaml`
-- execucao de cenarios em `src/scenario_analysis/inference_cases.py`
-- logging de execucoes no MLflow
-- documentacao de apoio em `docs/SCENARIO_ANALYSIS.md`
+- pipeline de dados versionado e reexecutável
+- preparação de dados e features com consistência entre treino e inferência
+- treinamento com rastreabilidade de parâmetros, métricas e artefatos
+- API para consumo do modelo
+- monitoramento de comportamento do modelo após inferência
+- documentação técnica e de governança para apoio à apresentação
 
-### 4. Monitoramento, drift e retreino
+## Arquitetura Resumida
 
-- registro de inferencias para monitoramento em `src/monitoring/inference_log.py`
-- metricas operacionais para serving em `src/monitoring/metrics.py`
-- deteccao batch de drift com Evidently e PSI em `src/monitoring/drift.py`
-- geracao de lotes sinteticos para simulacao de drift em `src/scenario_analysis/synthetic_drifts.py`
-- relatorios HTML e arquivos JSON de drift em `artifacts/monitoring/drift/`
-- fluxo de retreino batch e auditavel em `src/models/retraining.py`
-- decisao de promocao champion-challenger em `src/models/promotion.py`
-- artefatos auditaveis em `artifacts/monitoring/retraining/`
+O fluxo principal do projeto pode ser resumido assim:
 
-Observacao importante:
+1. dados brutos são versionados em `data/raw/` com apoio do DVC
+2. a engenharia de features gera artefatos em `data/interim/` e `data/processed/`
+3. o treinamento registra execuções no MLflow e publica artefatos em `artifacts/models/`
+4. a API FastAPI carrega o pipeline de features e o modelo atual para servir predições
+5. as inferências alimentam arquivos de monitoramento em `data/monitoring/`
+6. o monitoramento calcula drift, gera relatórios e pode acionar retreino auditável
 
-- o retreino ja acontece no projeto por meio do fluxo de monitoramento e do executor dedicado de retreino
-- hoje isso nao depende de um endpoint HTTP especifico de `retrain` no serving
-- o serving segue focado em inferencia; o retreino atual e disparado pelo fluxo batch de drift
+## Estrutura do Repositório
 
-### 5. Observabilidade e operacao
+```text
+tc_fiap_fase5/
+├── artifacts/          # modelos, relatórios de drift e saídas de retreino
+├── configs/            # configurações de treino, monitoramento e observabilidade
+├── data/               # camadas raw, interim, processed e logs de monitoramento
+├── docs/               # documentação técnica e de governança
+├── evaluation/         # scripts de avaliação para trilhas com LLM
+├── notebooks/          # notebooks exploratórios e de apoio
+├── scripts/            # utilitários auxiliares
+├── src/
+│   ├── agent/          # componentes em evolução para agente e RAG
+│   ├── common/         # utilidades compartilhadas
+│   ├── features/       # engenharia e validação de features
+│   ├── models/         # treino, promoção e retreino
+│   ├── monitoring/     # drift, métricas e logging de inferências
+│   ├── scenario_analysis/
+│   ├── security/       # guardrails e PII em evolução
+│   └── serving/        # aplicação FastAPI e pipeline de inferência
+├── tests/              # suíte de testes automatizados
+├── README.md
+└── STATUS_ATUAL_PROJETO.md
+```
 
-- configuracao de Prometheus em `configs/observability/prometheus.yml`
-- provisionamento de Grafana em `configs/observability/grafana/`
-- subida local do stack de observabilidade com `docker compose`
-- workflow de CI em `.github/workflows/ci.yml`
-- tarefas de automacao com Taskipy em `pyproject.toml`
+## Componentes Principais
 
-### 6. Documentacao e governanca
+### Dados e features
 
-- documentacao de drift em `docs/DRIFT_MONITORING.md`
-- documentacao de versionamento de modelos em `docs/MODEL_VERSIONING.md`
-- model card em `docs/MODEL_CARD.md`
-- plano LGPD em `docs/LGPD_PLAN.md`
-- metricas de avaliacao em `docs/EVALUATION_METRICS.md`
-- dashboard operacional em `docs/OPERATIONS_DASHBOARD.md`
+- [src/features/feature_engineering.py](src/features/feature_engineering.py): pipeline principal de preparação dos dados
+- [src/features/schema_validation.py](src/features/schema_validation.py): validação estrutural com Pandera
+- [src/features/pipeline_components.py](src/features/pipeline_components.py): componentes reutilizáveis do pipeline
 
-## Aderencia Atual aos Requisitos
+### Treinamento e gestão do modelo
 
-Com base no cruzamento entre `REQUISITOS_DATATHON.md`, `REQUISITOS_DATATHON_LIVE_EXPLANATION.md` e o codigo do repositorio, a situacao atual pode ser resumida assim:
+- [src/models/train.py](src/models/train.py): treinamento principal com MLflow
+- [src/models/promotion.py](src/models/promotion.py): decisão de promoção champion-challenger
+- [src/models/retraining.py](src/models/retraining.py): fluxo de retreino auditável
 
-### Entregue ou bem encaminhado
+### Serving
 
-- estrutura de projeto Python organizada
-- uso de DVC para dados
-- MLflow para experiment tracking
-- FastAPI para serving
-- testes automatizados com `pytest`
-- monitoramento de drift implementado
-- evidencias auditaveis de retreino e decisao de promocao
-- observabilidade inicial com Prometheus e Grafana
-- documentacao tecnica relevante para operacao e governanca
+- [src/serving/app.py](src/serving/app.py): aplicação FastAPI
+- [src/serving/routes.py](src/serving/routes.py): rotas HTTP
+- [src/serving/schemas.py](src/serving/schemas.py): contratos de entrada e saída
+- [src/serving/pipeline.py](src/serving/pipeline.py): carregamento do pipeline e do modelo
 
-### Parcial
+### Monitoramento e observabilidade
 
-- CI/CD: existe workflow, mas ainda nao representa uma esteira completa com staging e deploy
-- model management: ha versionamento e metadados, mas sem um registry completo com approval workflow formal
-- observabilidade: a base existe, mas ainda nao cobre toda a maturidade sugerida na live
-- agente, RAG e seguranca: ha estrutura de codigo e testes iniciais, mas nao caracterizam entrega completa
+- [src/monitoring/drift.py](src/monitoring/drift.py): monitoramento batch de drift
+- [src/monitoring/inference_log.py](src/monitoring/inference_log.py): trilha de inferências
+- [src/monitoring/metrics.py](src/monitoring/metrics.py): métricas expostas para observabilidade
+- [configs/observability/prometheus.yml](configs/observability/prometheus.yml): configuração do Prometheus
 
-### Ainda nao concluido
+### Cenários e avaliação
 
-- baseline adicional em PyTorch
-- notebook de EDA no padrao esperado pela banca
-- golden set formal
-- agente ReAct funcional com tools de uso real
-- pipeline RAG operacional
-- avaliacao RAGAS e LLM-as-judge em fluxo real
-- telemetria LLM operacional
-- guardrails e deteccao de PII integrados ao fluxo de producao
-- fairness automatizada
-- deploy mais completo com ambientes e gates mais fortes
-
-## Situacao Mais Recente do Fluxo de Monitoramento
-
-Os artefatos atuais mostram que:
-
-- houve deteccao de drift critico
-- um retreino foi executado
-- um challenger foi gerado
-- a promocao foi rejeitada
-- o champion atual foi mantido
-
-Isso reforca que o projeto ja possui um ciclo auditavel de monitoramento e retreino, mesmo que ainda faltem evolucoes importantes para a maturidade final esperada.
+- [src/scenario_analysis/inference_cases.py](src/scenario_analysis/inference_cases.py): execução de cenários de inferência
+- [configs/scenario_analysis/inference_cases.yaml](configs/scenario_analysis/inference_cases.yaml): suíte versionada de casos
+- `evaluation/`: scripts de avaliação para frentes com LLM e prompts
 
 ## Como Executar
 
-### Instalacao
-
-Fluxo recomendado para preparar o ambiente local desde o clone do repositorio:
+### 1. Instalar dependências
 
 ```bash
-git clone https://github.com/marciojolima/tc_fiap_fase5.git
-cd tc_fiap_fase5
 poetry install
 ```
 
-Depois da instalacao das dependencias Python, e importante sincronizar os dados versionados com o storage remoto configurado no DVC. Sem isso, parte importante do pipeline pode nao ter os arquivos necessarios para engenharia de features, treino, validacao e demonstracoes de monitoramento.
+### 2. Sincronizar dados versionados
 
-### Configuracao do data storage com DVC
-
-O projeto usa DVC para versionar dados e apontar para um remote externo. No estado atual do repositorio, o remote padrao esta configurado como `datathon_remote` e utiliza Google Drive.
-
-Exemplo de configuracao presente no projeto:
-
-```ini
-[core]
-    remote = datathon_remote
-['remote "datathon_remote"']
-    url = gdrive://1tfIgv-9mikvC8EZVLUneDVQhQes5_Q7w
-```
-
-Em um ambiente novo, o fluxo esperado costuma ser:
+O projeto usa DVC para versionamento de dados e artefatos. Após instalar as dependências, sincronize os arquivos versionados:
 
 ```bash
 poetry run dvc pull
 ```
 
-Esse comando baixa do storage remoto os dados e artefatos versionados pelo DVC para o workspace local.
+Se o remote não estiver configurado no ambiente local, configure-o antes de executar o `pull`.
 
-Se for necessario configurar ou reconfigurar o remote manualmente, um exemplo com Google Drive seria:
+### 3. Rodar a pipeline principal
 
-```bash
-poetry run dvc remote add -d datathon_remote gdrive://1tfIgv-9mikvC8EZVLUneDVQhQes5_Q7w
-poetry run dvc pull
-```
-
-Dependendo da maquina e da conta utilizada, o DVC pode solicitar autenticacao no Google Drive na primeira execucao. Essa etapa e importante porque, sem acesso ao storage, o repositorio pode ter a estrutura correta mas nao os dados reais necessarios para reproduzir o projeto.
-
-### Sequencia minima recomendada
-
-Depois de instalar dependencias e sincronizar os dados, a sequencia mais segura para explorar o projeto localmente e:
-
-```bash
-poetry run task mlfeateng
-poetry run task mltrain
-poetry run task serving
-```
-
-### Engenharia de features
+Engenharia de features:
 
 ```bash
 poetry run task mlfeateng
 ```
 
-Esse comando executa `python -m src.features.feature_engineering` e materializa a etapa de preparacao dos dados. Na pratica, ele:
-
-- le a base de entrada versionada
-- aplica limpeza e transformacoes
-- valida schema e consistencia
-- gera datasets intermediarios e processados usados nas etapas seguintes
-
-E um bom primeiro passo quando queremos reconstruir os artefatos de dados a partir da materia-prima do projeto.
-
-### Treino
+Treinamento:
 
 ```bash
 poetry run task mltrain
 ```
 
-Esse comando executa `python -m src.models.train` e roda o treino principal com a configuracao padrao do projeto. Ele costuma:
-
-- carregar os dados processados
-- aplicar o pipeline de features persistente ou configurado para treino
-- treinar o modelo principal
-- registrar metricas, parametros e artefatos no MLflow
-- atualizar artefatos de modelo e metadados para uso posterior
-
-### Rodar experimentos e cenarios
+Execução ampliada com múltiplos experimentos e cenários:
 
 ```bash
 poetry run task mlrunall
 ```
 
-Essa task e mais abrangente. Ela executa uma sequencia de treinos com configuracoes diferentes e, ao final, roda a analise de cenarios versionada. E util para demonstracao mais completa do projeto, comparacao entre experimentos e geracao de evidencias no MLflow.
-
-### API de serving
+### 4. Subir a API
 
 ```bash
 poetry run task serving
 ```
 
-Essa task executa `fastapi dev src/serving/app.py` e sobe a aplicacao de inferencia localmente. Ela deve ser usada quando queremos:
+Com a aplicação em execução, a documentação interativa do FastAPI fica disponível na porta padrão do ambiente local.
 
-- testar o endpoint `/predict`
-- validar o contrato de entrada e saida da API
-- verificar se o modelo atual e o pipeline de features estao carregando corretamente
-- integrar o serving com metricas e monitoramento local
+### 5. Rodar monitoramento e observabilidade
 
-Quando o servidor estiver no ar, a aplicacao FastAPI normalmente ficara acessivel na porta padrao do ambiente de desenvolvimento e podera ser inspecionada pela documentacao interativa do proprio FastAPI.
-
-### Monitoramento de drift
+Drift batch:
 
 ```bash
 poetry run task mldrift
 ```
 
-Essa task executa `python -m src.monitoring.drift` e roda o fluxo batch de monitoramento de drift. Ela compara dados de referencia com dados correntes, calcula indicadores como PSI e gera os artefatos de monitoramento em `artifacts/monitoring/drift/`.
-
-Para uma execucao demonstravel usando a base de teste atual:
+Execução demonstrável com base de teste:
 
 ```bash
 poetry run task mldriftdemo
 ```
 
-Essa variante e util quando queremos demonstrar o processo mesmo sem depender de trafego real acumulado. Ela usa a base de teste como insumo para uma execucao controlada do monitoramento.
-
-### Geracao de drifts sinteticos
-
-```bash
-poetry run task mlsyntheticdrift
-```
-
-Esse comando cria lotes sinteticos com diferentes perfis de drift para validar o comportamento do monitoramento e produzir evidencias de teste e demonstracao.
-
-### MLflow UI
-
-```bash
-poetry run task mlflow
-```
-
-Essa task sobe a interface local do MLflow em `http://127.0.0.1:5000`. Ela e importante para acompanhar:
-
-- experimentos de treino
-- metricas comparativas
-- parametros utilizados
-- artefatos salvos em cada execucao
-
-Em geral, vale abrir o MLflow enquanto rodam treinos, cenarios ou retreinos, porque isso facilita a leitura da trilha de execucao do projeto.
-
-### Observabilidade
+Observabilidade local:
 
 ```bash
 poetry run task observability
 ```
 
-Essa task executa `docker compose up -d prometheus grafana` e sobe os servicos auxiliares de observabilidade local. Ela nao sobe a API de serving sozinha; o ideal e usar essa task junto com `poetry run task serving` para observar a aplicacao em execucao.
-
-Servicos locais:
+Serviços locais:
 
 - Grafana: `http://localhost:3000`
 - Prometheus: `http://localhost:9090`
+- MLflow UI: `http://127.0.0.1:5000`
 
-Na pratica:
-
-- Prometheus faz o scraping das metricas expostas pela aplicacao
-- Grafana permite visualizar dashboards para latencia, volume de requisicoes, erros e outros sinais operacionais
-
-Para desligar esses servicos auxiliares:
+Para abrir o MLflow:
 
 ```bash
-poetry run task observability_down
+poetry run task mlflow
 ```
 
-### Testes
+### 6. Executar testes
 
 ```bash
 poetry run task test
 ```
 
-Essa task executa a suite de testes com `pytest`, incluindo cobertura sobre o codigo em `src`. E uma etapa importante antes de abrir PR, consolidar uma entrega ou validar se mudancas locais quebraram algum fluxo essencial.
-
 ## Artefatos Relevantes
 
-Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e operacao do projeto. Eles tambem servem como evidencia objetiva do que ja foi implementado.
+- `data/processed/train.parquet` e `data/processed/test.parquet`: bases finais para treino e validação
+- `data/processed/feature_columns.json`: ordem final das features
+- `data/processed/schema_report.json`: evidência de validação estrutural
+- `artifacts/models/model_current.pkl`: modelo atual usado no serving
+- `artifacts/models/feature_pipeline.joblib`: pipeline de transformação compartilhado entre treino e inferência
+- `data/monitoring/current/predictions.jsonl`: trilha de inferências para monitoramento
+- `artifacts/monitoring/drift/`: relatórios e métricas de drift
+- `artifacts/monitoring/retraining/`: pedidos de retreino, decisão de promoção e saídas auditáveis
 
-| Artefato | Papel no projeto |
-|---|---|
-| `data/interim/cleaned.parquet` | Camada intermediaria ja tratada, usada como ponto de auditoria entre ingestao e preparacao final dos dados. |
-| `data/processed/train.parquet` | Base final de treino gerada pelo pipeline de features e usada nos experimentos do modelo. |
-| `data/processed/test.parquet` | Base final de teste usada para validacao e comparacao de desempenho. |
-| `data/processed/feature_columns.json` | Registra a ordem e os nomes finais das features, ajudando a manter consistencia entre treino e inferencia. |
-| `data/processed/schema_report.json` | Evidencia da validacao estrutural dos dados processados, reforcando a etapa de qualidade de dados. |
-| `artifacts/models/feature_pipeline.joblib` | Pipeline de transformacao persistido para reutilizacao no serving, evitando divergencia entre treino e producao. |
-| `artifacts/models/model_current.pkl` | Modelo champion atualmente mantido como versao principal para inferencia. |
-| `artifacts/models/model_current_metadata.json` | Metadados do champion atual, incluindo informacoes de versao, configuracao e metricas relevantes. |
-| `artifacts/models/challengers/` | Diretorio reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promocao. |
-| `data/monitoring/current/predictions.jsonl` | Log de inferencias usado como base para monitoramento posterior, principalmente nos fluxos de drift. |
-| `artifacts/monitoring/drift/drift_report.html` | Relatorio HTML do Evidently para inspecao visual do comportamento das features e das distribuicoes monitoradas. |
-| `artifacts/monitoring/drift/drift_metrics.json` | Consolidacao das metricas de drift, incluindo PSI por feature e resumo para automacao de decisao. |
-| `artifacts/monitoring/drift/drift_status.json` | Estado mais recente do monitoramento de drift, com classificacao para apoio ao gatilho de retreino. |
-| `artifacts/monitoring/drift/drift_runs.jsonl` | Historico de execucoes do monitoramento, util para trilha de auditoria e acompanhamento temporal. |
-| `artifacts/monitoring/retraining/retrain_request.json` | Registro do pedido de retreino, com motivacao e contexto do disparo do processo. |
-| `artifacts/monitoring/retraining/retrain_run.json` | Resultado consolidado da execucao do retreino, incluindo status, motivo, metricas e decisao final. |
-| `artifacts/monitoring/retraining/promotion_decision.json` | Decisao champion-challenger com regra de promocao explicita e deltas de metricas entre os modelos comparados. |
-| `artifacts/monitoring/retraining/generated_configs/` | Configuracoes geradas automaticamente para retreinos auditaveis e reproduziveis. |
-| `configs/scenario_analysis/inference_cases.yaml` | Suite versionada de cenarios de inferencia usada para validar comportamento do modelo em casos de negocio. |
-| `artifacts/scenario_analysis/drift/*.jsonl` | Lotes sinteticos construidos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
-| `artifacts/scenario_analysis/drift/*_report.html` | Relatorios HTML dos cenarios sinteticos, usados para demonstracao e validacao do processo de drift. |
+## Documentação Complementar
 
-## Estrutura Resumida
+- [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
+- [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
+- [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
+- [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
+- [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
+- [docs/EVALUATION_METRICS.md](docs/EVALUATION_METRICS.md)
+- [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
+- [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
 
-```text
-tc_fiap_fase5/
-├── artifacts/
-├── configs/
-├── data/
-├── docs/
-├── evaluation/
-├── scripts/
-├── src/
-│   ├── agent/
-│   ├── common/
-│   ├── features/
-│   ├── inference/
-│   ├── models/
-│   ├── monitoring/
-│   ├── scenario_analysis/
-│   ├── security/
-│   └── serving/
-├── tests/
-├── README.md
-├── STATUS_ATUAL_PROJETO.md
-└── REQUISITOS_DATATHON.md
-```
+## Status do Projeto
 
-## Documentos de Apoio
-
-- [DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md): estrategia e fluxo de monitoramento
-- [OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md): dashboard operacional
-- [MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md): versionamento e metadados de modelos
-- [MODEL_CARD.md](docs/MODEL_CARD.md): resumo do modelo, contexto e limitacoes
-- [SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md): descricao da analise de cenarios e dos casos de inferencia
-- [EVALUATION_METRICS.md](docs/EVALUATION_METRICS.md): metricas usadas para avaliacao dos modelos
-- [LGPD_PLAN.md](docs/LGPD_PLAN.md): direcionamento inicial para aspectos de privacidade e LGPD
-
-## Observacao Importante
-
-Este repositorio nao pretende afirmar que todos os requisitos do Datathon ja foram atendidos. O foco deste `README.md` e registrar com transparencia o que foi implementado ate agora e deixar claro que ainda existem frentes relevantes em aberto.
+Como o projeto ainda está em andamento, o acompanhamento de entregas concluídas, lacunas frente ao Datathon e pendências atuais fica em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
