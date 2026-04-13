@@ -37,7 +37,6 @@ packages = [
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
     { include = "features", from = "src" },
-    { include = "inference", from = "src" },
     { include = "models", from = "src" },
     { include = "monitoring", from = "src" },
     { include = "scenario_analysis", from = "src" },

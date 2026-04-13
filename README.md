@@ -136,7 +136,6 @@ tc_fiap_fase5/
 │   ├── agent/          # componentes em evolução para agente e RAG
 │   ├── common/         # utilidades compartilhadas
 │   ├── features/       # engenharia e validação de features
-│   ├── inference/
 │   ├── models/         # treino, promoção e retreino
 │   ├── monitoring/     # drift, métricas e logging de inferências
 │   ├── scenario_analysis/
