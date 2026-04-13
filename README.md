@@ -358,8 +358,6 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `configs/scenario_analysis/inference_cases.yaml` | Suite versionada de cenarios de inferencia usada para validar comportamento do modelo em casos de negocio. |
 | `artifacts/scenario_analysis/drift/*.jsonl` | Lotes sinteticos construidos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
 | `artifacts/scenario_analysis/drift/*_report.html` | Relatorios HTML dos cenarios sinteticos, usados para demonstracao e validacao do processo de drift. |
-| [DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md) | Documentacao da estrategia de monitoramento, thresholds, PSI e ciclo de retreino. |
-| [OPERATIONS_DASHBOARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OPERATIONS_DASHBOARD.md) | Guia do dashboard operacional com Prometheus e Grafana e explicacao das metricas acompanhadas. |
 
 ## Estrutura Resumida
 
@@ -389,16 +387,13 @@ tc_fiap_fase5/
 
 ## Documentos de Apoio
 
-- [STATUS_ATUAL_PROJETO.md](/home/marcio/dev/projects/python/tc_fiap_fase5/STATUS_ATUAL_PROJETO.md): visao complementar e historico do estado atual
-- [REQUISITOS_DATATHON.md](/home/marcio/dev/projects/python/tc_fiap_fase5/REQUISITOS_DATATHON.md): guia consolidado do desafio
-- [REQUISITOS_DATATHON_LIVE_EXPLANATION.md](/home/marcio/dev/projects/python/tc_fiap_fase5/REQUISITOS_DATATHON_LIVE_EXPLANATION.md): transcricao da explicacao ao vivo
-- [DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md): estrategia e fluxo de monitoramento
-- [OPERATIONS_DASHBOARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/OPERATIONS_DASHBOARD.md): dashboard operacional
-- [MODEL_VERSIONING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_VERSIONING.md): versionamento e metadados de modelos
-- [MODEL_CARD.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/MODEL_CARD.md): resumo do modelo, contexto e limitacoes
-- [SCENARIO_ANALYSIS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/SCENARIO_ANALYSIS.md): descricao da analise de cenarios e dos casos de inferencia
-- [EVALUATION_METRICS.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/EVALUATION_METRICS.md): metricas usadas para avaliacao dos modelos
-- [LGPD_PLAN.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/LGPD_PLAN.md): direcionamento inicial para aspectos de privacidade e LGPD
+- [DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md): estrategia e fluxo de monitoramento
+- [OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md): dashboard operacional
+- [MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md): versionamento e metadados de modelos
+- [MODEL_CARD.md](docs/MODEL_CARD.md): resumo do modelo, contexto e limitacoes
+- [SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md): descricao da analise de cenarios e dos casos de inferencia
+- [EVALUATION_METRICS.md](docs/EVALUATION_METRICS.md): metricas usadas para avaliacao dos modelos
+- [LGPD_PLAN.md](docs/LGPD_PLAN.md): direcionamento inicial para aspectos de privacidade e LGPD
 
 ## Observacao Importante
 
