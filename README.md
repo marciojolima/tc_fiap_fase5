@@ -161,7 +161,7 @@ Isso reforca que o projeto ja possui um ciclo auditavel de monitoramento e retre
 Fluxo recomendado para preparar o ambiente local desde o clone do repositorio:
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/marciojolima/tc_fiap_fase5.git
 cd tc_fiap_fase5
 poetry install
 ```
