@@ -23,7 +23,7 @@ Este é o eixo mais tradicional de avaliação supervisionada do projeto.
 
 Ele acontece durante o treino em:
 
-- [src/models/train.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/train.py)
+- [src/models/train.py](../src/models/train.py)
 
 As métricas calculadas hoje incluem:
 
@@ -43,7 +43,7 @@ Essas métricas são usadas para:
 Para a leitura detalhada da importância e prioridade dessas métricas no contexto
 de churn, consulte:
 
-- [docs/EVALUATION_METRICS.md](docs/EVALUATION_METRICS.md)
+- [EVALUATION_METRICS.md](EVALUATION_METRICS.md)
 
 ### 2. Avaliação por cenários de negócio
 
@@ -52,8 +52,8 @@ controlados, que funcionam como testes de sanidade orientados a negócio.
 
 Esse fluxo acontece em:
 
-- [src/scenario_analysis/inference_cases.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/inference_cases.py)
-- [configs/scenario_analysis/inference_cases.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/scenario_analysis/inference_cases.yaml)
+- [src/scenario_analysis/inference_cases.py](../src/scenario_analysis/inference_cases.py)
+- [configs/scenario_analysis/inference_cases.yaml](../configs/scenario_analysis/inference_cases.yaml)
 
 Essa avaliação responde perguntas como:
 
@@ -71,8 +71,8 @@ produção simulada ou local.
 
 Esse fluxo acontece em:
 
-- [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py)
-- [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py)
+- [src/monitoring/drift.py](../src/monitoring/drift.py)
+- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
 
 Os principais sinais avaliados hoje são:
 
@@ -101,8 +101,8 @@ substituição de modelo.
 
 Esse fluxo acontece em:
 
-- [src/models/retraining.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/retraining.py)
-- [src/models/promotion.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/promotion.py)
+- [src/models/retraining.py](../src/models/retraining.py)
+- [src/models/promotion.py](../src/models/promotion.py)
 
 Os artefatos principais são:
 
@@ -132,7 +132,7 @@ e teste do comportamento do monitoramento.
 
 Esse fluxo acontece em:
 
-- [src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py)
+- [src/scenario_analysis/synthetic_drifts.py](../src/scenario_analysis/synthetic_drifts.py)
 
 Ele permite:
 
@@ -148,9 +148,9 @@ depender apenas de tráfego real.
 A pasta `evaluation/` existe hoje como espaço reservado para avaliação de IA
 generativa, mas seus módulos ainda estão em placeholder:
 
-- [evaluation/ragas_eval.py](/home/marcio/dev/projects/python/tc_fiap_fase5/evaluation/ragas_eval.py)
-- [evaluation/llm_judge.py](/home/marcio/dev/projects/python/tc_fiap_fase5/evaluation/llm_judge.py)
-- [evaluation/ab_test_prompts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/evaluation/ab_test_prompts.py)
+- [evaluation/ragas_eval.py](../evaluation/ragas_eval.py)
+- [evaluation/llm_judge.py](../evaluation/llm_judge.py)
+- [evaluation/ab_test_prompts.py](../evaluation/ab_test_prompts.py)
 
 No estado atual, eles não representam avaliação operacional do sistema. Servem
 mais como taxonomia reservada para:

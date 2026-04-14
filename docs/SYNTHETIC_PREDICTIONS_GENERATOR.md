@@ -26,7 +26,7 @@ incluindo:
 
 Arquivo:
 
-- [scripts/generate_synthetic_predictions.py](/home/marcio/dev/projects/python/tc_fiap_fase5/scripts/generate_synthetic_predictions.py)
+- [scripts/generate_synthetic_predictions.py](../scripts/generate_synthetic_predictions.py)
 
 Saída padrão:
 
@@ -101,7 +101,7 @@ propositalmente diferente da base de referência usada no treino.
 
 Na implementação atual, o gerador reaproveita o cenário
 `build_mixed_extreme_drift_batch` de
-[src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py:260).
+[src/scenario_analysis/synthetic_drifts.py](../src/scenario_analysis/synthetic_drifts.py).
 Esse cenário foi pensado para deslocar a distribuição de forma suficientemente
 forte para que o monitoramento batch tenha alta chance de detectar drift.
 
@@ -164,6 +164,6 @@ monitoramento.
 
 O artefato resultante pode ser inspecionado junto com:
 
-- [docs/DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md)
-- [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:1)
-- [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:1)
+- [DRIFT_MONITORING.md](DRIFT_MONITORING.md)
+- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
+- [src/monitoring/drift.py](../src/monitoring/drift.py)

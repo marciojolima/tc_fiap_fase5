@@ -26,6 +26,11 @@ As informações abaixo refletem o modelo champion hoje materializado em
 `artifacts/models/model_current.pkl` e no sidecar
 `artifacts/models/model_current_metadata.json`.
 
+Essa tabela resume o estado operacional do champion a partir dos metadados
+persistidos ao final do treino e do rastreamento associado no MLflow. Em outras
+palavras, ela não é uma tabela “manual”: ela representa o contrato mínimo de
+identificação do modelo atualmente usado no serving e no monitoramento.
+
 | Campo | Valor atual |
 |---|---|
 | `experiment_name` | `random_forest_current` |
@@ -36,6 +41,24 @@ As informações abaixo refletem o modelo champion hoje materializado em
 | `threshold` | `0.5` |
 | `risk_level` | `high` |
 | `fairness_checked` | `false` |
+
+Leitura dos campos:
+
+- `experiment_name`: nome lógico do experimento/modelo dentro do projeto.
+- `algorithm`: família do algoritmo treinado, útil para leitura técnica e comparação.
+- `flavor`: stack de serialização e serving do modelo, aqui `sklearn`.
+- `model_version`: versão funcional do champion atual.
+- `feature_set`: conjunto de features esperado pelo treino e pela inferência.
+- `threshold`: ponto de corte usado para converter probabilidade em classe.
+- `risk_level`: classificação documental do risco do caso de uso.
+- `fairness_checked`: indica se já houve auditoria formal de fairness anexada ao ciclo atual.
+
+No contexto deste projeto, **fairness** é a análise de possíveis diferenças
+indevidas de comportamento do modelo entre grupos. Em churn, isso pode incluir,
+por exemplo, verificar se o modelo apresenta desempenho ou propensão de score
+muito diferentes entre recortes de `Gender` ou `Geography` sem justificativa
+adequada do domínio. O valor `false` aqui significa que essa auditoria ainda
+não foi concluída de forma automatizada e versionada no pipeline atual.
 
 ### Métricas atuais do champion
 
@@ -49,8 +72,9 @@ As informações abaixo refletem o modelo champion hoje materializado em
 
 Essas métricas mostram um modelo equilibrado para a trilha tabular do projeto,
 com boa separação de risco e comportamento razoável entre precision e recall.
-Como já documentado em `docs/EVALUATION_METRICS.md`, a leitura de churn deve
-dar mais peso a recall, AUC e F1 do que à accuracy isolada.
+Como já documentado em [EVALUATION_METRICS.md](EVALUATION_METRICS.md), a
+leitura de churn deve dar mais peso a recall, AUC e F1 do que à accuracy
+isolada.
 
 ## Contexto do Domínio
 
@@ -111,6 +135,14 @@ negócio:
 - Perfil cadastral: `Geography`, `Gender`, `Age`
 - Sinais de atrito ou experiência: `Complain`, `Satisfaction Score`
 
+Além das colunas originais, o pipeline também cria features derivadas para
+capturar relações mais úteis do que os valores absolutos isolados:
+
+| Feature derivada | Fórmula resumida | Papel de negócio |
+|---|---|---|
+| `BalancePerProduct` | `Balance / NumOfProducts` | Ajuda a distinguir clientes com mesmo saldo total, mas com distribuição diferente de relacionamento entre produtos. |
+| `PointsPerSalary` | `Point Earned / EstimatedSalary` | Aproxima a intensidade de engajamento relativo, evitando ler pontos acumulados sem contexto econômico. |
+
 Essa organização é importante porque o modelo não lê apenas variáveis isoladas.
 Ele aprende combinações. Por exemplo:
 
@@ -169,6 +201,9 @@ Exemplos práticos:
   “mais produtos = mais vínculo”
 - um novo país surgindo em produção, ou uma categoria fora das esperadas em
   `Geography`, pode confundir a generalização do modelo
+- uma feature derivada como `BalancePerProduct` pode passar a carregar um
+  significado diferente se o portfólio de produtos mudar ou se aparecerem
+  combinações pouco vistas no treino
 - mudanças de portfólio, produto ou comportamento da base podem tornar a
   interpretação histórica menos confiável
 

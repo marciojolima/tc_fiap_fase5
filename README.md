@@ -87,7 +87,7 @@ Hoje o repositório já possui uma base funcional e demonstrável nas seguintes 
 - detecção batch de drift com Evidently e PSI em [src/monitoring/drift.py](src/monitoring/drift.py)
 - relatórios HTML e arquivos JSON para auditoria em `artifacts/monitoring/`
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
-- workflow básico de CI em [/.github/workflows/ci.yml](/home/marcio/dev/projects/python/tc_fiap_fase5/.github/workflows/ci.yml)
+- workflow básico de CI em [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ## Arquitetura da Solução
 

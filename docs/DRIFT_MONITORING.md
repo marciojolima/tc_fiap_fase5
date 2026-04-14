@@ -27,11 +27,11 @@ Hoje, a base de referência é o conjunto processado de treino e a base corrente
 
 Arquivos principais do fluxo:
 
-- [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:1)
-- [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:1)
-- [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:1)
-- [src/models/retraining.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/retraining.py:1)
-- [src/models/train.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/train.py:1)
+- [configs/monitoring_config.yaml](../configs/monitoring_config.yaml)
+- [src/monitoring/drift.py](../src/monitoring/drift.py)
+- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
+- [src/models/retraining.py](../src/models/retraining.py)
+- [src/models/train.py](../src/models/train.py)
 
 O fluxo atual é:
 
@@ -69,9 +69,9 @@ Ou seja: sem serving e sem predição, não existe base corrente para comparar.
 
 Mapeamento no código:
 
-- rota de predição: [src/serving/routes.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/routes.py:51)
-- preparação da configuração de serving: [src/serving/pipeline.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/pipeline.py:31)
-- log de inferência que alimenta a base corrente: [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:43)
+- rota de predição: [src/serving/routes.py](../src/serving/routes.py)
+- preparação da configuração de serving: [src/serving/pipeline.py](../src/serving/pipeline.py)
+- log de inferência que alimenta a base corrente: [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
 
 Esse log é justamente o insumo que depois será lido pela rotina de drift.
 
@@ -103,9 +103,9 @@ No fluxo recomendado do projeto, ele sobe junto com MLflow, Prometheus e Grafana
 
 Arquivos envolvidos:
 
-- [src/serving/routes.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/routes.py:51)
-- [src/serving/pipeline.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/serving/pipeline.py:31)
-- [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:44)
+- [src/serving/routes.py](../src/serving/routes.py)
+- [src/serving/pipeline.py](../src/serving/pipeline.py)
+- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
 
 O arquivo gerado nessa fase é:
 
@@ -127,7 +127,7 @@ poetry run task mldrift
 
 Ponto de entrada:
 
-- [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:429)
+- [src/monitoring/drift.py](../src/monitoring/drift.py)
 
 Essa rotina:
 
@@ -142,13 +142,13 @@ Essa rotina:
 
 Mapeamento principal:
 
-- carga de datasets: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:58)
-- preparação dos dados de monitoramento: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:127)
-- cálculo de PSI numérico: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:156)
-- cálculo de PSI categórico: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:193)
-- PSI por feature: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:223)
-- consolidação do status: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:246)
-- bloqueio operacional por amostra pequena: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:284)
+- carga de datasets: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- preparação dos dados de monitoramento: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- cálculo de PSI numérico: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- cálculo de PSI categórico: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- PSI por feature: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- consolidação do status: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- bloqueio operacional por amostra pequena: [src/monitoring/drift.py](../src/monitoring/drift.py)
 
 ### 3. Artefatos Gerados
 
@@ -161,8 +161,8 @@ Após rodar o drift, os arquivos principais são:
 
 Onde isso acontece:
 
-- gravação dos JSONs principais: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:478)
-- histórico de execuções: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:517)
+- gravação dos JSONs principais: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- histórico de execuções: [src/monitoring/drift.py](../src/monitoring/drift.py)
 
 Leitura rápida:
 
@@ -184,13 +184,13 @@ aberto.
 
 Configuração:
 
-- [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:1)
+- [configs/monitoring_config.yaml](../configs/monitoring_config.yaml)
 
 Implementação:
 
-- abertura da solicitação: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:367)
-- política de disparo: [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:401)
-- executor dedicado: [src/models/retraining.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/retraining.py:130)
+- abertura da solicitação: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- política de disparo: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- executor dedicado: [src/models/retraining.py](../src/models/retraining.py)
 
 Artefatos dessa fase:
 
@@ -234,7 +234,17 @@ Na prática, o pipeline já demonstra:
 
 ## PSI em Termos Intuitivos
 
-O PSI, no contexto deste projeto, responde a uma pergunta simples:
+PSI significa **Population Stability Index**, ou **Índice de Estabilidade
+Populacional**.
+
+No contexto deste projeto, ele serve para medir a estabilidade do modelo ao
+longo do tempo, comparando a distribuição das variáveis de entrada e, quando
+habilitado, das probabilidades previstas entre:
+
+- a base de referência, associada ao treino
+- a base corrente, associada ao comportamento mais recente em produção
+
+De forma intuitiva, o PSI responde a uma pergunta simples:
 
 - a distribuição atual está parecida com a distribuição que o modelo viu no
   treinamento?
@@ -253,7 +263,7 @@ atingiu o tamanho mínimo configurado. Antes disso, o PSI é tratado como sinal
 exploratório e não como justificativa para retreino.
 
 Esses thresholds são os mesmos usados pela rotina de decisão operacional e
-estão definidos em [configs/monitoring_config.yaml](/home/marcio/dev/projects/python/tc_fiap_fase5/configs/monitoring_config.yaml:12).
+estão definidos em [configs/monitoring_config.yaml](../configs/monitoring_config.yaml).
 
 ## Tipos de Drift Monitorados Hoje
 
@@ -493,9 +503,9 @@ entre:
 
 Arquivos envolvidos:
 
-- [src/models/retraining.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/retraining.py:1)
-- [src/models/promotion.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/models/promotion.py:1)
-- [artifacts/models/model_current_metadata.json](/home/marcio/dev/projects/python/tc_fiap_fase5/artifacts/models/model_current_metadata.json)
+- [src/models/retraining.py](../src/models/retraining.py)
+- [src/models/promotion.py](../src/models/promotion.py)
+- [artifacts/models/model_current_metadata.json](../artifacts/models/model_current_metadata.json)
 
 O resultado dessa etapa vai para:
 
