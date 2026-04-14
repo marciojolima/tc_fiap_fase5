@@ -14,7 +14,7 @@ As métricas operacionais iniciais são:
 
 ```bash
 cp .env.example .env
-poetry run task observability
+poetry run task appstack
 ```
 
 2. Gere tráfego no endpoint de predição:

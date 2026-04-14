@@ -54,7 +54,7 @@ raciocínio do projeto é subir o serving.
 Comando:
 
 ```bash
-poetry run task observability
+poetry run task appstack
 ```
 
 Isso é importante porque a base corrente do monitoramento não nasce sozinha.
@@ -89,7 +89,7 @@ O fluxo principal de análise de drift no projeto hoje pode ser resumido assim:
 Comandos típicos:
 
 ```bash
-poetry run task observability
+poetry run task appstack
 poetry run task mldrift
 ```
 

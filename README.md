@@ -203,7 +203,7 @@ O arquivo efetivamente lido pelo `docker compose` é o `.env`, que você cria a 
 
 ```bash
 cp .env.example .env
-poetry run task observability
+poetry run task appstack
 ```
 
 A stack local sobe os seguintes serviços de forma integrada:
@@ -218,7 +218,7 @@ Com a stack em execução, a documentação interativa do FastAPI fica disponív
 Para encerrar os serviços:
 
 ```bash
-poetry run task observability_down
+poetry run task appstack_down
 ```
 
 ### 5. Execução manual isolada
@@ -323,7 +323,7 @@ Essa trilha documenta:
 
 ### Stack local reproduzível
 
-Quando a stack é iniciada com `poetry run task observability`, os serviços ficam disponíveis em:
+Quando a stack é iniciada com `poetry run task appstack`, os serviços ficam disponíveis em:
 
 | Serviço | URL | Papel |
 |---|---|---|
@@ -338,7 +338,7 @@ O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis c
 ### Fluxo sugerido para validação local
 
 1. Copie `.env.example` para `.env`, se quiser customizar portas ou credenciais.
-2. Suba a stack com `poetry run task observability`.
+2. Suba a stack com `poetry run task appstack`.
 3. Gere tráfego pelo Swagger ou por chamadas ao endpoint de predição.
 4. Consulte as métricas no Prometheus.
 5. Abra o Grafana para visualizar os painéis provisionados.
