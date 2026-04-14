@@ -378,9 +378,11 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `configs/scenario_analysis/inference_cases.yaml` | Suíte versionada de cenários de inferência usada para validar comportamento do modelo em casos de negócio. |
 | `artifacts/scenario_analysis/drift/*.jsonl` | Lotes sintéticos construídos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
 | `artifacts/scenario_analysis/drift/*_report.html` | Relatórios HTML dos cenários sintéticos, usados para demonstração e validação do processo de drift. |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Visão consolidada das avaliações do projeto: modelo tabular, cenários, drift, retreino e trilha futura de LLM. |
 
 ## Documentação Complementar
 
+- [docs/EVALUATION.md](docs/EVALUATION.md)
 - [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
 - [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
 - [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
