@@ -34,6 +34,16 @@ o cliente errado tem custo real.
 
 Avaliar diferentes modelos de classificação para previsão de churn, considerando métricas como **Accuracy, Precision, Recall, F1-score e AUC**, além do impacto do **threshold de decisão**.
 
+Mais do que escolher “o maior número”, o objetivo destas métricas no projeto é
+apoiar decisões operacionais:
+
+- qual modelo deve seguir como champion
+- qual threshold é mais coerente com a estratégia de retenção
+- quando um challenger realmente supera o champion
+
+Essa leitura conversa diretamente com o fluxo implementado de drift, retreino e
+comparação champion-challenger.
+
 ---
 
 ## 🧠 Modelos Avaliados
@@ -43,6 +53,10 @@ Avaliar diferentes modelos de classificação para previsão de churn, considera
 * XGBoost (v1)
 
 Todos utilizando o mesmo conjunto de dados (`processed_v1`) e divisão de treino/teste (80/20).
+
+No estado atual do projeto, o champion operacional está alinhado ao
+`random_forest_current`, cuja leitura prática é próxima da família de resultados
+mais equilibrados mostrada nesta tabela.
 
 ---
 
@@ -69,6 +83,10 @@ Todos utilizando o mesmo conjunto de dados (`processed_v1`) e divisão de treino
 📌 **Conclusão:**
 
 > Modelo mais adequado para uso geral, equilibrando corretamente falsos positivos e falsos negativos.
+
+Essa ideia de equilíbrio é importante porque, no projeto, a promoção de um novo
+challenger não depende apenas de “treinar de novo”. Ela depende de o modelo
+novo realmente manter ou melhorar o comportamento esperado frente ao champion.
 
 ---
 
@@ -122,6 +140,10 @@ Foi observado que a alteração do threshold (limiar de decisão) impacta signif
 
 > O threshold influencia diretamente o trade-off entre precision e recall, podendo adaptar o mesmo modelo para diferentes estratégias de negócio.
 
+Esse ponto é central para a banca: muitas vezes dois modelos com AUC parecida
+podem produzir comportamentos operacionais muito diferentes por causa do
+threshold escolhido.
+
 ---
 
 ## 📈 Observação sobre AUC
@@ -157,3 +179,16 @@ Apesar de alguns modelos apresentarem alta accuracy:
   * **Recall alto → retenção agressiva**
   * **Precision alta → abordagem conservadora**
 * **AUC semelhante entre modelos indica que o ganho está mais na decisão (threshold) do que no modelo em si**
+
+## Conexão com o Fluxo Atual de Retreino
+
+No fluxo implementado hoje, essas métricas não ficam apenas em documentação:
+
+- elas ajudam a registrar o champion atual
+- entram na análise do challenger gerado em retreino
+- sustentam a decisão auditável em `promotion_decision.json`
+
+No estágio atual, a regra de promoção usa `auc` como métrica principal com
+delta mínimo explícito. Isso não significa que AUC seja a única métrica
+relevante para negócio, mas ela funciona bem como critério padronizado de
+comparação inicial entre versões do modelo.

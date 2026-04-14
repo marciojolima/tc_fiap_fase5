@@ -2,9 +2,6 @@
 
 Última revisão: 2026-04-14
 
-Este documento consolida a aderência do repositório aos arquivos
-[REQUISITOS_DATATHON.md](REQUISITOS_DATATHON.md) e
-[REQUISITOS_DATATHON_LIVE_EXPLANATION.md](REQUISITOS_DATATHON_LIVE_EXPLANATION.md).
 O objetivo aqui é ser honesto sobre o que já está de pé, o que está parcial e
 o que ainda falta para a banca.
 
