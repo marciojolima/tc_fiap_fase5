@@ -168,13 +168,101 @@ poetry install
 
 ### 2. Sincronização de dados versionados
 
-O projeto utiliza DVC para dados e artefatos versionados. Em um ambiente novo, execute:
+O projeto utiliza DVC para dados e artefatos versionados. No repositório atual, o remote padrão já está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
+
+Se o DVC já estiver instalado no ambiente, você pode usar `dvc ...` diretamente. Se preferir usar as dependências gerenciadas pelo projeto, utilize `poetry run dvc ...`.
+
+#### Como a configuração está organizada
+
+- `.dvc/config`: arquivo versionado no Git com a configuração compartilhada do remote, como nome e URL
+- `.dvc/config.local`: arquivo local, não versionado, usado para credenciais e segredos de cada máquina
+
+Em outras palavras:
+
+- o time pode versionar em `.dvc/config` que o remote se chama `datathon_remote`
+- cada pessoa configura em `.dvc/config.local` suas próprias credenciais de acesso
+
+#### 1. Verifique ou configure o remote
+
+No projeto atual, a configuração compartilhada já aponta para o remote `datathon_remote`. Se você precisar recriá-lo manualmente em outra máquina, o fluxo é:
+
+```bash
+dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
+```
+
+Se estiver usando o ambiente do projeto via Poetry:
+
+```bash
+poetry run dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
+```
+
+#### 2. Configure as credenciais locais do Google Drive
+
+As credenciais OAuth não devem ir para o Git. Por isso, elas devem ser gravadas localmente com `--local`, o que escreve em `.dvc/config.local`:
+
+```bash
+dvc remote modify --local datathon_remote gdrive_client_id <ID>
+dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
+```
+
+Ou, usando o ambiente do projeto:
+
+```bash
+poetry run dvc remote modify --local datathon_remote gdrive_client_id <ID>
+poetry run dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
+```
+
+#### 3. Garanta a permissão no Google Drive
+
+Não basta conhecer o `client_id` e o `client_secret`. A conta Google usada na autenticação também precisa ter permissão para acessar o storage apontado pelo remote.
+
+Na prática, isso significa que:
+
+- a pasta ou recurso do Google Drive referenciado pelo `gdrive://...` precisa estar compartilhado com a conta que fará o `dvc pull`
+- se a permissão não existir, a autenticação pode até funcionar, mas o download dos dados falhará por falta de acesso ao conteúdo
+
+Se o time estiver centralizando os dados em uma pasta compartilhada, confirme antes que sua conta foi adicionada com acesso apropriado.
+
+#### 4. Configure o OAuth no Google Cloud Console
+
+Para que o DVC possa autenticar no Google Drive via OAuth, é necessário existir um cliente OAuth configurado no Google Cloud Console. Em linhas gerais:
+
+1. crie ou selecione um projeto no Google Cloud Console
+2. habilite a Google Drive API para esse projeto
+3. configure a tela de consentimento OAuth
+4. crie credenciais do tipo OAuth Client ID
+5. use o `client_id` e o `client_secret` gerados nos comandos `dvc remote modify --local ...`
+
+Na primeira autenticação, o DVC pode abrir um fluxo de autorização OAuth no navegador. Essa etapa vincula a conta Google local ao client OAuth configurado e concede acesso ao storage do Drive.
+
+#### 5. Baixe os dados
+
+Depois do remote e das credenciais estarem corretos, baixe os dados com:
+
+```bash
+dvc pull
+```
+
+Ou:
 
 ```bash
 poetry run dvc pull
 ```
 
-Se o remote ainda não estiver configurado localmente, ele deve ser ajustado antes do `pull`.
+#### Resumo prático
+
+```bash
+dvc remote modify --local datathon_remote gdrive_client_id <ID>
+dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
+dvc pull
+```
+
+#### Observações importantes
+
+- não versione `.dvc/config.local`
+- não publique `client_id` e `client_secret` em README, issue, commit ou pull request
+- se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
+- `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 
 ### 3. Pipeline principal
 
