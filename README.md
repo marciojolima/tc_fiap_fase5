@@ -129,23 +129,23 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 
 ```text
 tc_fiap_fase5/
-├── artifacts/          # modelos, relatórios de drift e saídas de retreino
-├── configs/            # treino, cenários, monitoramento e observabilidade
-├── data/               # camadas raw, interim e processed
-├── docs/               # documentação técnica e de governança
-├── evaluation/         # scripts de avaliação para trilhas com LLM
-├── notebooks/          # notebooks exploratórios e de apoio
-├── scripts/            # utilitários auxiliares
+├── artifacts/              # modelos, relatórios de drift e saídas de retreino
+├── configs/                # treino, cenários, monitoramento e observabilidade
+├── data/                   # camadas raw, interim e processed
+├── docs/                   # documentação técnica e de governança
+├── evaluation/             # scripts de avaliação para trilhas com LLM
+├── notebooks/              # notebooks exploratórios e de apoio
+├── scripts/                # utilitários auxiliares
 ├── src/
-│   ├── agent/          # componentes em evolução para agente e RAG
-│   ├── common/         # utilidades compartilhadas
-│   ├── features/       # engenharia e validação de features
-│   ├── models/         # treino, promoção e retreino
-│   ├── monitoring/     # drift, métricas e logging de inferências
-│   ├── scenario_analysis/
-│   ├── security/       # guardrails e PII em evolução
-│   └── serving/        # aplicação FastAPI e pipeline de inferência
-├── tests/              # suíte de testes automatizados
+│   ├── agent/              # componentes em evolução para agente e RAG
+│   ├── common/             # utilidades compartilhadas
+│   ├── features/           # engenharia e validação de features
+│   ├── models/             # treino, promoção e retreino
+│   ├── monitoring/         # drift, métricas e logging de inferências
+│   ├── scenario_analysis/  # cenários de negócio e geração de batches sintéticos
+│   ├── security/           # guardrails e PII em evolução
+│   └── serving/            # aplicação FastAPI e pipeline de inferência
+├── tests/                  # suíte de testes automatizados
 ├── docker-compose.yml
 ├── pyproject.toml
 ├── README.md
