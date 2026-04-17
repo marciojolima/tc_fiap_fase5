@@ -151,6 +151,47 @@ Ele aprende combinações. Por exemplo:
 - saldo baixo isoladamente pode não significar muito, mas junto com baixa
   atividade e pouco tempo de casa pode indicar maior fragilidade
 
+## Contagem e Evolução das Colunas
+
+O dataset bruto validado na entrada possui `18` colunas. Esse total inclui
+identificadores diretos, variáveis candidatas a feature, sinais com risco de
+vazamento e a própria variável alvo.
+
+Antes do treino, algumas colunas deixam de compor o espaço de atributos por
+motivos de governança, LGPD e consistência estatística:
+
+- `RowNumber`, `CustomerId` e `Surname` são removidas por minimização de dados e
+  por não representarem sinal de negócio útil para generalização.
+- `Exited` sai do conjunto de entrada porque é a variável alvo, usada apenas
+  como rótulo supervisionado.
+- `Complain` e `Satisfaction Score` são excluídas do conjunto de treino por
+  risco de leakage, já que podem refletir eventos muito próximos ou posteriores
+  à decisão de churn.
+
+Ao mesmo tempo, o pipeline acrescenta `2` features derivadas:
+
+- `BalancePerProduct`
+- `PointsPerSalary`
+
+Também há uma transformação estrutural importante: `Geography` deixa de existir
+como uma única coluna textual e passa a ser representada por `2` colunas
+binárias, `Geo_Germany` e `Geo_Spain`, com `France` funcionando como categoria
+de referência no one-hot encoding com `drop_first=True`.
+
+Com isso, a contagem final fica:
+
+- `18` colunas no dado bruto
+- `-3` colunas de identificação direta
+- `-1` coluna alvo removida de `X`
+- `-2` colunas excluídas por leakage
+- `+2` features derivadas novas
+- `Geography`: sai `1` coluna e entram `2` colunas codificadas
+
+O resultado final é um conjunto com `15` features usadas no treino:
+`Card Type`, `Gender`, `Geo_Germany`, `Geo_Spain`, `CreditScore`, `Age`,
+`Tenure`, `Balance`, `NumOfProducts`, `HasCrCard`, `IsActiveMember`,
+`EstimatedSalary`, `Point Earned`, `BalancePerProduct` e `PointsPerSalary`.
+
 ## 🔍 Interpretação das Features Mais Importantes
 
 A tabela abaixo é uma leitura de negócio das features mais relevantes em um
