@@ -445,9 +445,9 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 
 | Artefato | Papel no projeto |
 |---|---|
-| `data/interim/cleaned.parquet` | Camada intermediária já tratada, usada como ponto de auditoria entre ingestão e preparação final dos dados. |
-| `data/processed/train.parquet` | Base final de treino gerada pelo pipeline de features e usada nos experimentos do modelo. |
-| `data/processed/test.parquet` | Base final de teste usada para validação e comparação de desempenho. |
+| `data/interim/cleaned.parquet` | Base saneada da camada `interim`: já teve identificadores diretos removidos, passou por deduplicação, remoção de nulos e validação de schema, mas ainda não foi convertida para o formato final de modelagem. |
+| `data/processed/train.parquet` | Base final de treino da camada `processed`: já passou por split, criação de features derivadas, remoção de leakage, encoding e scaling, ficando pronta para consumo pelos algoritmos. |
+| `data/processed/test.parquet` | Base final de teste da camada `processed`, gerada com o mesmo pipeline do treino e mantida separada para validação sem vazamento. |
 | `data/processed/feature_columns.json` | Registra a ordem e os nomes finais das features, ajudando a manter consistência entre treino e inferência. |
 | `data/processed/schema_report.json` | Evidência da validação estrutural dos dados processados, reforçando a etapa de qualidade de dados. |
 | `artifacts/models/feature_pipeline.joblib` | Pipeline de transformação persistido para reutilização no serving, evitando divergência entre treino e produção. |
