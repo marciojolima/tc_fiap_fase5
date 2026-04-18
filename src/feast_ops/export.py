@@ -78,7 +78,10 @@ def build_feature_store_export_dataframe(
     )
 
     return pd.concat(
-        [export_dataframe.reset_index(drop=True), selected_features.reset_index(drop=True)],
+        [
+            export_dataframe.reset_index(drop=True),
+            selected_features.reset_index(drop=True),
+        ],
         axis=1,
     )
 

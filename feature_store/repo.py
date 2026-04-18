@@ -36,7 +36,10 @@ customer = Entity(
     name=FEATURE_ENTITY_NAME,
     join_keys=[FEATURE_ENTITY_JOIN_KEY],
     value_type=ValueType.INT64,
-    description="Cliente bancário identificado apenas pela chave técnica usada na store.",
+    description=(
+        "Cliente bancário identificado apenas pela chave técnica usada na "
+        "store."
+    ),
 )
 
 customer_churn_features = FeatureView(
