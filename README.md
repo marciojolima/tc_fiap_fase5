@@ -7,6 +7,8 @@
 ![Evidently](https://img.shields.io/badge/Evidently-drift%20monitoring-6E56CF?style=for-the-badge)
 ![Prometheus](https://img.shields.io/badge/Prometheus-monitoring-E6522C?style=for-the-badge&logo=prometheus)
 ![Grafana](https://img.shields.io/badge/Grafana-observability-F46800?style=for-the-badge&logo=grafana)
+![Feast](https://img.shields.io/badge/Feast-feature%20store-2F855A?style=for-the-badge)
+![Redis](https://img.shields.io/badge/Redis-online%20store-DC382D?style=for-the-badge&logo=redis)
 ![Poetry](https://img.shields.io/badge/Poetry-dependencies-60A5FA?style=for-the-badge&logo=poetry)
 
 Projeto integrador da Fase 05 do curso MLET da FIAP, desenvolvido no formato de Datathon. O repositório implementa uma solução de predição de churn bancário com foco em MLOps, rastreabilidade, observabilidade e evolução arquitetural para componentes com LLMs e agentes.
@@ -21,6 +23,7 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
 - [Como Executar](#como-executar)
+- [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
 - [Documentação Complementar](#documentação-complementar)
@@ -42,6 +45,7 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - serving desacoplado via FastAPI
 - cenários de negócio versionados
 - monitoramento batch de drift com artefatos auditáveis
+- feature store local com Feast + Redis para materialização online incremental
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 
 Além da trilha tabular principal, o repositório também mantém módulos em evolução para agente, RAG, avaliação de LLM e segurança aplicada. Esses componentes fazem parte da direção do projeto, mas seu andamento detalhado está no documento de status.
@@ -118,6 +122,8 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 - **Treinamento e modelagem:** Scikit-learn, XGBoost
 - **Experiment tracking:** MLflow
 - **Versionamento de dados:** DVC
+- **Feature Store:** Feast
+- **Online store:** Redis
 - **Validação de dados:** Pandera
 - **Serving:** FastAPI, Uvicorn
 - **Monitoramento de drift:** Evidently
@@ -133,6 +139,7 @@ tc_fiap_fase5/
 ├── configs/                # treino, cenários, monitoramento e observabilidade
 ├── data/                   # camadas raw, interim e processed
 ├── docs/                   # documentação técnica e de governança
+├── feature_store/          # repositório Feast e definições da feature store
 ├── evaluation/             # scripts de avaliação para trilhas com LLM
 ├── notebooks/              # notebooks exploratórios e de apoio
 ├── scripts/                # utilitários auxiliares
@@ -296,6 +303,7 @@ poetry run task appstack
 
 A stack local sobe os seguintes serviços de forma integrada:
 
+- Redis
 - serving FastAPI
 - MLflow server
 - Prometheus
@@ -312,6 +320,31 @@ poetry run task appstack_down
 ### 5. Execução manual isolada
 
 Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
+
+### Feature Store
+
+O projeto agora possui uma Feature Store local baseada em Feast, com Redis como online store. O objetivo é separar claramente a camada offline, usada para preparo e materialização, da camada online, usada para consulta de baixa latência.
+
+Fluxo recomendado:
+
+```bash
+poetry run task mlfeateng
+poetry run task feastexport
+docker compose up -d redis
+poetry run task feastapply
+poetry run task feastmaterialize
+poetry run task feastdemo
+```
+
+Arquivos principais dessa integração:
+
+- `feature_store/feature_store.yaml`
+- `feature_store/repo.py`
+- `src/feast_ops/export.py`
+- `src/feast_ops/demo.py`
+- `docs/FEATURE_STORE.md`
+
+Detalhamento completo, decisões arquiteturais, limitações e próximos passos estão em [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md).
 
 Serving:
 
