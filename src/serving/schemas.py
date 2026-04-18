@@ -129,3 +129,21 @@ class ChurnPredictionResponse(BaseModel):
     churn_prediction: int
     model_name: str
     threshold: float
+
+
+class LLMChatRequest(BaseModel):
+    """Request payload for LLM chat endpoint."""
+
+    message: str = Field(..., min_length=1, description="Pergunta do usuário.")
+    include_trace: bool = Field(
+        default=False,
+        description="Retorna trilha ReAct com ferramentas usadas.",
+    )
+
+
+class LLMChatResponse(BaseModel):
+    """Response payload for LLM chat endpoint."""
+
+    answer: str
+    used_tools: list[str]
+    trace: list[dict]

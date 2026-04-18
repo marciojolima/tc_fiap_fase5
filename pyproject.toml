@@ -3,7 +3,8 @@ name = "tc-fiap-fase5"
 version = "0.1.0"
 description = "Projeto de Datathon - FIAP 2026"
 authors = [
-    {name = "Márcio Lima",email = "marciocad@gmail.com"}
+    {name = "Márcio Lima",email = "marciocad@gmail.com"},
+    {name = "Luca Poit",email = "lucapoit@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13,<4"
@@ -77,8 +78,13 @@ test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
 mlflow = 'mlflow server --backend-store-uri file:./mlruns --default-artifact-root ./mlruns --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
-observability = 'docker compose up -d serving mlflow prometheus grafana'
+# Sobe containers com as imagens ja existentes (rapido). Apos mudar codigo em src/ ou Dockerfile, rode task observability_rebuild.
+observability = 'docker compose up -d ollama ollama-pull serving mlflow prometheus grafana'
+# Reconstrói a imagem da app (COPY src) e sobe a stack — use quando a API estiver desatualizada no container.
+observability_rebuild = 'docker compose up -d --build ollama ollama-pull serving mlflow prometheus grafana'
 observability_down = 'docker compose down'
+# Lista modelos no Ollama (container tc-fiap-ollama ou, se falhar, host 127.0.0.1:11434).
+ollama_list = 'python scripts/list_ollama_models.py'
 
 pre_mlrunall = 'task mlfeateng'
 mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'

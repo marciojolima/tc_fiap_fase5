@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from monitoring.metrics import register_prometheus_metrics
+from serving.llm_routes import router as llm_router
 from serving.routes import router
 
 
@@ -15,6 +16,7 @@ def create_app() -> FastAPI:
         description="API de serving para predição de churn bancário.",
     )
     app.include_router(router)
+    app.include_router(llm_router)
     register_prometheus_metrics(app)
     return app
 

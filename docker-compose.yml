@@ -1,4 +1,48 @@
 services:
+  # Ollama no mesmo Compose: reproduzivel em qualquer maquina (modelo no volume ollama_data).
+  # O serving usa por padrao LLM_BASE_URL=http://ollama:11434 (nome do servico na rede Docker).
+
+  ollama:
+    image: ollama/ollama:0.6.5
+    container_name: tc-fiap-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ml_platform
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 30s
+      retries: 12
+      start_period: 20s
+
+  # Job unico: termina com Exited(0) se OK — isso e normal, nao e um servico long-running.
+  # Falha com exit != 0 se pull ou verificacao falhar (impede serving de subir com modelo inexistente).
+  ollama-pull:
+    image: ollama/ollama:0.6.5
+    container_name: tc-fiap-ollama-pull
+    restart: "no"
+    networks:
+      - ml_platform
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eux
+        echo "OLLAMA_HOST=$$OLLAMA_HOST model=$$OLLAMA_MODEL"
+        ollama pull "$$OLLAMA_MODEL"
+        echo "--- modelos no servidor remoto ---"
+        ollama list
+        ollama show "$$OLLAMA_MODEL"
+
   serving:
     build:
       context: .
@@ -6,6 +50,9 @@ services:
     image: tc-fiap-fase5-app:latest
     container_name: tc-fiap-serving
     restart: unless-stopped
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
     command:
       - uvicorn
       - serving.app:app
@@ -18,6 +65,12 @@ services:
     environment:
       PROJECT_ROOT: /app
       PYTHONUNBUFFERED: "1"
+      # Padrao: Ollama no mesmo Compose. Para Ollama so no host Windows, sobrescreva no .env:
+      # LLM_BASE_URL=http://host.docker.internal:11434
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./configs:/app/configs:ro
       - ./artifacts:/app/artifacts
@@ -97,3 +150,4 @@ networks:
 volumes:
   grafana_data:
   prometheus_data:
+  ollama_data:
