@@ -122,6 +122,24 @@ class ChurnPredictionRequest(BaseModel):
         return value
 
 
+class ChurnCustomerLookupRequest(BaseModel):
+    """Payload enxuto para predição usando a online store do Feast."""
+
+    customer_id: int = Field(
+        ...,
+        gt=0,
+        description="Identificador técnico do cliente na Feature Store.",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "customer_id": 15634602,
+            }
+        },
+    }
+
+
 class ChurnPredictionResponse(BaseModel):
     """Resposta de inferência com probabilidade e decisão final."""
 
@@ -129,3 +147,5 @@ class ChurnPredictionResponse(BaseModel):
     churn_prediction: int
     model_name: str
     threshold: float
+    feature_source: str
+    customer_id: int | None = None

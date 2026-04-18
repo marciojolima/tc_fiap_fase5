@@ -24,6 +24,8 @@ services:
     image: tc-fiap-fase5-app:latest
     container_name: tc-fiap-serving
     restart: unless-stopped
+    depends_on:
+      - redis
     command:
       - uvicorn
       - serving.app:app
@@ -36,9 +38,11 @@ services:
     environment:
       PROJECT_ROOT: /app
       PYTHONUNBUFFERED: "1"
+      FEAST_REDIS_CONNECTION_STRING: ${FEAST_REDIS_CONNECTION_STRING:-redis:6379}
     volumes:
       - ./configs:/app/configs:ro
       - ./artifacts:/app/artifacts
+      - ./feature_store:/app/feature_store:ro
     networks:
       - ml_platform
 
