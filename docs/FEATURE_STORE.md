@@ -107,6 +107,52 @@ No dataset acadêmico de churn não existe um timestamp operacional real. Por is
 
 Essa decisão é uma adaptação didática, explicitamente registrada, e não pretende simular um CDC real de produção.
 
+## O que `apply` e `materialize` fazem
+
+Embora apareçam juntos no uso cotidiano, `apply` e `materialize` cumprem papéis diferentes:
+
+- `feast apply` atualiza o catálogo da Feature Store
+- `feast materialize-incremental` publica dados da camada offline na camada online
+
+Na prática:
+
+- `apply` lê `feature_store/repo.py` e registra `Entity`, `FeatureView` e `FeatureServices`
+- `materialize-incremental` lê o parquet offline já exportado e envia para o Redis apenas a janela incremental pendente
+
+Isso significa que:
+
+- alterar definições da store exige `apply`
+- atualizar os dados disponíveis para o serving exige `materialize`
+- chamar `/predict` não executa nenhum desses passos automaticamente
+
+## Quando a online store é atualizada
+
+O Redis não observa o parquet offline sozinho. A atualização da camada online ocorre apenas quando a materialização é disparada manualmente.
+
+Em outras palavras:
+
+- `dvc repro` reconstrói artefatos offline do pipeline
+- `feast materialize-incremental` sincroniza esses dados com a online store
+- `/predict` apenas consulta o que já estiver materializado
+
+Essa separação foi mantida de propósito para deixar explícita a diferença entre:
+
+- pipeline reprodutível de dados
+- operação online da Feature Store
+
+## Relação entre offline e online no projeto
+
+No desenho atual, a camada offline é a fonte publicada de referência da Feature Store. O Redis funciona como projeção operacional dessa base para serving de baixa latência.
+
+Portanto:
+
+- a offline store guarda a publicação completa preparada para o Feast
+- a online store guarda apenas o estado necessário para leitura rápida
+- treino e histórico continuam mais próximos da camada offline
+- inferência online consulta a camada materializada no Redis
+
+Esse desenho resolve o principal gap arquitetural do projeto: evitar uma online store destrutiva baseada em limpeza total e recarga integral.
+
 ## Fluxo local recomendado
 
 ### 1. Instalar dependências
@@ -151,6 +197,8 @@ poetry run feast -c feature_store apply
 poetry run feast -c feature_store materialize-incremental $(date -u +"%Y-%m-%dT%H:%M:%S")
 ```
 
+Esse comando não faz `full flush` do Redis. Ele usa a janela incremental mantida pelo Feast para publicar apenas o que precisa ser atualizado.
+
 ### 7. Ler features online por `customer_id`
 
 ```bash
@@ -173,6 +221,7 @@ Esta evolução se conecta ao restante da plataforma desta forma:
 - o fluxo atual demonstra batch-to-online materialization, não streaming
 - não há autenticação nem TLS no Redis local, por escolha deliberada de simplicidade
 - os `FeatureServices` atuais ainda reaproveitam a mesma `FeatureView`, porque nesta etapa a ênfase é governança e versionamento do contrato, não divergência real de features
+- a atualização da online store ainda é manual; não há scheduler dedicado para `materialize`
 
 ## Próximos passos naturais
 

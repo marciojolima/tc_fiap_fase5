@@ -12,7 +12,8 @@ Este documento resume os principais pontos de entrada do projeto, mostrando:
 | Gatilho | Tipo | Start | Resultado principal |
 |---|---|---|---|
 | Serving healthcheck | Online | `GET /health` | Retorna status do serviço |
-| Serving predição | Online | `POST /predict` | Retorna probabilidade e classe |
+| Serving predição online | Online | `POST /predict` | Retorna probabilidade e classe a partir do `customer_id` |
+| Serving predição legada | Online | `POST /predict/raw` | Retorna probabilidade e classe a partir do payload bruto |
 | Métricas Prometheus | Online | `GET /metrics` | Expõe métricas do serving |
 | Logging de inferência | Online passivo | `POST /predict` | Salva inferência em JSONL |
 | Engenharia de features | Batch manual | `python -m src.features.feature_engineering` | Gera `interim`, `processed` e `feature_pipeline.joblib` |
@@ -68,12 +69,14 @@ Raw data
 **Cadeia**
 
 `POST /predict`
--> schema [`ChurnPredictionRequest`](../serving/schemas.py)
+-> schema [`ChurnCustomerLookupRequest`](../serving/schemas.py)
 -> rota [`predict_churn`](../serving/routes.py)
 -> função [`load_serving_config`](../serving/pipeline.py)
--> função [`prepare_inference_dataframe`](../serving/pipeline.py)
--> função [`load_feature_pipeline`](../serving/pipeline.py)
--> aplica `artifacts/models/feature_pipeline.joblib`
+-> função [`prepare_online_inference_payload`](../serving/pipeline.py)
+-> função [`fetch_online_features_from_feast`](../serving/pipeline.py)
+-> carrega o repositório Feast local
+-> resolve o `FeatureService` do modelo ativo
+-> consulta a online store Redis pelo `customer_id`
 -> função [`predict_from_dataframe`](../serving/pipeline.py)
 -> função [`load_prediction_model`](../serving/pipeline.py)
 -> usa `artifacts/models/model_current.pkl`
@@ -83,9 +86,11 @@ Raw data
 
 **Entradas**
 
-- payload HTTP validado
+- payload HTTP contendo `customer_id`
 - [`configs/training/model_current.yaml`](../../configs/training/model_current.yaml)
-- `artifacts/models/feature_pipeline.joblib`
+- [`feature_store/repo.py`](../../feature_store/repo.py)
+- `feature_store/data/registry.db`
+- Redis com features materializadas
 - `artifacts/models/model_current.pkl`
 
 **Saídas**
@@ -95,13 +100,39 @@ Raw data
   - `churn_prediction`
   - `model_name`
   - `threshold`
+  - `feature_source`
+  - `customer_id`
 
 **Observações**
 
-- O serving não chama `src/features` nem `src/models` diretamente na requisição.
-- Ele reaproveita artefatos gerados offline por esses módulos.
+- O serving não recalcula features na requisição.
+- O fluxo principal consulta a camada online da Feature Store antes de aplicar o modelo.
 
-### 1.3 `POST /predict` -> métricas Prometheus
+### 1.3 `POST /predict/raw`
+
+**Tipo:** online  
+**Start:** chamada HTTP para `/predict/raw`
+
+**Cadeia**
+
+`POST /predict/raw`
+-> schema [`ChurnPredictionRequest`](../serving/schemas.py)
+-> rota [`predict_churn_from_raw`](../serving/routes.py)
+-> função [`load_serving_config`](../serving/pipeline.py)
+-> função [`prepare_request_inference_payload`](../serving/pipeline.py)
+-> função [`prepare_inference_dataframe`](../serving/pipeline.py)
+-> função [`load_feature_pipeline`](../serving/pipeline.py)
+-> aplica `artifacts/models/feature_pipeline.joblib`
+-> função [`predict_from_dataframe`](../serving/pipeline.py)
+-> usa `artifacts/models/model_current.pkl`
+-> retorna [`ChurnPredictionResponse`](../serving/schemas.py)
+
+**Observações**
+
+- Esta rota foi mantida como fallback legado e apoio didático.
+- O fluxo preferencial do projeto para inferência online é o `/predict` baseado em `customer_id`.
+
+### 1.4 `POST /predict` -> métricas Prometheus
 
 **Tipo:** online passivo  
 **Start:** a mesma chamada do `/predict`
@@ -135,7 +166,7 @@ Raw data
 - O código da API expõe as métricas.
 - O armazenamento histórico não é feito pela API; ele é responsabilidade do Prometheus.
 
-### 1.4 `POST /predict` -> logging de inferência
+### 1.5 `POST /predict` -> logging de inferência
 
 **Tipo:** online passivo  
 **Start:** a mesma chamada do `/predict`
@@ -145,7 +176,7 @@ Raw data
 `POST /predict`
 -> rota [`predict_churn`](../serving/routes.py)
 -> função [`log_prediction_for_monitoring`](../monitoring/inference_log.py)
--> monta registro com payload + probabilidade + classe
+-> monta registro com features usadas + probabilidade + classe + metadados de origem
 -> append em `artifacts/monitoring/inference_logs/predictions.jsonl`
 
 **Arquivos envolvidos**
@@ -158,6 +189,7 @@ Raw data
 
 - Este fluxo não calcula drift.
 - Ele apenas produz a base current consumida depois pelo monitoramento batch.
+- Quando a inferência vem do Feast, o log registra `feature_source=feast_online_store`.
 
 ## 2. Gatilhos de Features
 
@@ -422,7 +454,10 @@ Raw data
 **Cadeia**
 
 `feast -c feature_store apply`
--> registra definições da Feature Store
+-> lê [`feature_store/feature_store.yaml`](../../feature_store/feature_store.yaml)
+-> carrega definições em [`feature_store/repo.py`](../../feature_store/repo.py)
+-> registra `Entity`, `FeatureView` e `FeatureServices`
+-> atualiza o registry local do Feast
 
 ### 6.4 Feast materialize
 
@@ -432,7 +467,15 @@ Raw data
 **Cadeia**
 
 `feast -c feature_store materialize-incremental ...`
--> materializa features no Redis
+-> lê `data/feature_store/customer_features.parquet`
+-> identifica a janela incremental disponível
+-> publica no Redis apenas o recorte necessário para serving online
+
+**Observações**
+
+- Este fluxo é manual no projeto atual.
+- A online store não é atualizada automaticamente a cada `dvc repro`.
+- O objetivo é evitar um fluxo destrutivo de limpeza total e recarga completa.
 
 ### 6.5 Feast demo
 
@@ -446,8 +489,7 @@ Raw data
 
 **Observação importante**
 
-- A API FastAPI atual ainda não consulta o Feast em produção.
-- Isso está documentado em [`docs/FEATURE_STORE.md`](../../docs/FEATURE_STORE.md).
+- A mesma base conceitual desse fluxo já é usada pela API no endpoint `/predict`.
 
 ## 7. Gatilhos de Cenários e Validação
 
@@ -616,4 +658,3 @@ Se reduzirmos o projeto aos gatilhos centrais, o mapa fica assim:
 -> apply
 -> materialize
 -> demo online via Redis
-
