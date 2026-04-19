@@ -6,7 +6,10 @@ import pandas as pd
 from prometheus_client import generate_latest
 
 from monitoring.metrics import (
+    finish_feast_lookup_for_monitor,
+    finish_model_predict_for_monitor,
     finish_predict_request_for_monitor,
+    start_step_timer_for_monitor,
     start_predict_request_for_monitor,
 )
 from serving.app import create_app
@@ -272,6 +275,10 @@ def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
 def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
     app = create_app()
     start_time = start_predict_request_for_monitor()
+    feast_start_time = start_step_timer_for_monitor()
+    model_start_time = start_step_timer_for_monitor()
+    finish_feast_lookup_for_monitor(feast_start_time)
+    finish_model_predict_for_monitor(model_start_time)
     finish_predict_request_for_monitor(
         start_time,
         method="POST",
@@ -282,3 +289,5 @@ def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
     assert any(getattr(route, "path", None) == "/metrics" for route in app.routes)
     assert "churn_serving_predict_latency_seconds" in metrics_payload
     assert "churn_serving_predict_requests_total" in metrics_payload
+    assert "churn_serving_predict_feast_lookup_latency_seconds" in metrics_payload
+    assert "churn_serving_predict_model_latency_seconds" in metrics_payload

@@ -22,6 +22,11 @@ from feast_ops.config import (
     FEATURE_STORE_REPO_PATH,
     ONLINE_FEATURE_COLUMNS,
 )
+from monitoring.metrics import (
+    finish_feast_lookup_for_monitor,
+    finish_model_predict_for_monitor,
+    start_step_timer_for_monitor,
+)
 from serving.schemas import ChurnPredictionRequest
 
 logger = get_logger("serving.pipeline")
@@ -204,21 +209,25 @@ def fetch_online_features_from_feast(
 ) -> dict[str, list[Any]]:
     """Consulta a online store por meio do FeatureService configurado."""
 
+    start_time = start_step_timer_for_monitor()
     logger.info(
         "Consultando Feast online store para customer_id=%s via feature service %s",
         customer_id,
         cfg.feast_feature_service_name,
     )
-    store = load_feast_store(str(cfg.feast_repo_path))
-    feature_service = store.get_feature_service(cfg.feast_feature_service_name)
-    online_features = store.get_online_features(
-        features=feature_service,
-        entity_rows=[{cfg.feast_entity_key: customer_id}],
-    ).to_dict()
-    logger.info(
-        "Consulta ao Feast concluída para customer_id=%s", customer_id
-    )
-    return online_features
+    try:
+        store = load_feast_store(str(cfg.feast_repo_path))
+        feature_service = store.get_feature_service(cfg.feast_feature_service_name)
+        online_features = store.get_online_features(
+            features=feature_service,
+            entity_rows=[{cfg.feast_entity_key: customer_id}],
+        ).to_dict()
+        logger.info(
+            "Consulta ao Feast concluída para customer_id=%s", customer_id
+        )
+        return online_features
+    finally:
+        finish_feast_lookup_for_monitor(start_time)
 
 
 def prepare_online_inference_payload(
@@ -288,7 +297,9 @@ def predict_from_dataframe_with_config(
         model = load_prediction_model()
 
     threshold = cfg.threshold
+    start_time = start_step_timer_for_monitor()
     probability = float(model.predict_proba(transformed_features)[0][1])
+    finish_model_predict_for_monitor(start_time)
     prediction = int(probability >= threshold)
     logger.info(
         (
