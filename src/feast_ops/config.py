@@ -10,7 +10,7 @@ FEATURE_STORE_EXPORT_PATH = FEATURE_STORE_DATA_DIR / "customer_features.parquet"
 FEATURE_STORE_EXPORT_METADATA_PATH = FEATURE_STORE_DATA_DIR / "export_metadata.json"
 
 FEATURE_VIEW_NAME = "customer_churn_features"
-FEATURE_SERVICE_NAME = "customer_churn_model_v1"
+DEFAULT_FEATURE_SERVICE_NAME = "customer_churn_rf_v2"
 FEATURE_ENTITY_NAME = "customer"
 FEATURE_ENTITY_JOIN_KEY = "customer_id"
 

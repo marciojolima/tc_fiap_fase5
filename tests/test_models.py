@@ -72,6 +72,7 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         model_params={"n_estimators": 200},
         threshold=0.5,
         feature_set="processed_v1",
+        feature_service_name="customer_churn_rf_v2",
         model_path=model_path,
         training_data_version="data-hash-123",
         git_sha="abc123",
@@ -123,6 +124,7 @@ def return_experiment_training_config(_: str) -> dict:
         },
         "training": {"params": {"n_estimators": 200}},
         "inference": {"threshold": 0.5},
+        "feast": {"feature_service_name": "customer_churn_rf_v2"},
         "artifacts": {"model_path": "artifacts/models/model.pkl"},
         "mlflow": {
             "experiment_name": "candidate-exp",
@@ -335,6 +337,7 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.run_name == "rf_candidate"
     assert cfg.model_version == "0.2.0"
     assert cfg.model_params == {"n_estimators": 200}
+    assert cfg.feature_service_name == "customer_churn_rf_v2"
     assert cfg.model_path == Path("artifacts/models/model.pkl")
     assert cfg.training_data_version == "data-hash-123"
     assert cfg.git_sha == "abc123"
@@ -412,8 +415,10 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
     log_run_metadata(cfg.model_params, cfg, datasets)
 
     assert ("fairness_checked", False) in _PARAM_LOG
+    assert ("feature_service_name", "customer_churn_rf_v2") in _PARAM_LOG
     assert ("model_name", "random_forest_candidate") in _TAG_LOG
     assert ("model_version", "0.2.0") in _TAG_LOG
+    assert ("feature_service_name", "customer_churn_rf_v2") in _TAG_LOG
     assert ("training_data_version", "data-hash-123") in _TAG_LOG
     assert ("git_sha", "abc123") in _TAG_LOG
     assert ("git_tag", "post_release_commits") in _TAG_LOG

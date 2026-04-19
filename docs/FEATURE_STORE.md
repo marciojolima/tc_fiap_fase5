@@ -10,6 +10,7 @@ No desenho atual:
 - uma camada-ponte exporta as features já prontas para `data/feature_store/customer_features.parquet`
 - o Feast usa esse parquet como offline source
 - o Redis, em container, funciona como online store para serving de baixa latência
+- `FeatureServices` versionados por modelo explicitam o contrato de consumo
 
 ## Por que esta abordagem foi escolhida
 
@@ -72,6 +73,27 @@ Observação importante:
 - `Geo_Germany` e `Geo_Spain` já representam a versão one-hot de `Geography`
 
 Ou seja, a Feature Store publica um conjunto de atributos pronto para inferência, e não a cópia literal das colunas brutas.
+
+## Feature Services por versão de modelo
+
+Para reforçar governança e rastreabilidade, o projeto passou a declarar `FeatureServices` específicos por versão de modelo, mesmo reaproveitando a mesma `FeatureView` base.
+
+Exemplos atuais:
+
+- `customer_churn_rf_v1`
+- `customer_churn_rf_v2`
+- `customer_churn_rf_v3`
+- `customer_churn_gb_v1`
+- `customer_churn_xgb_v1`
+
+Na prática:
+
+- a `FeatureView` continua sendo `customer_churn_features`
+- o `FeatureService` define qual contrato de features cada modelo consome
+- a configuração de treino aponta explicitamente para esse contrato em `feast.feature_service_name`
+- o serving resolve a leitura online pelo `FeatureService` do modelo ativo
+
+Isso aproxima a solução de um cenário produtivo sem introduzir complexidade desnecessária.
 
 ## Materialização incremental
 
@@ -140,9 +162,9 @@ poetry run python -m src.feast_ops.demo --customer-id 15634602
 Esta evolução se conecta ao restante da plataforma desta forma:
 
 - `DVC`: rastreia o artefato offline exportado da feature store como parte do pipeline local
-- `MLflow`: continua sendo o tracking de experimentos e lineage de treino; a feature store complementa o serving
+- `MLflow`: continua sendo o tracking de experimentos e lineage de treino; o nome do `FeatureService` passa a ser registrado como parte do contrato do modelo
 - `Feature engineering`: segue centralizado no pipeline já existente, sem reimplementação paralela
-- `Serving`: passa a ter uma rota clara para futura leitura online de features antes da predição
+- `Serving`: consulta a online store usando o `FeatureService` compatível com o modelo ativo
 - `Docker Compose`: ganha um Redis local simples, suficiente para demonstração
 
 ## Limitações assumidas
@@ -150,11 +172,10 @@ Esta evolução se conecta ao restante da plataforma desta forma:
 - o dataset de churn é estático, então o `event_timestamp` é sintético
 - o fluxo atual demonstra batch-to-online materialization, não streaming
 - não há autenticação nem TLS no Redis local, por escolha deliberada de simplicidade
-- a API FastAPI atual ainda não consulta o Feast em produção; a demo foi entregue por script utilitário para não acoplar mudanças maiores agora
+- os `FeatureServices` atuais ainda reaproveitam a mesma `FeatureView`, porque nesta etapa a ênfase é governança e versionamento do contrato, não divergência real de features
 
 ## Próximos passos naturais
 
-- integrar a leitura online do Feast à camada de serving
-- separar feature services por versão de modelo
+- evoluir `FeatureServices` para refletir conjuntos de features realmente distintos entre modelos
 - substituir timestamp sintético por data operacional real, caso o dataset evolua
 - adicionar testes de integração específicos para `apply`, materialização e leitura online

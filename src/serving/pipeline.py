@@ -17,8 +17,8 @@ from common.config_loader import (
 )
 from common.logger import get_logger
 from feast_ops.config import (
+    DEFAULT_FEATURE_SERVICE_NAME,
     FEATURE_ENTITY_JOIN_KEY,
-    FEATURE_SERVICE_NAME,
     FEATURE_STORE_REPO_PATH,
     ONLINE_FEATURE_COLUMNS,
 )
@@ -78,7 +78,10 @@ def build_serving_config(
         run_name=experiment_config["experiment"]["run_name"],
         feast_repo_path=FEATURE_STORE_REPO_PATH,
         feast_entity_key=FEATURE_ENTITY_JOIN_KEY,
-        feast_feature_service_name=FEATURE_SERVICE_NAME,
+        feast_feature_service_name=experiment_config.get("feast", {}).get(
+            "feature_service_name",
+            DEFAULT_FEATURE_SERVICE_NAME,
+        ),
     )
 
 

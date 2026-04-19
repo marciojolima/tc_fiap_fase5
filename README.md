@@ -304,10 +304,10 @@ poetry run task appstack
 A stack local sobe os seguintes serviços de forma integrada:
 
 - Redis
-- serving FastAPI
-- MLflow server
 - Prometheus
 - Grafana
+- serving FastAPI
+- MLflow server
 
 Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local.
 
@@ -324,6 +324,8 @@ Se você quiser subir somente um componente fora do Compose durante desenvolvime
 ### Feature Store
 
 O projeto agora possui uma Feature Store local baseada em Feast, com Redis como online store. O objetivo é separar claramente a camada offline, usada para preparo e materialização, da camada online, usada para consulta de baixa latência.
+
+Além disso, a governança de consumo foi refinada com `FeatureServices` por versão de modelo. Isso deixa explícito qual contrato de features cada modelo usa no treino e no serving, mesmo quando diferentes versões ainda compartilham a mesma `FeatureView` base.
 
 Fluxo recomendado:
 

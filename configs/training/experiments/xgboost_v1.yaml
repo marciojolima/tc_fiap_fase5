@@ -22,6 +22,9 @@ training:
 inference:
   threshold: 0.5
 
+feast:
+  feature_service_name: customer_churn_xgb_v1
+
 artifacts:
   model_path: artifacts/models/xgboost_v1.pkl
 

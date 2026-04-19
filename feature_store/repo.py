@@ -19,7 +19,6 @@ if str(SRC_PATH) not in sys.path:
 from feast_ops.config import (  # noqa: E402
     FEATURE_ENTITY_JOIN_KEY,
     FEATURE_ENTITY_NAME,
-    FEATURE_SERVICE_NAME,
     FEATURE_STORE_EXPORT_PATH,
     FEATURE_VIEW_NAME,
 )
@@ -72,7 +71,27 @@ customer_churn_features = FeatureView(
     },
 )
 
-customer_churn_model_v1 = FeatureService(
-    name=FEATURE_SERVICE_NAME,
+customer_churn_rf_v1 = FeatureService(
+    name="customer_churn_rf_v1",
+    features=[customer_churn_features],
+)
+
+customer_churn_rf_v2 = FeatureService(
+    name="customer_churn_rf_v2",
+    features=[customer_churn_features],
+)
+
+customer_churn_rf_v3 = FeatureService(
+    name="customer_churn_rf_v3",
+    features=[customer_churn_features],
+)
+
+customer_churn_gb_v1 = FeatureService(
+    name="customer_churn_gb_v1",
+    features=[customer_churn_features],
+)
+
+customer_churn_xgb_v1 = FeatureService(
+    name="customer_churn_xgb_v1",
     features=[customer_churn_features],
 )

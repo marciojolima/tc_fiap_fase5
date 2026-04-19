@@ -113,7 +113,7 @@ def build_serving_config() -> ServingConfig:
         run_name="random_forest_current",
         feast_repo_path=Path("feature_store"),
         feast_entity_key="customer_id",
-        feast_feature_service_name="customer_churn_model_v1",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
 
 

@@ -62,7 +62,7 @@ def return_route_config() -> ServingConfig:
         run_name="random_forest_current",
         feast_repo_path=Mock(),
         feast_entity_key="customer_id",
-        feast_feature_service_name="customer_churn_model_v1",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
 
 
@@ -123,7 +123,7 @@ def test_prepare_inference_dataframe_uses_feature_pipeline(monkeypatch) -> None:
         run_name="random_forest_current",
         feast_repo_path=Mock(),
         feast_entity_key="customer_id",
-        feast_feature_service_name="customer_churn_model_v1",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
     monkeypatch.setattr(
         "serving.pipeline.load_feature_pipeline",
@@ -169,7 +169,7 @@ def test_prepare_inference_dataframe_logs_lgpd_governance(monkeypatch) -> None:
         run_name="random_forest_current",
         feast_repo_path=Mock(),
         feast_entity_key="customer_id",
-        feast_feature_service_name="customer_churn_model_v1",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
     monkeypatch.setattr(
         "serving.pipeline.load_feature_pipeline",
