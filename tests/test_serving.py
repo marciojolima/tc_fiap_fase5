@@ -9,8 +9,8 @@ from monitoring.metrics import (
     finish_feast_lookup_for_monitor,
     finish_model_predict_for_monitor,
     finish_predict_request_for_monitor,
-    start_step_timer_for_monitor,
     start_predict_request_for_monitor,
+    start_step_timer_for_monitor,
 )
 from serving.app import create_app
 from serving.pipeline import (
