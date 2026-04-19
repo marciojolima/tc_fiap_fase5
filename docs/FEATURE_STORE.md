@@ -199,6 +199,70 @@ poetry run feast -c feature_store materialize-incremental $(date -u +"%Y-%m-%dT%
 
 Esse comando não faz `full flush` do Redis. Ele usa a janela incremental mantida pelo Feast para publicar apenas o que precisa ser atualizado.
 
+## Fluxo operacional recomendado
+
+No estado atual do projeto, o fluxo mais seguro para preparar a Feature Store e
+depois usar o serving e:
+
+```bash
+poetry run dvc repro export_feature_store
+poetry run task feastapply
+poetry run task feastmaterialize
+docker compose up -d serving prometheus grafana
+```
+
+Em termos de responsabilidade:
+
+- `dvc repro export_feature_store` prepara a camada offline
+- `feast apply` registra ou atualiza o catalogo do Feast
+- `feast materialize-incremental` publica as features na online store Redis
+- o `serving` apenas consulta a online store; ele nao deve bootstrapar o Feast em runtime
+
+Isso e importante porque o `dvc repro` nao substitui:
+
+- a criacao/atualizacao do registry do Feast
+- a materializacao da online store
+
+Se apenas o `dvc repro` for executado, ainda pode faltar:
+
+- `feature_store/data/registry.db`
+- dados materializados no Redis para leitura online
+
+## Desenho lógico
+
+```text
+Dados + pipeline de features
+        |
+        v
+python -m src.feast_ops.export
+ou dvc repro export_feature_store
+        |
+        v
+data/feature_store/customer_features.parquet
+        |
+        v
+feast -c feature_store apply
+        |
+        v
+feature_store/data/registry.db
+        |
+        v
+feast -c feature_store materialize-incremental ...
+        |
+        v
+Redis online store
+        |
+        v
+POST /predict -> serving -> Feast -> Redis -> features -> modelo -> resposta
+```
+
+Nesse desenho:
+
+- a camada batch prepara e publica
+- a camada online apenas serve
+- o serving nao precisa escrever no repositorio do Feast para responder
+- o fluxo evita acoplar bootstrap de infraestrutura com inferencia online
+
 ### 7. Ler features online por `customer_id`
 
 ```bash

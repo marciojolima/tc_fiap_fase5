@@ -446,6 +446,13 @@ Raw data
 -> stage `export_feature_store` em [`dvc.yaml`](../../dvc.yaml)
 -> executa `python -m src.feast_ops.export`
 
+**Observação importante**
+
+- Esse passo prepara a camada offline do Feast, mas nao substitui `feast apply`
+  nem `feast materialize-incremental`.
+- Depois do `dvc repro`, o fluxo operacional esperado continua sendo:
+  `task feastapply` -> `task feastmaterialize` -> uso do serving.
+
 ### 6.3 Feast apply
 
 **Tipo:** infra manual  
@@ -476,6 +483,8 @@ Raw data
 - Este fluxo é manual no projeto atual.
 - A online store não é atualizada automaticamente a cada `dvc repro`.
 - O objetivo é evitar um fluxo destrutivo de limpeza total e recarga completa.
+- O serving depende de o registry ja existir e de a online store ja estar
+  materializada; ele nao deve assumir a responsabilidade de bootstrapar o Feast.
 
 ### 6.5 Feast demo
 
@@ -490,6 +499,9 @@ Raw data
 **Observação importante**
 
 - A mesma base conceitual desse fluxo já é usada pela API no endpoint `/predict`.
+- Para o endpoint online funcionar corretamente, a sequência recomendada e:
+  `dvc repro export_feature_store` -> `task feastapply` ->
+  `task feastmaterialize` -> subir/usar o serving.
 
 ## 7. Gatilhos de Cenários e Validação
 
