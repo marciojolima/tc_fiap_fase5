@@ -6,11 +6,10 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from common.config_loader import load_config
 from common.logger import get_logger
-from serving.schemas import ChurnPredictionRequest
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
 
@@ -46,12 +45,13 @@ def is_inference_logging_enabled(config: dict[str, Any]) -> bool:
 
 
 def build_inference_log_record(  # noqa: PLR0913, PLR0917
-    payload: ChurnPredictionRequest,
+    feature_payload: Mapping[str, Any],
     probability: float,
     prediction: int,
     model_name: str,
     model_version: str,
     threshold: float,
+    request_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Monta uma linha auditável com entrada, predição e metadados mínimos."""
 
@@ -62,7 +62,8 @@ def build_inference_log_record(  # noqa: PLR0913, PLR0917
         "threshold": threshold,
         "churn_probability": probability,
         "churn_prediction": prediction,
-        **payload.model_dump(by_alias=True),
+        **(request_metadata or {}),
+        **dict(feature_payload),
     }
 
 
@@ -79,8 +80,9 @@ def append_inference_log(
 
 
 def log_prediction_for_monitoring(
-    payload: ChurnPredictionRequest,
+    feature_payload: Mapping[str, Any],
     prediction_context: PredictionLogContext,
+    request_metadata: Mapping[str, Any] | None = None,
     config_path: str = DEFAULT_MONITORING_CONFIG_PATH,
 ) -> None:
     """Registra a inferência atual sem interromper a resposta da API."""
@@ -91,12 +93,13 @@ def log_prediction_for_monitoring(
             return
 
         record = build_inference_log_record(
-            payload=payload,
+            feature_payload=feature_payload,
             probability=prediction_context.probability,
             prediction=prediction_context.prediction,
             model_name=prediction_context.model_name,
             model_version=prediction_context.model_version,
             threshold=prediction_context.threshold,
+            request_metadata=request_metadata,
         )
         append_inference_log(
             record=record,

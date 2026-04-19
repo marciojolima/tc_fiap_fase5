@@ -20,6 +20,9 @@ training:
 inference:
   threshold: 0.4
 
+feast:
+  feature_service_name: customer_churn_rf_v3
+
 artifacts:
   model_path: artifacts/models/random_forest_v3.pkl
 

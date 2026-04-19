@@ -53,6 +53,7 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         model_params={"n_estimators": 200},
         threshold=0.5,
         feature_set="processed_v1",
+        feature_service_name="customer_churn_rf_v2",
         model_path=model_path,
         training_data_version="data-hash-123",
         git_sha="abc123",
@@ -114,6 +115,7 @@ def test_run_retraining_request_executes_training_and_writes_result(
                 },
                 "training": {"params": {"n_estimators": 200}},
                 "inference": {"threshold": 0.5},
+                "feast": {"feature_service_name": "customer_churn_rf_v2"},
                 "artifacts": {
                     "model_path": str(
                         tmp_path

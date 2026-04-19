@@ -18,40 +18,36 @@ from monitoring.inference_log import (
     append_inference_log,
     build_inference_log_record,
 )
-from serving.schemas import ChurnPredictionRequest
 
 EXPECTED_BATCH_ROW_COUNT = 10
+EXPECTED_CUSTOMER_ID = 15634602
 
 
-def test_build_inference_log_record_preserves_payload_aliases() -> None:
-    payload = ChurnPredictionRequest(
-        CreditScore=650,
-        Geography="France",
-        Gender="Female",
-        Age=35,
-        Tenure=5,
-        Balance=2000.0,
-        NumOfProducts=2,
-        HasCrCard=1,
-        IsActiveMember=1,
-        EstimatedSalary=60000.0,
-        **{"Card Type": "GOLD", "Point Earned": 200},
-    )
-
+def test_build_inference_log_record_preserves_feature_payload() -> None:
     record = build_inference_log_record(
-        payload=payload,
+        feature_payload={
+            "Card Type": 1.0,
+            "Point Earned": 200.0,
+            "BalancePerProduct": 1000.0,
+        },
         probability=0.82,
         prediction=1,
         model_name="random_forest_current",
         model_version="0.2.0",
         threshold=0.5,
+        request_metadata={
+            "feature_source": "feast_online_store",
+            "customer_id": EXPECTED_CUSTOMER_ID,
+        },
     )
 
     assert record["churn_probability"] == 0.82  # noqa: PLR2004
     assert record["churn_prediction"] == 1
     assert record["model_version"] == "0.2.0"
-    assert record["Card Type"] == "GOLD"
-    assert record["Point Earned"] == 200  # noqa: PLR2004
+    assert record["Card Type"] == 1.0
+    assert record["Point Earned"] == 200.0  # noqa: PLR2004
+    assert record["feature_source"] == "feast_online_store"
+    assert record["customer_id"] == EXPECTED_CUSTOMER_ID
     assert "timestamp" in record
 
 

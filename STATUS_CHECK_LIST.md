@@ -1,6 +1,6 @@
 # Status Check List
 
-Última revisão: 2026-04-14
+Última revisão: 2026-04-19
 
 Este arquivo funciona como uma checagem rápida de entrega. A regra aqui é
 simples:
@@ -22,11 +22,19 @@ Use este checklist como guia antes do Demo Day.
 - [x] Pipeline versionado (DVC + Docker) e reprodutível
 - [x] Métricas de negócio mapeadas para métricas técnicas
 - [x] `pyproject.toml` com todas as dependências
+- [x] Feature Store com Feast integrada ao projeto
+- [x] Redis como online store local
+- [x] Materialização incremental de features
+- [x] Serving consultando a online store por `customer_id`
+- [x] `FeatureService` versionado por modelo
 
 Observações:
 
 - A EDA existe no notebook do projeto, mas ainda não é o eixo central da entrega.
 - O pipeline está reproduzível localmente com DVC, Docker Compose e tasks do projeto.
+- A etapa de feature store já está atendida de forma funcional para a banca.
+- A principal ressalva é que os `FeatureServices` ainda compartilham a mesma
+  `FeatureView`, o que limita a divergência real entre versões nesta fase.
 
 ### Etapa 2 — LLM + Agente
 
@@ -93,6 +101,8 @@ Hoje o projeto está mais forte em:
 - pipeline tabular de churn
 - MLflow e rastreabilidade
 - serving com FastAPI
+- feature store com Feast + Redis
+- contrato de features versionado por modelo
 - observabilidade local
 - drift + retreino auditável
 
@@ -102,4 +112,5 @@ Os maiores gaps ainda estão em:
 - golden set e avaliação LLM
 - segurança aplicada
 - governança documental mais profunda
+- orquestração formal dos ingestion jobs
 - preparação final de Demo Day

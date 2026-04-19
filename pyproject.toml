@@ -11,6 +11,7 @@ dependencies = [
     "pandas>=2.2.0",
     "numpy>=1.26.0",
     "scikit-learn>=1.4.2",
+    "feast[redis]>=0.57.0,<0.62.0",
     "mlflow==3.10.1",
     "pandera>=0.19.3",
     "pyarrow>=16.0.0",
@@ -36,6 +37,7 @@ dependencies = [
 packages = [
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
+    { include = "feast_ops", from = "src" },
     { include = "features", from = "src" },
     { include = "models", from = "src" },
     { include = "monitoring", from = "src" },
@@ -66,6 +68,10 @@ lint = 'ruff check'
 pre_format = 'ruff check --fix'
 format = 'ruff format'
 mlfeateng = 'python -m src.features.feature_engineering'
+feastexport = 'python -m src.feast_ops.export'
+feastapply = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store apply'
+feastmaterialize = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store materialize-incremental $(date -u +"%Y-%m-%dT%H:%M:%S")'
+feastdemo = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 python -m src.feast_ops.demo --customer-id 15634602'
 mltrain = 'python -m src.models.train'
 mlscenarios = 'python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
 mldrift = 'python -m src.monitoring.drift'
@@ -77,7 +83,7 @@ test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
 mlflow = 'mlflow server --backend-store-uri file:./mlruns --default-artifact-root ./mlruns --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
-appstack = 'docker compose up -d serving mlflow prometheus grafana'
+appstack = 'docker compose up -d redis serving mlflow prometheus grafana'
 appstack_down = 'docker compose down'
 
 pre_mlrunall = 'task mlfeateng'

@@ -1,6 +1,6 @@
 # Status Atual do Projeto
 
-Última revisão: 2026-04-14
+Última revisão: 2026-04-19
 
 O objetivo aqui é ser honesto sobre o que já está de pé, o que está parcial e
 o que ainda falta para a banca.
@@ -18,6 +18,7 @@ defensável de:
 - cenários de inferência
 - drift com Evidently e PSI
 - retreino auditável com champion-challenger
+- feature store com Feast + Redis e materialização incremental
 - stack local com Prometheus e Grafana
 - suíte relevante de testes automatizados
 
@@ -46,7 +47,13 @@ Os maiores gaps frente ao que a live enfatizou continuam em:
 - [ ] Baseline adicional em PyTorch
 - [x] Notebook de EDA incluído no repositório
 - [ ] Golden set formal em `data/golden_set/`
-- [ ] Feature store compartilhada ou materialização incremental entre modelos
+- [x] Feature store com Feast introduzida no projeto
+- [x] Redis configurado como online store local via Docker Compose
+- [x] Camada offline da feature store derivada do pipeline atual, sem duplicar regras de features
+- [x] Materialização incremental implementada no Feast
+- [x] Demo de leitura online por `customer_id`
+- [x] Serving integrado ao Feast para inferência online por `customer_id`
+- [x] Contrato de features versionado por modelo com `FeatureService`
 
 Observações:
 
@@ -54,6 +61,12 @@ Observações:
   é o elemento central da entrega.
 - O professor deixou claro na live que o modelo não é o foco principal, mas a
   plataforma precisa estar bem estruturada.
+- A trilha de feature store está funcional e bem aderente ao gap de
+  `Feature Management` enfatizado na live: há separação offline/online, Redis
+  em container, materialização incremental e serving consultando a online store.
+- O projeto já superou o estágio de "feature store single-model" porque agora
+  existe governança de contrato com `FeatureServices` por versão de modelo,
+  ainda que todos reaproveitem a mesma `FeatureView` base nesta etapa.
 
 ### Etapa 2: API, LLM e agente
 
@@ -141,6 +154,8 @@ Hoje a narrativa mais forte do projeto é:
 - solução tabular de churn com pipeline de dados reproduzível
 - treino rastreável com MLflow e metadados
 - serving local consistente
+- feature store local com Feast + Redis integrada ao serving
+- contrato de features versionado por modelo
 - cenários de inferência
 - observabilidade operacional básica
 - detecção de drift com software funcionando
@@ -162,6 +177,36 @@ Os pontos abaixo não devem ser “vendidos como prontos” sem ressalva:
 - PII sanitization
 - fairness automatizada
 - System Card / OWASP / Red Team como governança madura
+- feature divergence real entre versões de `FeatureService`
+- ingestion jobs orquestrados por scheduler externo
+
+## Avaliação da Feature Store
+
+Considerando `REQUISITOS_DATATHON.md` e `REQUISITOS_DATATHON_LIVE_EXPLANATION.md`,
+a parte de feature store pode ser considerada **cumprida de forma funcional e
+defensável para a banca**.
+
+O que já foi entregue:
+
+- repositório Feast mínimo dentro do projeto
+- offline source em parquet derivado do pipeline atual
+- Redis como online store local via container
+- materialização incremental sem padrão destrutivo
+- leitura online por `customer_id`
+- integração real do serving com Feast
+- documentação técnica e operacional da solução
+- versionamento do contrato de consumo por modelo com `FeatureService`
+
+Lacunas remanescentes, mas não bloqueantes para considerar a etapa atendida:
+
+- os `FeatureServices` já estão versionados por modelo, mas ainda reutilizam a
+  mesma `FeatureView`, sem conjuntos de features realmente divergentes
+- a ingestão continua em jobs locais/batch (`feature_engineering` ->
+  `export_feature_store` -> `materialize`), sem orquestrador dedicado
+- o timestamp usado para materialização é sintético, por limitação do dataset
+  acadêmico
+- não há ainda um fluxo de batch scoring/offline retrieval usando Feast como
+  interface de consumo para treino; o treino segue lendo `data/processed/`
 
 ## Prioridades Recomendadas
 
@@ -190,6 +235,6 @@ mais segura hoje parece ser:
 ## Conclusão
 
 O projeto já demonstra um ciclo relevante de engenharia de machine learning para
-modelo tabular, com drift, retreino e governança operacional básica. A parte
-mais frágil frente aos requisitos continua sendo a trilha de IA generativa,
-segurança aplicada e governança documental profunda.
+modelo tabular, com drift, retreino, feature store e governança operacional
+básica. A parte mais frágil frente aos requisitos continua sendo a trilha de IA
+generativa, segurança aplicada e governança documental profunda.

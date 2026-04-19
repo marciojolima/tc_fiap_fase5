@@ -1,4 +1,22 @@
 services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: tc-fiap-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command:
+      - redis-server
+      - --save
+      - "60"
+      - "1"
+      - --appendonly
+      - "yes"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ml_platform
+
   serving:
     build:
       context: .
@@ -6,6 +24,8 @@ services:
     image: tc-fiap-fase5-app:latest
     container_name: tc-fiap-serving
     restart: unless-stopped
+    depends_on:
+      - redis
     command:
       - uvicorn
       - serving.app:app
@@ -18,9 +38,11 @@ services:
     environment:
       PROJECT_ROOT: /app
       PYTHONUNBUFFERED: "1"
+      FEAST_REDIS_CONNECTION_STRING: ${FEAST_REDIS_CONNECTION_STRING:-redis:6379}
     volumes:
       - ./configs:/app/configs:ro
       - ./artifacts:/app/artifacts
+      - ./feature_store:/app/feature_store:ro
     networks:
       - ml_platform
 
@@ -97,3 +119,4 @@ networks:
 volumes:
   grafana_data:
   prometheus_data:
+  redis_data:
