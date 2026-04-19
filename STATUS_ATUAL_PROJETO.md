@@ -17,7 +17,7 @@ defensável de:
 - serving com FastAPI
 - cenários de inferência
 - drift com Evidently e PSI
-- retreino auditável com champion-challenger
+- retreino auditável com gatilho automático local e champion-challenger
 - feature store com Feast + Redis e materialização incremental
 - stack local com Prometheus e Grafana
 - suíte relevante de testes automatizados
@@ -91,7 +91,9 @@ Observações:
 - [x] Configuração de monitoramento dedicada em `configs/monitoring_config.yaml`
 - [x] Módulos base de drift e métricas presentes em `src/monitoring/`
 - [x] Dashboard operacional Prometheus/Grafana
-- [ ] Drift detection operacional e automatizado
+- [x] Drift detection operacional e automatizado em fluxo local batch
+- [x] Gatilho auditável de retreino para drift crítico
+- [x] Comparação champion-challenger com decisão persistida de promoção
 - [ ] RAGAS com 4 métricas efetivamente executadas
 - [ ] LLM-as-judge com pelo menos 3 critérios efetivamente executados
 - [ ] Alertas automáticos
@@ -102,8 +104,11 @@ Observações:
 - O drift está implementado e operacional em modo batch, com Evidently, PSI,
   `drift_report.html`, `drift_metrics.json`, `drift_status.json` e
   `drift_runs.jsonl`.
-- O retreino já é disparado pelo fluxo de drift e gera `retrain_request.json`,
+- O retreino já é disparado pelo fluxo de drift no modo
+  `auto_train_manual_promote` e gera `retrain_request.json`,
   `retrain_run.json` e `promotion_decision.json`.
+- A decisão de promoção já compara champion e challenger por regra explícita de
+  métrica primária e melhoria mínima, mas a promoção final continua manual.
 - Ainda não existe agendamento/cron formal nem canal de alerta externo, então a
   automação operacional ainda não está completa no sentido mais forte da live.
 
@@ -159,7 +164,8 @@ Hoje a narrativa mais forte do projeto é:
 - cenários de inferência
 - observabilidade operacional básica
 - detecção de drift com software funcionando
-- retreino auditável com comparação champion-challenger
+- gatilho local de retreino para drift crítico
+- retreino auditável com comparação champion-challenger e decisão persistida
 
 Isso conversa muito bem com a fala do professor de que a avaliação está mais
 interessada em engenharia de machine learning do que em “ter o melhor modelo”.
@@ -235,6 +241,7 @@ mais segura hoje parece ser:
 ## Conclusão
 
 O projeto já demonstra um ciclo relevante de engenharia de machine learning para
-modelo tabular, com drift, retreino, feature store e governança operacional
-básica. A parte mais frágil frente aos requisitos continua sendo a trilha de IA
-generativa, segurança aplicada e governança documental profunda.
+modelo tabular, com drift, gatilho de retreino, challenger, feature store e
+governança operacional básica. A parte mais frágil frente aos requisitos
+continua sendo a trilha de IA generativa, segurança aplicada e governança
+documental profunda.

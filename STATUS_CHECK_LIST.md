@@ -58,12 +58,16 @@ Observações:
 - [ ] LLM-as-judge com ≥ 3 critérios (incluindo critério de negócio)
 - [x] Telemetria e dashboard funcionando end-to-end
 - [x] Detecção de drift implementada e documentada
+- [x] Gatilho auditável de retreino implementado
+- [x] Comparação champion vs challenger com decisão persistida
 
 Observações:
 
 - A stack local com FastAPI, Prometheus, Grafana e MLflow já funciona de ponta a ponta.
 - O drift está implementado com Evidently, PSI, histórico de execuções, bloqueio
   por amostra insuficiente, retreino auditável e comparação champion-challenger.
+- O modo configurado hoje é `auto_train_manual_promote`: drift crítico elegível
+  abre solicitação, executa retreino local e persiste a decisão de promoção.
 - A parte de avaliação para LLM ainda não está operacional.
 
 ### Etapa 4 — Segurança + Governança
@@ -105,6 +109,7 @@ Hoje o projeto está mais forte em:
 - contrato de features versionado por modelo
 - observabilidade local
 - drift + retreino auditável
+- decisão de promoção champion-challenger
 
 Os maiores gaps ainda estão em:
 
