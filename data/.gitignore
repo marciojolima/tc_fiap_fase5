@@ -10,5 +10,7 @@
 !interim/.gitignore
 !processed/
 !processed/.gitignore
+!feature_store/
+!feature_store/.gitignore
 !monitoring/
 !monitoring/.gitkeep
