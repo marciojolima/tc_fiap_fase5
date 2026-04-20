@@ -12,6 +12,10 @@ No desenho atual:
 - o Redis, em container, funciona como online store para serving de baixa latência
 - `FeatureServices` versionados por modelo explicitam o contrato de consumo
 
+Visão arquitetural resumida:
+
+![Arquitetura da Feature Store](imgs/feature_store_architecture.png)
+
 ## Por que esta abordagem foi escolhida
 
 O projeto já possui um pipeline de feature engineering centralizado e persistido em `artifacts/models/feature_pipeline.joblib`. Em vez de duplicar regras em um segundo fluxo, a integração com o Feast reaproveita esse pipeline para produzir um dataset offline compatível com feature store.
