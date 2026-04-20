@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -49,6 +50,10 @@ def test_build_inference_log_record_preserves_feature_payload() -> None:
     assert record["feature_source"] == "feast_online_store"
     assert record["customer_id"] == EXPECTED_CUSTOMER_ID
     assert "timestamp" in record
+    assert (
+        __import__("datetime").datetime.fromisoformat(record["timestamp"]).utcoffset()
+        == timedelta(hours=-3)
+    )
 
 
 def test_append_inference_log_writes_json_lines(tmp_path) -> None:

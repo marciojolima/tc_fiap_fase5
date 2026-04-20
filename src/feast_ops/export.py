@@ -11,6 +11,7 @@ import pandas as pd
 from common.config_loader import load_config
 from common.data_loader import load_raw_data
 from common.logger import get_logger
+from common.timezone import get_project_timezone_name
 from features.feature_engineering import (
     clean_interim_data,
     load_feature_engineering_config,
@@ -109,7 +110,9 @@ def export_features_for_feast(
         entity_column=FEATURE_ENTITY_JOIN_KEY,
         event_timestamp_column="event_timestamp",
         created_timestamp_column="created_timestamp",
-        export_generated_at=pd.Timestamp.now(tz="UTC").isoformat(),
+        export_generated_at=pd.Timestamp.now(
+            tz=get_project_timezone_name()
+        ).isoformat(),
         event_timestamp_start=feast_ready_dataframe["event_timestamp"].min().isoformat(),
         event_timestamp_end=feast_ready_dataframe["event_timestamp"].max().isoformat(),
     )

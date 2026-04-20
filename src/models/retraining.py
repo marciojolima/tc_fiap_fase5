@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -12,6 +11,7 @@ import yaml
 
 from common.config_loader import DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH
 from common.logger import get_logger
+from common.timezone import now_isoformat
 from models.promotion import evaluate_challenger_promotion
 from models.train import (
     RetrainingMlflowContext,
@@ -208,7 +208,7 @@ def run_retraining_request(
     """Executa o retreino descrito em uma solicitação gerada pelo monitoramento."""
 
     request = load_retraining_request(request_path)
-    started_at = datetime.now(UTC).isoformat()
+    started_at = now_isoformat()
     update_request_status(
         request_path,
         request,
@@ -247,7 +247,7 @@ def run_retraining_request(
             output_path=request.promotion_decision_path,
             rules=request.promotion_rules,
         )
-        completed_at = datetime.now(UTC).isoformat()
+        completed_at = now_isoformat()
         result = build_retraining_run_payload(
             request,
             RetrainingRunContext(
@@ -278,7 +278,7 @@ def run_retraining_request(
         )
         return result
     except Exception as exc:
-        completed_at = datetime.now(UTC).isoformat()
+        completed_at = now_isoformat()
         update_request_status(
             request_path,
             request,

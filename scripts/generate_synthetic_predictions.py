@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -38,6 +37,7 @@ import pandas as pd
 
 from src.common.logger import get_logger
 from src.common.seed import set_global_seed
+from src.common.timezone import now_isoformat
 from src.monitoring.inference_log import append_inference_log
 from src.scenario_analysis.synthetic_drifts import (
     INPUT_COLUMNS,
@@ -214,7 +214,7 @@ def build_prediction_records(
 ) -> list[dict[str, Any]]:
     """Converte o lote em registros no formato do log de inferência."""
 
-    created_at = datetime.now(UTC).isoformat()
+    created_at = now_isoformat()
     records: list[dict[str, Any]] = []
     for row, probability, prediction in zip(
         batch_dataframe.to_dict(orient="records"),
@@ -267,7 +267,7 @@ def build_generation_metadata(
 
     return {
         "stage": "synthetic_prediction_generation",
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": now_isoformat(),
         "output_path": str(output_path),
         "num_predictions": len(records),
         "drift_mode": config.drift_mode,

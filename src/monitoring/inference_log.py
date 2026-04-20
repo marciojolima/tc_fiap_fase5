@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Mapping
 
 from common.config_loader import load_config
 from common.logger import get_logger
+from common.timezone import now_isoformat
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
 
@@ -56,7 +56,7 @@ def build_inference_log_record(  # noqa: PLR0913, PLR0917
     """Monta uma linha auditável com entrada, predição e metadados mínimos."""
 
     return {
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": now_isoformat(),
         "model_name": model_name,
         "model_version": model_version,
         "threshold": threshold,

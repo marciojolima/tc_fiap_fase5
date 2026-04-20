@@ -6,7 +6,6 @@ import argparse
 import json
 import warnings
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -19,6 +18,7 @@ from joblib import load
 
 from common.config_loader import DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH, load_config
 from common.logger import get_logger
+from common.timezone import now_isoformat
 from models.retraining import run_retraining_request
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
@@ -477,7 +477,7 @@ def write_retraining_placeholder(
         "reason": "critical_data_or_prediction_drift",
         "model_path": context.model_path,
         "training_config_path": context.training_config_path,
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": now_isoformat(),
         "trigger_mode": context.trigger_mode,
         "promotion_policy": "manual_approval_required",
         "promotion_decision_path": context.promotion_decision_path,
@@ -603,7 +603,7 @@ def run_drift_monitoring(
         ),
     )
     execution_context = MonitoringExecutionContext(
-        created_at=datetime.now(UTC).isoformat(),
+        created_at=now_isoformat(),
         reference_row_count=prepared_inputs.reference_row_count,
         current_row_count=prepared_inputs.current_row_count,
         minimum_current_sample_size_for_decision=(

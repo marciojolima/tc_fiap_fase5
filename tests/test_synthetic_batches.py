@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -102,6 +103,9 @@ def test_build_prediction_records_includes_monitoring_metadata() -> None:
     assert records[0]["model_name"] == "random_forest_current"
     assert records[1]["churn_prediction"] == 1
     assert "timestamp" in records[0]
+    assert datetime.fromisoformat(records[0]["timestamp"]).utcoffset() == timedelta(
+        hours=-3
+    )
 
 
 def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(

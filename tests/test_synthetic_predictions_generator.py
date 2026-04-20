@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -111,6 +112,9 @@ def test_build_prediction_records_includes_full_monitoring_contract() -> None:
     assert records[0]["Balance"] == EXPECTED_ROUNDED_BALANCE
     assert records[0]["EstimatedSalary"] == EXPECTED_ROUNDED_ESTIMATED_SALARY
     assert "timestamp" in records[0]
+    assert datetime.fromisoformat(records[0]["timestamp"]).utcoffset() == timedelta(
+        hours=-3
+    )
 
 
 def test_build_generation_metadata_reports_summary() -> None:
