@@ -31,10 +31,18 @@ dependencies = [
     "rich>=13.9.0,<14",
     "xgboost>=2.1.0,<3",
     "prometheus-client>=0.22.1,<0.23",
+    "ragas>=0.4.0,<0.5",
+    "datasets>=2.14.0",
+    "langchain-community>=0.3.0",
+    "langchain-core>=0.3.0",
+    "sentence-transformers>=2.2.0",
+    # sentence-transformers puxa torch; 2.1.x não tem wheel cp313 (Win/Linux). 2.5+ suporta Python 3.13.
+    "torch>=2.5.0",
 ]
 
 [tool.poetry]
 packages = [
+    { include = "evaluation" },
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
     { include = "features", from = "src" },
@@ -59,7 +67,7 @@ preview = true
 select = ['I', 'F', 'E', 'W', 'PL', 'PT', 'FAST']
 
 [tool.pytest.ini_options]
-pythonpath = "."
+pythonpath = ["src", "."]
 addopts = '-p no:warnings'
 
 [tool.taskipy.tasks]
@@ -85,6 +93,8 @@ observability_rebuild = 'docker compose up -d --build ollama ollama-pull serving
 observability_down = 'docker compose down'
 # Lista modelos no Ollama (container tc-fiap-ollama ou, se falhar, host 127.0.0.1:11434).
 ollama_list = 'python scripts/list_ollama_models.py'
+# RAGAS (4 métricas) sobre o golden set — requer Ollama e download do modelo de embeddings (1ª vez).
+ragas_eval = 'python -m evaluation.ragas_eval'
 
 pre_mlrunall = 'task mlfeateng'
 mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'

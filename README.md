@@ -115,7 +115,9 @@ Implementação alinhada à opção **LLM quantizado servido fora do processo Py
 
 - **Golden set (RAG / judge):** [configs/evaluation/golden_set.yaml](configs/evaluation/golden_set.yaml) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
 
-**Próximos passos planejados (ainda não concluídos no repositório):** pipeline de benchmark com ≥3 configs (por exemplo RAGAS), extensão do CI/CD para essa trilha e documentação de resultados de avaliação.
+- **RAGAS (4 métricas):** [evaluation/ragas_eval.py](evaluation/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set (respostas geradas via Ollama + contextos do `rag_pipeline`; embeddings multilingues via `sentence-transformers`). Execução local: `poetry run task ragas_eval` (requer Ollama no ar; na primeira execução baixa o modelo de embeddings). Saída típica: `evaluation/results/ragas_scores.json` (pasta ignorada no Git se contiver apenas resultados).
+
+**Próximos passos planejados (ainda não concluídos no repositório):** pipeline de benchmark com ≥3 configs comparando runs, extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
 
 ## Arquitetura da Solução
 
