@@ -273,17 +273,30 @@ dvc pull
 
 ### 3. Pipeline principal
 
-Engenharia de features:
+Fluxo recomendado para deixar o projeto pronto para treino, Feature Store e serving online:
 
 ```bash
-poetry run task mlfeateng
+poetry run dvc repro featurize
+poetry run dvc repro train
+poetry run dvc repro export_feature_store
+poetry run task feastapply
+poetry run task feastmaterialize
 ```
 
-Treinamento:
+Responsabilidade de cada gatilho:
 
-```bash
-poetry run task mltrain
-```
+- `dvc repro featurize`: gera `data/processed/train.parquet`, `data/processed/test.parquet` e `artifacts/models/feature_pipeline.joblib`
+- `dvc repro train`: treina o modelo e gera `artifacts/models/model_current.pkl`
+- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet`
+- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast
+- `task feastmaterialize`: lê a camada offline e materializa incrementalmente as features na online store Redis
+
+Observações importantes:
+
+- `dvc repro export_feature_store` depende do artefato `artifacts/models/feature_pipeline.joblib`, gerado no stage `featurize`
+- a API de predição completa também depende de `artifacts/models/model_current.pkl`, gerado no stage `train`
+- `feast apply` registra a estrutura da Feature Store; ele não publica dados no Redis
+- `feast materialize-incremental` depende de o Redis estar em execução
 
 Execução ampliada com múltiplos experimentos e cenários:
 
@@ -330,8 +343,9 @@ Além disso, a governança de consumo foi refinada com `FeatureServices` por ver
 Fluxo recomendado:
 
 ```bash
-poetry run task mlfeateng
-poetry run task feastexport
+poetry run dvc repro featurize
+poetry run dvc repro train
+poetry run dvc repro export_feature_store
 docker compose up -d redis
 poetry run task feastapply
 poetry run task feastmaterialize
