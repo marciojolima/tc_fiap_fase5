@@ -185,7 +185,7 @@
         "h": 3,
         "w": 8,
         "x": 16,
-        "y": 3
+        "y": 9
       },
       "id": 3,
       "options": {
@@ -255,7 +255,7 @@
         "h": 3,
         "w": 8,
         "x": 16,
-        "y": 6
+        "y": 12
       },
       "id": 4,
       "options": {
@@ -325,7 +325,7 @@
         "h": 3,
         "w": 8,
         "x": 16,
-        "y": 9
+        "y": 3
       },
       "id": 5,
       "options": {
@@ -356,7 +356,7 @@
           "refId": "A"
         }
       ],
-      "title": "Tempo Feast P95",
+      "title": "Latência Feast P95",
       "type": "stat"
     },
     {
@@ -395,7 +395,7 @@
         "h": 3,
         "w": 8,
         "x": 16,
-        "y": 12
+        "y": 6
       },
       "id": 6,
       "options": {
@@ -426,7 +426,7 @@
           "refId": "A"
         }
       ],
-      "title": "Tempo Modelo P95",
+      "title": "Latência Modelo P95",
       "type": "stat"
     }
   ],
