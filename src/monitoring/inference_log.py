@@ -12,6 +12,7 @@ from common.logger import get_logger
 from common.timezone import now_isoformat
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
+MONITORING_CONTRACT_VERSION = "transformed_features_v1"
 
 logger = get_logger("monitoring.inference_log")
 
@@ -57,6 +58,7 @@ def build_inference_log_record(  # noqa: PLR0913, PLR0917
 
     return {
         "timestamp": now_isoformat(),
+        "monitoring_contract": MONITORING_CONTRACT_VERSION,
         "model_name": model_name,
         "model_version": model_version,
         "threshold": threshold,

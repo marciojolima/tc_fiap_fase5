@@ -13,6 +13,7 @@ from monitoring.drift import (
     calculate_numeric_psi,
     decide_drift_status,
     load_dataset,
+    prepare_feature_matrix,
     run_drift_monitoring,
 )
 from monitoring.inference_log import (
@@ -44,6 +45,7 @@ def test_build_inference_log_record_preserves_feature_payload() -> None:
 
     assert record["churn_probability"] == 0.82  # noqa: PLR2004
     assert record["churn_prediction"] == 1
+    assert record["monitoring_contract"] == "transformed_features_v1"
     assert record["model_version"] == "0.2.0"
     assert record["Card Type"] == 1.0
     assert record["Point Earned"] == 200.0  # noqa: PLR2004
@@ -54,6 +56,28 @@ def test_build_inference_log_record_preserves_feature_payload() -> None:
         __import__("datetime").datetime.fromisoformat(record["timestamp"]).utcoffset()
         == timedelta(hours=-3)
     )
+
+
+def test_prepare_feature_matrix_rejects_partial_transformed_contract() -> None:
+    current_dataset = pd.DataFrame(
+        [
+            {
+                "timestamp": "2026-04-21T00:00:00-03:00",
+                "monitoring_contract": "transformed_features_v1",
+                "Card Type": 1.0,
+                "Age": 0.1,
+                "churn_probability": 0.8,
+                "churn_prediction": 1,
+            }
+        ]
+    )
+
+    with pytest.raises(ValueError, match="contrato inconsistente"):
+        prepare_feature_matrix(
+            dataset=current_dataset,
+            feature_columns=["Card Type", "Age", "BalancePerProduct"],
+            feature_pipeline_path="artifacts/models/feature_pipeline.joblib",
+        )
 
 
 def test_append_inference_log_writes_json_lines(tmp_path) -> None:

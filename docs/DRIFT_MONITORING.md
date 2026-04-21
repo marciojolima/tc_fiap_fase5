@@ -74,6 +74,9 @@ Mapeamento no código:
 - log de inferência que alimenta a base corrente: [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
 
 Esse log é justamente o insumo que depois será lido pela rotina de drift.
+No contrato atual, ele representa principalmente as features transformadas
+efetivamente servidas ao modelo, e não mais apenas o payload bruto recebido pela
+API.
 
 ## Passo a Passo Operacional
 

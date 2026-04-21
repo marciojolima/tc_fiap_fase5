@@ -27,8 +27,12 @@ PREDICTION_PROBABILITY_COLUMN = "churn_probability"
 PREDICTION_CLASS_COLUMN = "churn_prediction"
 MONITORING_METADATA_COLUMNS = {
     "timestamp",
+    "monitoring_contract",
     "model_name",
+    "model_version",
     "threshold",
+    "feature_source",
+    "customer_id",
     PREDICTION_PROBABILITY_COLUMN,
     PREDICTION_CLASS_COLUMN,
 }
@@ -140,7 +144,22 @@ def prepare_feature_matrix(
     """Resolve uma matriz transformada a partir de dados brutos ou já processados."""
 
     if set(feature_columns).issubset(dataset.columns):
+        _validate_transformed_monitoring_contract(
+            dataset=dataset,
+            feature_columns=feature_columns,
+        )
         return dataset[feature_columns].copy()
+
+    transformed_columns_present = [
+        column_name for column_name in feature_columns if column_name in dataset.columns
+    ]
+    if transformed_columns_present:
+        raise ValueError(
+            "Dataset de monitoramento possui contrato inconsistente: apenas parte "
+            "das features transformadas esperadas está presente. "
+            f"Presentes: {transformed_columns_present}. "
+            "Regere o arquivo current usando o contrato atual do serving."
+        )
 
     raw_features = dataset.drop(
         columns=[
@@ -152,6 +171,26 @@ def prepare_feature_matrix(
     feature_pipeline = load(feature_pipeline_path)
     transformed_features = feature_pipeline.transform(raw_features)
     return transformed_features[feature_columns].copy()
+
+
+def _validate_transformed_monitoring_contract(
+    dataset: pd.DataFrame,
+    feature_columns: list[str],
+) -> None:
+    """Valida que o dataset current contém uma matriz transformada consistente."""
+
+    rows_with_missing_features = dataset[feature_columns].isna().any(axis=1)
+    if not rows_with_missing_features.any():
+        return
+
+    inconsistent_row_count = int(rows_with_missing_features.sum())
+    raise ValueError(
+        "Dataset de monitoramento possui linhas incompatíveis com o contrato atual "
+        "de features transformadas. "
+        f"Linhas afetadas: {inconsistent_row_count}. "
+        "Limpe o arquivo current ou gere um novo lote de inferências com o serving "
+        "atual antes de executar o drift."
+    )
 
 
 def build_reference_predictions(

@@ -38,7 +38,10 @@ import pandas as pd
 from src.common.logger import get_logger
 from src.common.seed import set_global_seed
 from src.common.timezone import now_isoformat
-from src.monitoring.inference_log import append_inference_log
+from src.monitoring.inference_log import (
+    append_inference_log,
+    build_inference_log_record,
+)
 from src.scenario_analysis.synthetic_drifts import (
     INPUT_COLUMNS,
     build_baseline_like_batch,
@@ -184,7 +187,7 @@ def generate_input_batch(
 def score_prediction_batch(
     batch_dataframe: pd.DataFrame,
     experiment_config_path: str,
-) -> tuple[np.ndarray, np.ndarray, PredictionOutputContext]:
+) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, PredictionOutputContext]:
     """Aplica o modelo atual ao lote sintético e retorna metadados."""
 
     serving_config = build_serving_config(experiment_config_path)
@@ -196,6 +199,7 @@ def score_prediction_batch(
     predictions = (probabilities >= serving_config.threshold).astype(int)
 
     return (
+        transformed_features,
         probabilities,
         predictions,
         PredictionOutputContext(
@@ -207,38 +211,30 @@ def score_prediction_batch(
 
 
 def build_prediction_records(
-    batch_dataframe: pd.DataFrame,
+    monitoring_features_dataframe: pd.DataFrame,
     probabilities: np.ndarray,
     predictions: np.ndarray,
     context: PredictionOutputContext,
 ) -> list[dict[str, Any]]:
     """Converte o lote em registros no formato do log de inferência."""
 
-    created_at = now_isoformat()
     records: list[dict[str, Any]] = []
     for row, probability, prediction in zip(
-        batch_dataframe.to_dict(orient="records"),
+        monitoring_features_dataframe.to_dict(orient="records"),
         probabilities,
         predictions,
         strict=True,
     ):
-        normalized_row = row.copy()
-        for numeric_column in ("Balance", "EstimatedSalary"):
-            normalized_row[numeric_column] = round(
-                float(normalized_row[numeric_column]),
-                2,
-            )
-
         records.append(
-            {
-                "timestamp": created_at,
-                "model_name": context.model_name,
-                "model_version": context.model_version,
-                "threshold": float(context.threshold),
-                "churn_probability": float(probability),
-                "churn_prediction": int(prediction),
-                **normalized_row,
-            }
+            build_inference_log_record(
+                feature_payload=row,
+                probability=float(probability),
+                prediction=int(prediction),
+                model_name=context.model_name,
+                model_version=context.model_version,
+                threshold=float(context.threshold),
+                request_metadata={"feature_source": "synthetic_transformed_batch"},
+            )
         )
     return records
 
@@ -309,12 +305,18 @@ def run_generation(
         drift_mode=config.drift_mode,
         seed=config.seed,
     )
-    probabilities, predictions, prediction_context = score_prediction_batch(
+    (
+        transformed_features,
+        probabilities,
+        predictions,
+        prediction_context,
+    ) = score_prediction_batch(
         batch_dataframe=batch_dataframe,
         experiment_config_path=config.experiment_config_path,
     )
+    monitoring_features_dataframe = transformed_features.copy()
     records = build_prediction_records(
-        batch_dataframe=batch_dataframe,
+        monitoring_features_dataframe=monitoring_features_dataframe,
         probabilities=probabilities,
         predictions=predictions,
         context=prediction_context,

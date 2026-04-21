@@ -421,10 +421,13 @@ Essas métricas são consumidas pela stack local configurada em `configs/observa
 
 As inferências podem ser registradas em `artifacts/monitoring/inference_logs/predictions.jsonl`, criando uma trilha de execução útil para:
 
-- auditoria de predições
+- auditoria das features efetivamente servidas ao modelo
 - composição do dataset corrente de monitoramento
 - análise posterior de drift
 - apoio a ciclos de retreino
+
+O contrato atual desse arquivo prioriza as features transformadas e monitoráveis
+consumidas pelo modelo em produção, com metadados mínimos de predição e origem.
 
 #### Monitoramento batch de drift
 
