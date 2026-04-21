@@ -54,6 +54,7 @@ services:
       dockerfile: src/serving/Dockerfile
     image: tc-fiap-fase5-app:latest
     container_name: tc-fiap-mlflow
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     restart: unless-stopped
     depends_on:
       - serving
