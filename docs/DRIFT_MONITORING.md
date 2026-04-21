@@ -118,7 +118,8 @@ Esse arquivo contém:
 
 - metadados de inferência como `timestamp`, `model_name`, `model_version`
 - `churn_probability` e `churn_prediction`
-- payload de entrada usado na predição
+- features transformadas efetivamente servidas ao modelo
+- metadados de origem como `feature_source` e, quando aplicável, `customer_id`
 
 ### 2. Execução do Drift
 
@@ -137,11 +138,12 @@ Essa rotina:
 - carrega a base de referência
 - carrega a base corrente
 - prepara as features no mesmo padrão do treino
-- gera relatório HTML com Evidently
 - calcula PSI por feature
 - calcula `prediction_psi`, quando habilitado
 - aplica a política de amostra mínima para decisão
 - consolida o status em `ok`, `warning`, `critical` ou `insufficient_data`
+- gera um relatório HTML oficial coerente com `drift_metrics.json`
+- preserva um relatório auxiliar do Evidently para diagnóstico complementar
 
 Mapeamento principal:
 
@@ -158,6 +160,7 @@ Mapeamento principal:
 Após rodar o drift, os arquivos principais são:
 
 - `artifacts/monitoring/drift/drift_report.html`
+- `artifacts/monitoring/drift/drift_report_evidently.html`
 - `artifacts/monitoring/drift/drift_metrics.json`
 - `artifacts/monitoring/drift/drift_status.json`
 - `artifacts/monitoring/drift/drift_runs.jsonl`
@@ -169,9 +172,10 @@ Onde isso acontece:
 
 Leitura rápida:
 
-- `drift_report.html`: evidência visual detalhada, agora com resumo operacional
-  do projeto no topo exibindo thresholds de `warning` e `critical`, além do
-  Evidently configurado com `PSI` para reduzir divergência com o monitoramento batch
+- `drift_report.html`: visão oficial do projeto para drift, baseada no PSI
+  calculado e persistido pelo pipeline batch
+- `drift_report_evidently.html`: relatório auxiliar com os widgets nativos do
+  Evidently para inspeção visual complementar
 - `drift_metrics.json`: métricas detalhadas da última execução
 - `drift_status.json`: resumo operacional da última execução
 - `drift_runs.jsonl`: histórico das execuções de monitoramento
@@ -356,12 +360,14 @@ Interpretacao:
 
 O monitoramento atual usa:
 
-- `Evidently` para gerar o relatorio HTML de drift
-- `PSI` como metrica principal de estabilidade de distribuicao
+- `PSI` como metrica principal de estabilidade de distribuicao e decisao
+  operacional
+- `Evidently` como camada auxiliar de diagnostico visual
 
 Os artefatos gerados hoje incluem:
 
 - `artifacts/monitoring/drift/drift_report.html`
+- `artifacts/monitoring/drift/drift_report_evidently.html`
 - `artifacts/monitoring/drift/drift_metrics.json`
 - `artifacts/monitoring/drift/drift_status.json`
 

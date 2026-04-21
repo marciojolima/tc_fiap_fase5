@@ -321,7 +321,8 @@ Raw data
 -> usa `artifacts/models/feature_pipeline.joblib` quando necessário
 -> calcula PSI por feature
 -> calcula prediction drift
--> gera relatório Evidently
+-> gera relatório oficial coerente com `drift_metrics.json`
+-> gera relatório auxiliar do Evidently
 -> decide status:
   - `ok`
   - `warning`
@@ -329,6 +330,7 @@ Raw data
   - `insufficient_data`
 -> salva:
   - `artifacts/monitoring/drift/drift_report.html`
+  - `artifacts/monitoring/drift/drift_report_evidently.html`
   - `artifacts/monitoring/drift/drift_metrics.json`
   - `artifacts/monitoring/drift/drift_status.json`
   - `artifacts/monitoring/drift/drift_runs.jsonl`

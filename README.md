@@ -447,8 +447,10 @@ Na prática, isso permite:
 
 O relatório HTML agora também destaca no topo o resumo operacional do projeto,
 incluindo thresholds de `warning` e `critical` definidos no YAML e o status
-final calculado pelo pipeline batch. Além disso, o painel do Evidently foi
-alinhado para usar `PSI` como métrica de drift por coluna.
+final calculado pelo pipeline batch. Esse arquivo passou a representar a visão
+oficial do projeto para drift, baseada no PSI persistido em
+`drift_metrics.json`, enquanto o Evidently fica disponível em um relatório
+auxiliar separado para diagnóstico complementar.
 
 #### Gatilho auditável de retreino
 
@@ -511,8 +513,9 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `artifacts/models/model_current.pkl` | Modelo champion atualmente mantido como versão principal para inferência. |
 | `artifacts/models/model_current_metadata.json` | Metadados do champion atual, incluindo informações de versão, configuração e métricas relevantes. |
 | `artifacts/models/challengers/` | Diretório reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promoção. |
-| `artifacts/monitoring/inference_logs/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior, principalmente nos fluxos de drift. |
-| `artifacts/monitoring/drift/drift_report.html` | Relatório HTML do Evidently para inspeção visual do comportamento das features e das distribuições monitoradas. |
+| `artifacts/monitoring/inference_logs/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. No contrato atual, ele registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
+| `artifacts/monitoring/drift/drift_report.html` | Relatório HTML oficial do projeto para drift, coerente com `drift_metrics.json` e com a decisão operacional baseada em PSI. |
+| `artifacts/monitoring/drift/drift_report_evidently.html` | Relatório auxiliar do Evidently, mantido para diagnóstico visual complementar das distribuições e widgets estatísticos. |
 | `artifacts/monitoring/drift/drift_metrics.json` | Consolidação das métricas de drift, incluindo PSI por feature e resumo para automação de decisão. |
 | `artifacts/monitoring/drift/drift_status.json` | Estado mais recente do monitoramento de drift, com classificação para apoio ao gatilho de retreino. |
 | `artifacts/monitoring/drift/drift_runs.jsonl` | Histórico de execuções do monitoramento, útil para trilha de auditoria e acompanhamento temporal. |
