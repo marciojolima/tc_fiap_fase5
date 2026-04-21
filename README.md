@@ -445,6 +445,11 @@ Na prática, isso permite:
 - consolidar um status geral de drift
 - manter histórico das execuções de monitoramento
 
+O relatório HTML agora também destaca no topo o resumo operacional do projeto,
+incluindo thresholds de `warning` e `critical` definidos no YAML e o status
+final calculado pelo pipeline batch. Além disso, o painel do Evidently foi
+alinhado para usar `PSI` como métrica de drift por coluna.
+
 #### Gatilho auditável de retreino
 
 Quando o monitoramento identifica condição crítica, o projeto já suporta uma trilha auditável de retreino, com artefatos como:

@@ -9,9 +9,12 @@ import pytest
 import yaml
 
 from monitoring.drift import (
+    ProjectDriftReportContext,
     apply_minimum_sample_size_policy,
+    build_evidently_drift_preset,
     calculate_numeric_psi,
     decide_drift_status,
+    inject_project_drift_summary_into_html,
     load_dataset,
     prepare_feature_matrix,
     run_drift_monitoring,
@@ -23,6 +26,8 @@ from monitoring.inference_log import (
 
 EXPECTED_BATCH_ROW_COUNT = 10
 EXPECTED_CUSTOMER_ID = 15634602
+EXPECTED_WARNING_THRESHOLD = 0.10
+EXPECTED_CRITICAL_THRESHOLD = 0.20
 
 
 def test_build_inference_log_record_preserves_feature_payload() -> None:
@@ -88,6 +93,52 @@ def test_append_inference_log_writes_json_lines(tmp_path) -> None:
 
     lines = log_path.read_text(encoding="utf-8").splitlines()
     assert [json.loads(line)["CreditScore"] for line in lines] == [650, 700]
+
+
+def test_inject_project_drift_summary_into_html_adds_thresholds(tmp_path) -> None:
+    report_path = tmp_path / "drift_report.html"
+    evidently_path = tmp_path / "drift_report_evidently.html"
+    evidently_path.write_text(
+        "<html><body><h1>Evidently</h1></body></html>",
+        encoding="utf-8",
+    )
+
+    inject_project_drift_summary_into_html(
+        report_path,
+        report_context=ProjectDriftReportContext(
+            warning_threshold=EXPECTED_WARNING_THRESHOLD,
+            critical_threshold=EXPECTED_CRITICAL_THRESHOLD,
+            decision=decide_drift_status(
+                psi_by_feature={"Age": 0.25, "Balance": 0.03},
+                warning_threshold=EXPECTED_WARNING_THRESHOLD,
+                critical_threshold=EXPECTED_CRITICAL_THRESHOLD,
+            ),
+            feature_psi={"Age": 0.25, "Balance": 0.03},
+        ),
+        evidently_report_path=evidently_path,
+    )
+
+    html_content = report_path.read_text(encoding="utf-8")
+    assert "Resumo de Drift" in html_content
+    assert "Thresholds PSI" in html_content
+    assert "Warning:</strong> 0.100" in html_content
+    assert "Critical:</strong> 0.200" in html_content
+    assert ">critical</span>" in html_content
+    assert "PSI do Projeto" in html_content
+    assert "PSI oficial por feature" in html_content
+    assert "drift_report_evidently.html" in html_content
+
+
+def test_build_evidently_drift_preset_uses_psi_and_project_thresholds() -> None:
+    preset = build_evidently_drift_preset(
+        feature_columns=["Age", "Balance", "Tenure"],
+        warning_threshold=EXPECTED_WARNING_THRESHOLD,
+    )
+
+    assert preset.method == "psi"
+    assert preset.threshold == EXPECTED_WARNING_THRESHOLD
+    assert preset.drift_share == pytest.approx(1 / 3)
+    assert preset.columns == ["Age", "Balance", "Tenure"]
 
 
 def test_decide_drift_status_marks_critical_for_high_feature_psi() -> None:
@@ -214,9 +265,18 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
         encoding="utf-8",
     )
 
-    def write_dummy_report(reference_features, current_features, output_path) -> None:
+    def write_dummy_report(
+        reference_features,
+        current_features,
+        output_path,
+        **kwargs,
+    ) -> None:
         assert list(reference_features.columns) == feature_columns
         assert list(current_features.columns) == feature_columns
+        report_context = kwargs["project_report_context"]
+        assert report_context.warning_threshold == EXPECTED_WARNING_THRESHOLD
+        assert report_context.critical_threshold == EXPECTED_CRITICAL_THRESHOLD
+        assert report_context.decision.status == "critical"
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         Path(output_path).write_text("<html></html>", encoding="utf-8")
 

@@ -169,7 +169,9 @@ Onde isso acontece:
 
 Leitura rápida:
 
-- `drift_report.html`: evidência visual detalhada
+- `drift_report.html`: evidência visual detalhada, agora com resumo operacional
+  do projeto no topo exibindo thresholds de `warning` e `critical`, além do
+  Evidently configurado com `PSI` para reduzir divergência com o monitoramento batch
 - `drift_metrics.json`: métricas detalhadas da última execução
 - `drift_status.json`: resumo operacional da última execução
 - `drift_runs.jsonl`: histórico das execuções de monitoramento
