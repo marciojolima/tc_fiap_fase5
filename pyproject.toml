@@ -95,6 +95,8 @@ observability_down = 'docker compose down'
 ollama_list = 'python scripts/list_ollama_models.py'
 # RAGAS (4 métricas) sobre o golden set — requer Ollama e download do modelo de embeddings (1ª vez).
 ragas_eval = 'python -m evaluation.ragas_eval'
+# LLM-as-judge (≥3 critérios, incl. negócio) — mesmo Ollama/golden que RAGAS
+llm_judge = 'python -m evaluation.llm_judge'
 
 pre_mlrunall = 'task mlfeateng'
 mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
