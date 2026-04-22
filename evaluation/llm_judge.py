@@ -5,7 +5,8 @@ depois um juiz (Ollama) pontua 1–5 em três dimensões e devolve JSON agregado
 
 Critérios (fixos, escala 1–5):
   - adequacao_negocio: alinhamento ao domínio churn bancário / MLOps / dados do projeto
-  - correcao_conteudo: consistência com a resposta de referência e plausibilidade factual
+  - correcao_conteudo: consistência com a resposta de referência e
+    plausibilidade factual
   - clareza_utilidade: clareza, objetividade e utilidade para o time
 
 Requer Ollama (LLM_BASE_URL / OLLAMA_MODEL), mesmo padrão do ragas_eval.
@@ -24,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
 from agent.rag_pipeline import retrieve_contexts
 
 logger = logging.getLogger(__name__)
@@ -102,9 +104,11 @@ def generate_rag_answer(
         "Responda em português, de forma objetiva, usando preferencialmente "
         "apenas as informações dos contextos fornecidos."
     )
-    ctx_block = "\n\n---\n\n".join(contexts) if contexts else "(nenhum contexto recuperado)"
+    empty_ctx = "(nenhum contexto recuperado)"
+    ctx_block = "\n\n---\n\n".join(contexts) if contexts else empty_ctx
     user = f"Contextos:\n{ctx_block}\n\nPergunta: {question}"
     return ollama_chat(base_url, model, system, user, timeout=timeout_sec)
+
 
 CRITERIA_KEYS = (
     "adequacao_negocio",
@@ -112,16 +116,22 @@ CRITERIA_KEYS = (
     "clareza_utilidade",
 )
 
-JUDGE_SYSTEM = """És um avaliador académico (banca). Avalia a RESPOSTA_CANDIDATA face à pergunta e à referência.
-
-Critérios (escala inteira 1 a 5 para cada um):
-1) adequacao_negocio — Quão bem a resposta reflete o contexto de negócio do projeto (churn bancário, variáveis, pipeline, MLOps, serving, observabilidade alinhados ao datathon FIAP).
-2) correcao_conteudo — Quão consistente está com a RESPOSTA_REFERÊNCIA e com factos plausíveis (sem contradições graves).
-3) clareza_utilidade — Clareza, objetividade e utilidade para equipa técnica/negócio.
-
-Responde APENAS com um objeto JSON válido, sem markdown, neste formato exato:
-{"adequacao_negocio": <int 1-5>, "correcao_conteudo": <int 1-5>, "clareza_utilidade": <int 1-5>, "comentario": "<uma frase curta em português>"}
-"""
+JUDGE_SYSTEM = (
+    "És um avaliador académico (banca). Avalia a RESPOSTA_CANDIDATA face à pergunta "
+    "e à referência.\n\n"
+    "Critérios (escala inteira 1 a 5 para cada um):\n"
+    "1) adequacao_negocio — Quão bem a resposta reflete o contexto de negócio do "
+    "projeto (churn bancário, variáveis, pipeline, MLOps, serving, observabilidade "
+    "alinhados ao datathon FIAP).\n"
+    "2) correcao_conteudo — Quão consistente está com a RESPOSTA_REFERÊNCIA e com "
+    "factos plausíveis (sem contradições graves).\n"
+    "3) clareza_utilidade — Clareza, objetividade e utilidade para equipa "
+    "técnica/negócio.\n"
+    "\n"
+    "Responde APENAS com um objeto JSON válido, sem markdown, neste formato exato:\n"
+    '{"adequacao_negocio": <int 1-5>, "correcao_conteudo": <int 1-5>, '
+    '"clareza_utilidade": <int 1-5>, "comentario": "<uma frase curta em português>"}'
+)
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:
@@ -134,6 +144,9 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     return json.loads(text)
 
 
+extract_json_object = _extract_json_object
+
+
 def _clamp_score(v: Any) -> int:
     try:
         x = int(float(v))
@@ -142,7 +155,7 @@ def _clamp_score(v: Any) -> int:
     return max(1, min(5, x))
 
 
-def judge_one(
+def judge_one(  # noqa: PLR0913
     *,
     base_url: str,
     model: str,
@@ -167,7 +180,7 @@ def judge_one(
     return out
 
 
-def run_llm_judge(
+def run_llm_judge(  # noqa: PLR0914
     golden_path: str | Path = DEFAULT_GOLDEN,
     *,
     top_k: int = 3,
@@ -229,7 +242,10 @@ def run_llm_judge(
         "schema": "llm_judge_v1",
         "scale": "1-5 por critério",
         "criteria": {
-            "adequacao_negocio": "Alinhamento ao domínio churn/MLOps/dados do projeto (obrigatório negócio)",
+            "adequacao_negocio": (
+                "Alinhamento ao domínio churn/MLOps/dados do projeto "
+                "(obrigatório negócio)"
+            ),
             "correcao_conteudo": "Consistência com referência e plausibilidade",
             "clareza_utilidade": "Clareza e utilidade",
         },
@@ -246,10 +262,19 @@ def run_llm_judge(
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    parser = argparse.ArgumentParser(description="LLM-as-judge (≥3 critérios, incl. negócio) sobre o golden set.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "LLM-as-judge (≥3 critérios, incl. negócio) sobre o golden set."
+        ),
+    )
     parser.add_argument("--golden", default=DEFAULT_GOLDEN, help="YAML do golden set")
     parser.add_argument("--top-k", type=int, default=3, dest="top_k")
-    parser.add_argument("--max-rows", type=int, default=None, help="Limitar linhas (teste rápido)")
+    parser.add_argument(
+        "--max-rows",
+        type=int,
+        default=None,
+        help="Limitar linhas (teste rápido)",
+    )
     parser.add_argument("-o", "--output", default=DEFAULT_OUT, help="JSON de saída")
     parser.add_argument(
         "--timeout",
@@ -272,9 +297,16 @@ def main() -> None:
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
     logger.info("Médias por critério: %s", payload["aggregate_mean_per_criterion"])
-    logger.info("Média global: %s | Salvo em %s", payload["overall_mean"], out_path.resolve())
+    logger.info(
+        "Média global: %s | Salvo em %s",
+        payload["overall_mean"],
+        out_path.resolve(),
+    )
 
 
 if __name__ == "__main__":

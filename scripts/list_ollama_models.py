@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Lista modelos instalados no Ollama: tenta o container Docker, senao o host (127.0.0.1:11434)."""
+"""Lista modelos instalados no Ollama: tenta o container Docker, senao o host
+(127.0.0.1:11434)."""
 
 from __future__ import annotations
 

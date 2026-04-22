@@ -13,6 +13,8 @@ from security.guardrails import InputGuardrail, OutputGuardrail
 
 logger = get_logger("agent.react_agent")
 
+MIN_TOOLS_EXPECTED = 3
+
 REACT_SYSTEM_PROMPT = """Você é um assistente especialista no projeto de churn.
 Você pode usar ferramentas para responder com precisão.
 
@@ -36,7 +38,7 @@ class AgentRunResult:
 class LLMClientProtocol:
     """Protocol-like base for an external LLM client."""
 
-    def chat(self, messages: list[dict[str, str]]) -> str:  # pragma: no cover - interface
+    def chat(self, messages: list[dict[str, str]]) -> str:  # pragma: no cover
         raise NotImplementedError
 
 
@@ -59,7 +61,7 @@ def _safe_parse_json(raw_text: str) -> dict[str, Any]:
     return parsed
 
 
-def run_react_agent(
+def run_react_agent(  # noqa: PLR0914
     user_input: str,
     llm_client: LLMClientProtocol,
     tools: list[AgentTool] | None = None,
@@ -72,8 +74,12 @@ def run_react_agent(
     max_steps = max_iterations or int(agent_cfg.get("max_iterations", 6))
     active_tools = tools or build_default_tools()
 
-    if len(active_tools) < 3:
-        logger.warning("Expected >=3 tools for Datathon. Received %d.", len(active_tools))
+    if len(active_tools) < MIN_TOOLS_EXPECTED:
+        logger.warning(
+            "Expected >=%d tools for Datathon. Received %d.",
+            MIN_TOOLS_EXPECTED,
+            len(active_tools),
+        )
 
     input_guardrail = InputGuardrail()
     output_guardrail = OutputGuardrail()
@@ -114,7 +120,11 @@ def run_react_agent(
                     "final_answer": final_answer,
                 }
             )
-            return AgentRunResult(answer=final_answer, trace=trace, used_tools=used_tools)
+            return AgentRunResult(
+                answer=final_answer,
+                trace=trace,
+                used_tools=used_tools,
+            )
 
         action_name = str(parsed.get("action", "")).strip()
         action_input = str(parsed.get("action_input", "")).strip()

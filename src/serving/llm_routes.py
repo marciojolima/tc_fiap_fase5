@@ -16,6 +16,8 @@ from serving.schemas import LLMChatRequest, LLMChatResponse
 router = APIRouter(prefix="/llm", tags=["llm"])
 
 _DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
+HTTP_NOT_FOUND = 404
+MODEL_NAMES_PREVIEW = 15
 
 
 def resolve_ollama_base_url() -> str:
@@ -69,12 +71,15 @@ class OllamaClient(LLMClientProtocol):
             ) as response:
                 parsed = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            if exc.code == 404:
+            if exc.code == HTTP_NOT_FOUND:
+                base_tags = self.config.base_url.rstrip("/")
                 raise RuntimeError(
-                    f"Modelo '{self.config.model}' nao encontrado no Ollama (HTTP 404 em /api/chat). "
-                    f"No host ou no container ollama, execute: ollama pull {self.config.model} "
-                    f"— ou alinhe OLLAMA_MODEL / pipeline_global_config llm.model_name com um nome "
-                    f"listado em GET {self.config.base_url.rstrip('/')}/api/tags."
+                    f"Modelo '{self.config.model}' nao encontrado no Ollama "
+                    f"(HTTP {HTTP_NOT_FOUND} em /api/chat). "
+                    f"No host ou no container ollama, execute: "
+                    f"ollama pull {self.config.model} "
+                    f"— ou alinhe OLLAMA_MODEL / pipeline_global_config llm.model_name "
+                    f"com um nome listado em GET {base_tags}/api/tags."
                 ) from exc
             raise RuntimeError(f"Falha ao chamar o LLM externo: {exc}") from exc
         except urllib.error.URLError as exc:
@@ -128,7 +133,7 @@ def model_is_available_in_ollama(expected: str, installed_names: list[str]) -> b
 
     if expected in installed_names:
         return True
-    base = expected.split(":")[0]
+    base = expected.split(":", maxsplit=1)[0]
     for name in installed_names:
         if name == base or name.startswith(base + ":"):
             return True
@@ -173,8 +178,10 @@ def llm_status() -> dict[str, object]:
         if "127.0.0.1" in base_url or base_url.endswith("localhost:11434"):
             hint = (
                 "Se a API roda dentro do Docker, 127.0.0.1/local host apontam para o "
-                "container, nao para o PC. Defina LLM_BASE_URL=http://host.docker.internal:11434 "
-                "(Ollama no Windows) ou http://ollama:11434 (servico ollama no Compose)."
+                "container, nao para o PC. Defina "
+                "LLM_BASE_URL=http://host.docker.internal:11434 "
+                "(Ollama no Windows) ou http://ollama:11434 "
+                "(servico ollama no Compose)."
             )
         else:
             hint = (
@@ -182,11 +189,14 @@ def llm_status() -> dict[str, object]:
                 f"(`ollama pull {model}`). Teste no host: curl {base_url}/api/tags"
             )
     elif ok and not model_ready:
+        preview = installed[:MODEL_NAMES_PREVIEW]
+        truncated = "..." if len(installed) > MODEL_NAMES_PREVIEW else ""
         hint = (
             f"O daemon responde, mas o modelo '{model}' nao aparece em /api/tags. "
-            f"Isso gera HTTP 404 em /api/chat. Execute: ollama pull {model} "
+            f"Isso gera HTTP {HTTP_NOT_FOUND} em /api/chat. Execute: "
+            f"ollama pull {model} "
             "(no mesmo ambiente do Ollama que LLM_BASE_URL aponta). "
-            f"Modelos instalados agora: {installed[:15]}{'...' if len(installed) > 15 else ''}"
+            f"Modelos instalados agora: {preview}{truncated}"
         )
 
     return {

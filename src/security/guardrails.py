@@ -40,7 +40,8 @@ class InputGuardrail:
 class OutputGuardrail:
     """Sanitize model output before returning it to users."""
 
-    def sanitize(self, llm_output: str) -> str:
+    @staticmethod
+    def sanitize(llm_output: str) -> str:
         return redact_pii(llm_output)
 
 

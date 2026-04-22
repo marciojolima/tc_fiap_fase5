@@ -18,7 +18,8 @@ Embeddings: métricas legadas exigem interface LangChain; usamos
 ``LangchainEmbeddingsWrapper(HuggingFaceEmbeddings)``. Variáveis opcionais:
 ``RAGAS_LLM_MAX_TOKENS`` (default 4096, JSON estruturado),
 ``RAGAS_ANSWER_RELEVANCY_STRICTNESS`` (default 1 para modelos pequenos).
-``RAGAS_FAITHFULNESS_NLI_BATCH_SIZE`` (default 2): NLI em lotes para JSON estável em modelos 3B.
+``RAGAS_FAITHFULNESS_NLI_BATCH_SIZE`` (default 2): NLI em lotes para JSON estável em
+modelos 3B.
 """
 
 from __future__ import annotations
@@ -36,15 +37,17 @@ from typing import Any
 import pandas as pd
 import yaml
 from datasets import Dataset
-from langchain_community.embeddings import HuggingFaceEmbeddings as LangChainHuggingFaceEmbeddings
+from langchain_community.embeddings import (
+    HuggingFaceEmbeddings as LangChainHuggingFaceEmbeddings,
+)
 from openai import OpenAI
 from ragas import evaluate
 from ragas.embeddings.base import LangchainEmbeddingsWrapper
 from ragas.llms import InstructorBaseRagasLLM, llm_factory
-from ragas.metrics._answer_relevance import answer_relevancy
-from ragas.metrics._context_precision import context_precision
-from ragas.metrics._context_recall import context_recall
-from ragas.metrics._faithfulness import (
+from ragas.metrics._answer_relevance import answer_relevancy  # noqa: PLC2701
+from ragas.metrics._context_precision import context_precision  # noqa: PLC2701
+from ragas.metrics._context_recall import context_recall  # noqa: PLC2701
+from ragas.metrics._faithfulness import (  # noqa: PLC2701
     Faithfulness,
     NLIStatementInput,
     NLIStatementOutput,
@@ -85,7 +88,8 @@ def _instructor_llm_from_ollama(
         api_key="ollama",
         timeout=float(timeout_sec),
     )
-    # JSON estruturado (faithfulness/NLI) com modelo pequeno: default 1024 do instructor costuma ser curto.
+    # JSON estruturado (faithfulness/NLI) com modelo pequeno: default 1024 do instructor
+    # costuma ser curto.
     max_tokens = int(os.environ.get("RAGAS_LLM_MAX_TOKENS", "4096"))
     return llm_factory(
         model,
@@ -97,21 +101,30 @@ def _instructor_llm_from_ollama(
 
 
 def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper:
-    """Métricas legadas (ex.: answer_relevancy) usam embed_query/embed_documents (LangChain).
+    """Métricas legadas (ex.: answer_relevancy) usam embed_query/embed_documents
+    (LangChain).
 
-    ``ragas.embeddings.HuggingFaceEmbeddings`` é outra API (embed_text) e quebra no evaluate().
+    ``ragas.embeddings.HuggingFaceEmbeddings`` é outra API (embed_text) e quebra no
+    evaluate().
     """
 
-    return LangchainEmbeddingsWrapper(LangChainHuggingFaceEmbeddings(model_name=model_name))
+    embedder = LangChainHuggingFaceEmbeddings(model_name=model_name)
+    return LangchainEmbeddingsWrapper(embedder)
 
 
 @dataclass
 class BatchedNLIFaithfulness(Faithfulness):
-    """Faithfulness com NLI em sub-lotes: modelos pequenos falham o schema com muitas statements."""
+    """Faithfulness com NLI em sub-lotes: modelos pequenos falham o schema com muitas
+    statements."""
 
     nli_batch_size: int = 2
 
-    async def _create_verdicts(self, row: dict[str, Any], statements: list[str], callbacks: Any) -> NLIStatementOutput:
+    async def _create_verdicts(
+        self,
+        row: dict[str, Any],
+        statements: list[str],
+        callbacks: Any,
+    ) -> NLIStatementOutput:
         assert self.llm is not None
 
         contexts_str = "\n".join(row["retrieved_contexts"])
@@ -195,12 +208,13 @@ def generate_rag_answer(
         "Responda em português, de forma objetiva, usando preferencialmente "
         "apenas as informações dos contextos fornecidos."
     )
-    ctx_block = "\n\n---\n\n".join(contexts) if contexts else "(nenhum contexto recuperado)"
+    empty_ctx = "(nenhum contexto recuperado)"
+    ctx_block = "\n\n---\n\n".join(contexts) if contexts else empty_ctx
     user = f"Contextos:\n{ctx_block}\n\nPergunta: {question}"
     return ollama_chat(base_url, model, system, user, timeout=timeout_sec)
 
 
-def build_dataset(
+def build_dataset(  # noqa: PLR0913
     items: list[dict[str, Any]],
     *,
     top_k: int,
@@ -235,7 +249,7 @@ def build_dataset(
     return Dataset.from_list(rows)
 
 
-def run_ragas_evaluation(
+def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     golden_path: str | Path = DEFAULT_GOLDEN,
     *,
     top_k: int = 3,
@@ -245,13 +259,15 @@ def run_ragas_evaluation(
     embed_model: str = DEFAULT_EMBED_MODEL,
     timeout_sec: int | None = None,
 ) -> dict[str, float]:
-    """Executa RAGAS com faithfulness, answer_relevancy, context_precision, context_recall."""
+    """Executa RAGAS com faithfulness, answer_relevancy, context_precision,
+    context_recall."""
 
     t = _timeout_seconds(timeout_sec)
     base = (ollama_base or os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434").rstrip(
         "/"
     )
-    model = (ollama_model or os.environ.get("OLLAMA_MODEL") or "").strip() or "qwen2.5:3b"
+    env_model = (ollama_model or os.environ.get("OLLAMA_MODEL") or "").strip()
+    model = env_model or "qwen2.5:3b"
 
     items = load_golden_items(golden_path)
     dataset = build_dataset(
@@ -274,8 +290,10 @@ def run_ragas_evaluation(
         context_precision,
         context_recall,
     ]
-    # Modelos pequenos (ex. qwen2.5:3b) às vezes devolvem 1 geração em vez de strictness=3.
-    answer_relevancy.strictness = int(os.environ.get("RAGAS_ANSWER_RELEVANCY_STRICTNESS", "1"))
+    # Modelos pequenos (ex. qwen2.5:3b) às vezes devolvem 1 geração em vez de
+    # strictness=3.
+    ar_strict = os.environ.get("RAGAS_ANSWER_RELEVANCY_STRICTNESS", "1")
+    answer_relevancy.strictness = int(ar_strict)
     run_config = RunConfig(timeout=float(t), max_retries=3)
 
     logger.info(
@@ -313,10 +331,12 @@ def run_ragas_evaluation(
 
 
 def _log_faithfulness_diagnostics(df: pd.DataFrame) -> None:
-    """Explica faithfulness=0 sem exceção: média 0 = NLI marcou verdict 0 em todas as afirmações."""
+    """Explica faithfulness=0 sem exceção: média 0 = NLI marcou verdict 0 em todas as
+    afirmações."""
 
     if "faithfulness" not in df.columns:
-        logger.warning("Sem coluna 'faithfulness' no DataFrame. Colunas: %s", list(df.columns))
+        cols = list(df.columns)
+        logger.warning("Sem coluna 'faithfulness' no DataFrame. Colunas: %s", cols)
         return
     s = df["faithfulness"]
     n_nan = int(s.isna().sum())
@@ -331,9 +351,10 @@ def _log_faithfulness_diagnostics(df: pd.DataFrame) -> None:
     )
     if n_ok and float(s.max(skipna=True)) <= 0.0:
         logger.info(
-            "faithfulness média 0 sem erro: o NLI considerou 0%% das afirmações da resposta "
-            "como sustentadas pelo contexto (verdict só 0). Comum em modelos pequenos/conservadores; "
-            "teste outro OLLAMA_MODEL ou reveja se as respostas do RAG citam bem o contexto."
+            "faithfulness média 0 sem erro: o NLI considerou 0%% das afirmações da "
+            "resposta como sustentadas pelo contexto (verdict só 0). Comum em modelos "
+            "pequenos/conservadores; teste outro OLLAMA_MODEL ou reveja se as "
+            "respostas do RAG citam bem o contexto."
         )
 
 
@@ -344,7 +365,9 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    parser = argparse.ArgumentParser(description="Avaliação RAGAS (4 métricas) sobre o golden set.")
+    parser = argparse.ArgumentParser(
+        description="Avaliação RAGAS (4 métricas) sobre o golden set.",
+    )
     parser.add_argument(
         "--golden",
         default=DEFAULT_GOLDEN,
@@ -374,8 +397,8 @@ def main() -> None:
         default=None,
         metavar="SEC",
         help=(
-            "Timeout em segundos para HTTP Ollama (dataset), cliente OpenAI→Ollama e RunConfig "
-            f"(default: env RAGAS_TIMEOUT_SEC ou {DEFAULT_TIMEOUT_SEC})"
+            "Timeout em segundos para HTTP Ollama (dataset), cliente OpenAI→Ollama e "
+            f"RunConfig (default: env RAGAS_TIMEOUT_SEC ou {DEFAULT_TIMEOUT_SEC})"
         ),
     )
     args = parser.parse_args()
