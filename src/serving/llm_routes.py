@@ -5,15 +5,24 @@ import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from time import perf_counter
 
 from fastapi import APIRouter, HTTPException
 
 from agent.react_agent import LLMClientProtocol, run_react_agent
 from common.config_loader import load_global_config, resolve_ollama_model
+from common.logger import get_logger
+from monitoring.metrics import (
+    finish_llm_chat_ollama_call_for_monitor,
+    finish_llm_chat_request_for_monitor,
+    start_llm_chat_request_for_monitor,
+    start_step_timer_for_monitor,
+)
 from security.guardrails import InputGuardrail, OutputGuardrail
 from serving.schemas import LLMChatRequest, LLMChatResponse
 
 router = APIRouter(prefix="/llm", tags=["llm"])
+logger = get_logger("serving.llm_routes")
 
 _DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
 HTTP_NOT_FOUND = 404
@@ -50,6 +59,14 @@ class OllamaClient(LLMClientProtocol):
         self.config = config
 
     def chat(self, messages: list[dict[str, str]]) -> str:
+        ollama_start_time = start_step_timer_for_monitor()
+        request_start = perf_counter()
+        logger.info(
+            "Iniciando chamada ao Ollama | model=%s | base_url=%s | mensagens=%d",
+            self.config.model,
+            self.config.base_url,
+            len(messages),
+        )
         payload = json.dumps(
             {
                 "model": self.config.model,
@@ -70,7 +87,19 @@ class OllamaClient(LLMClientProtocol):
                 timeout=self.config.timeout_seconds,
             ) as response:
                 parsed = json.loads(response.read().decode("utf-8"))
+                logger.info(
+                    "Ollama respondeu | model=%s | status=%s | latency=%.3fs",
+                    self.config.model,
+                    response.status,
+                    perf_counter() - request_start,
+                )
         except urllib.error.HTTPError as exc:
+            logger.warning(
+                "Falha HTTP ao chamar Ollama | model=%s | status=%s | latency=%.3fs",
+                self.config.model,
+                exc.code,
+                perf_counter() - request_start,
+            )
             if exc.code == HTTP_NOT_FOUND:
                 base_tags = self.config.base_url.rstrip("/")
                 raise RuntimeError(
@@ -83,12 +112,31 @@ class OllamaClient(LLMClientProtocol):
                 ) from exc
             raise RuntimeError(f"Falha ao chamar o LLM externo: {exc}") from exc
         except urllib.error.URLError as exc:
+            logger.warning(
+                "Falha de conectividade ao chamar Ollama | model=%s | "
+                "latency=%.3fs | erro=%s",
+                self.config.model,
+                perf_counter() - request_start,
+                exc,
+            )
             raise RuntimeError(f"Falha ao chamar o LLM externo: {exc}") from exc
+        finally:
+            finish_llm_chat_ollama_call_for_monitor(ollama_start_time)
 
         message = parsed.get("message", {})
         content = message.get("content", "")
         if not content:
+            logger.warning(
+                "Ollama retornou mensagem vazia | model=%s | latency=%.3fs",
+                self.config.model,
+                perf_counter() - request_start,
+            )
             raise RuntimeError("LLM externo retornou resposta vazia.")
+        logger.info(
+            "Resposta do Ollama validada | model=%s | chars_resposta=%d",
+            self.config.model,
+            len(content),
+        )
         return content
 
 
@@ -209,20 +257,54 @@ def llm_status() -> dict[str, object]:
 
 @router.post("/chat", response_model=LLMChatResponse)
 def chat_with_react_agent(payload: LLMChatRequest) -> LLMChatResponse:
-    input_guardrail = InputGuardrail()
-    output_guardrail = OutputGuardrail()
-    is_valid, reason = input_guardrail.validate(payload.message)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail=reason)
-
+    start_time = start_llm_chat_request_for_monitor()
+    status_code = "500"
     try:
-        result = run_react_agent(payload.message, _build_ollama_client())
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        input_guardrail = InputGuardrail()
+        output_guardrail = OutputGuardrail()
+        is_valid, reason = input_guardrail.validate(payload.message)
+        if not is_valid:
+            status_code = "400"
+            logger.warning(
+                "Requisicao POST /llm/chat bloqueada pelo input guardrail | "
+                "chars=%d | motivo=%s",
+                len(payload.message),
+                reason,
+            )
+            raise HTTPException(status_code=400, detail=reason)
 
-    safe_answer = output_guardrail.sanitize(result.answer)
-    return LLMChatResponse(
-        answer=safe_answer,
-        used_tools=result.used_tools,
-        trace=result.trace if payload.include_trace else [],
-    )
+        try:
+            logger.info(
+                "Recebida requisicao POST /llm/chat | chars=%d | include_trace=%s",
+                len(payload.message),
+                payload.include_trace,
+            )
+            result = run_react_agent(payload.message, _build_ollama_client())
+        except RuntimeError as exc:
+            status_code = "503"
+            logger.warning("Falha em /llm/chat | motivo=%s", exc)
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except Exception:
+            logger.exception("Falha inesperada em /llm/chat")
+            raise
+
+        safe_answer = output_guardrail.sanitize(result.answer)
+        status_code = "200"
+        logger.info(
+            "Resposta /llm/chat pronta | tools=%s | trace_steps=%d | "
+            "chars_resposta=%d",
+            result.used_tools,
+            len(result.trace),
+            len(safe_answer),
+        )
+        return LLMChatResponse(
+            answer=safe_answer,
+            used_tools=result.used_tools,
+            trace=result.trace if payload.include_trace else [],
+        )
+    finally:
+        finish_llm_chat_request_for_monitor(
+            start_time,
+            method="POST",
+            status_code=status_code,
+        )

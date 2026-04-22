@@ -7,6 +7,10 @@ As métricas operacionais iniciais são:
 - `churn_serving_predict_latency_seconds`: latência do endpoint `POST /predict`
 - `churn_serving_predict_requests_total`: total de requisições por método e status HTTP
 - `churn_serving_predict_requests_in_progress`: requisições de predição em andamento
+- `churn_serving_llm_chat_latency_seconds`: latência do endpoint `POST /llm/chat`
+- `churn_serving_llm_chat_ollama_latency_seconds`: latência da chamada HTTP ao Ollama dentro do fluxo `/llm/chat`
+- `churn_serving_llm_chat_requests_total`: total de requisições por método e status HTTP do chat
+- `churn_serving_llm_chat_requests_in_progress`: requisições de chat em andamento
 
 ## Como interpretar o dashboard
 
@@ -166,7 +170,7 @@ Use o Swagger em `http://127.0.0.1:8000/docs` ou faça chamadas para `POST /pred
 - Usuário padrão Grafana: `admin`
 - Senha padrão Grafana: `admin`
 
-O dashboard `Serving Operacional - Churn API` é provisionado automaticamente.
+Os dashboards `Serving Operacional - Churn API` e `LLM Chat Operacional - Churn API` são provisionados automaticamente.
 
 ## Observação
 
