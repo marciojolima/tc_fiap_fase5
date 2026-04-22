@@ -56,6 +56,7 @@ from ragas.run_config import RunConfig
 
 # Imports do projeto (pacote instalado com poetry install -e .)
 from agent.rag_pipeline import retrieve_contexts
+from common.config_loader import resolve_ollama_model
 
 logger = logging.getLogger(__name__)
 
@@ -266,8 +267,8 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     base = (ollama_base or os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434").rstrip(
         "/"
     )
-    env_model = (ollama_model or os.environ.get("OLLAMA_MODEL") or "").strip()
-    model = env_model or "qwen2.5:3b"
+    env_model = (ollama_model or "").strip()
+    model = env_model or resolve_ollama_model()
 
     items = load_golden_items(golden_path)
     dataset = build_dataset(
@@ -283,15 +284,15 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     embeddings = _legacy_compatible_embeddings(embed_model)
 
     nli_bs = max(1, int(os.environ.get("RAGAS_FAITHFULNESS_NLI_BATCH_SIZE", "2")))
-    # Faithfulness: instância dedicada (NLI em lotes — evita JSON inválido no qwen 3B).
+    # Faithfulness: instância dedicada
+    # (NLI em lotes — evita JSON inválido em modelos pequenos).
     metrics = [
         BatchedNLIFaithfulness(nli_batch_size=nli_bs),
         answer_relevancy,
         context_precision,
         context_recall,
     ]
-    # Modelos pequenos (ex. qwen2.5:3b) às vezes devolvem 1 geração em vez de
-    # strictness=3.
+    # Modelos pequenos às vezes devolvem 1 geração em vez de strictness=3.
     ar_strict = os.environ.get("RAGAS_ANSWER_RELEVANCY_STRICTNESS", "1")
     answer_relevancy.strictness = int(ar_strict)
     run_config = RunConfig(timeout=float(t), max_retries=3)

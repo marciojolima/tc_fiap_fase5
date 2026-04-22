@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from fastapi import APIRouter, HTTPException
 
 from agent.react_agent import LLMClientProtocol, run_react_agent
-from common.config_loader import load_global_config
+from common.config_loader import load_global_config, resolve_ollama_model
 from security.guardrails import InputGuardrail, OutputGuardrail
 from serving.schemas import LLMChatRequest, LLMChatResponse
 
@@ -94,9 +94,7 @@ class OllamaClient(LLMClientProtocol):
 
 def _build_ollama_client() -> OllamaClient:
     cfg = load_global_config().get("llm", {})
-    model = os.environ.get("OLLAMA_MODEL", "").strip() or str(
-        cfg.get("model_name", "qwen2.5:3b")
-    )
+    model = resolve_ollama_model({"llm": cfg})
     timeout_raw = os.environ.get("LLM_TIMEOUT_SECONDS", "").strip()
     timeout_seconds = (
         int(timeout_raw)
@@ -165,9 +163,7 @@ def llm_status() -> dict[str, object]:
 
     base_url = resolve_ollama_base_url()
     cfg = load_global_config().get("llm", {})
-    model = os.environ.get("OLLAMA_MODEL", "").strip() or str(
-        cfg.get("model_name", "qwen2.5:3b")
-    )
+    model = resolve_ollama_model({"llm": cfg})
     ok, detail = probe_ollama_http(base_url, timeout_seconds=5)
     tags_payload = fetch_ollama_tags_json(base_url, timeout_seconds=5) if ok else None
     installed = list_model_names_from_tags(tags_payload) if tags_payload else []

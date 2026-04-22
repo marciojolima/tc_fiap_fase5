@@ -27,6 +27,7 @@ from typing import Any
 import yaml
 
 from agent.rag_pipeline import retrieve_contexts
+from common.config_loader import resolve_ollama_model
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ def run_llm_judge(  # noqa: PLR0914
 
     t = _timeout_seconds(timeout_sec)
     base = (os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434").rstrip("/")
-    model = (os.environ.get("OLLAMA_MODEL") or "").strip() or "qwen2.5:3b"
+    model = resolve_ollama_model()
 
     items = load_golden_items(golden_path)
     limit = max_rows if max_rows is not None else len(items)

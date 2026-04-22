@@ -111,7 +111,7 @@ Implementação alinhada à opção **LLM quantizado servido fora do processo Py
 
 - **Segurança** — [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py): validação básica de input e mascaramento de PII na resposta.
 
-- **Configuração** — blocos `llm`, `agent`, `rag` e `security` em [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml); variáveis de ambiente documentadas em [.env.example](.env.example) (`LLM_BASE_URL`, `OLLAMA_MODEL`, etc.).
+- **Configuração** — blocos `llm`, `agent`, `rag` e `security` em [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml); variáveis de ambiente documentadas em [.env.example](.env.example) (`LLM_BASE_URL`, `OLLAMA_MODEL`, etc.). O `docker compose` lê `OLLAMA_MODEL` do `.env`; a aplicação Python usa o YAML como fallback.
 
 - **Testes** — [tests/test_agent.py](tests/test_agent.py), [tests/test_guardrails.py](tests/test_guardrails.py), [tests/test_llm_routes.py](tests/test_llm_routes.py).
 
@@ -347,7 +347,7 @@ poetry run task appstack
 A stack local sobe os seguintes serviços de forma integrada:
 
 - serving FastAPI
-- **Ollama** (LLM quantizado; volume `ollama_data` para modelos) e um job **one-shot** `ollama-pull` que executa `ollama pull` do modelo definido em `OLLAMA_MODEL` (padrão recomendado: `qwen2.5:3b`, tag válida na biblioteca Ollama)
+- **Ollama** (LLM quantizado; volume `ollama_data` para modelos) e um job **one-shot** `ollama-pull` que executa `ollama pull` do modelo definido em `OLLAMA_MODEL` no `.env`
 - MLflow server
 - Redis
 - Prometheus
@@ -442,7 +442,7 @@ poetry run task test
 Este tópico resume o que foi implementado na trilha LLM e como operar em conjunto com o Docker Compose. O detalhamento por arquivo e endpoint está na subseção **6. LLM, agente ReAct, RAG e segurança**, em [O que o Projeto Entrega](#o-que-o-projeto-entrega).
 
 - **Integração:** a API conversa com o daemon **Ollama** por HTTP (`LLM_BASE_URL`). No Compose, o padrão é o serviço `ollama` na mesma rede (`http://ollama:11434`). No `.env`, alinhe `LLM_BASE_URL` e `OLLAMA_MODEL` com o que você realmente instalou (`poetry run task ollama_list` ou `GET /llm/status`).
-- **Modelo:** use uma **tag válida** na biblioteca Ollama (ex.: `qwen2.5:3b`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
+- **Modelo:** use uma **tag válida** na biblioteca Ollama (por exemplo `gemma3:270m`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
 - **Container `ollama-pull`:** ao subir a stack, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
 - **Rebuild da imagem da app:** após mudanças em `src/`, rode `poetry run task observability_rebuild` para que o container `serving` inclua o código novo.
 

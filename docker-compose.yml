@@ -29,7 +29,7 @@ services:
       - ml_platform
     environment:
       OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
     depends_on:
       ollama:
         condition: service_healthy
@@ -87,7 +87,7 @@ services:
       # Padrao: Ollama no mesmo Compose. Para Ollama so no host Windows, sobrescreva no .env:
       # LLM_BASE_URL=http://host.docker.internal:11434
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
       TZ: America/Sao_Paulo
       PROJECT_TIMEZONE: America/Sao_Paulo
       FEAST_REDIS_CONNECTION_STRING: ${FEAST_REDIS_CONNECTION_STRING:-redis:6379}

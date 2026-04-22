@@ -10,6 +10,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from common.config_loader import resolve_ollama_model
+
 OLLAMA_CONTAINER = "tc-fiap-ollama"
 HOST_TAGS_URL = "http://127.0.0.1:11434/api/tags"
 
@@ -51,6 +53,7 @@ def _from_host_tags() -> tuple[bool, str]:
 
 
 def main() -> int:
+    model = resolve_ollama_model()
     print(f"1) Tentando `docker exec {OLLAMA_CONTAINER} ollama list`...\n")
     ok, out = _from_docker()
     if ok:
@@ -68,7 +71,7 @@ def main() -> int:
         print(out2)
         if "Nenhum modelo" in out2:
             print(
-                "\nInstale com: ollama pull qwen2.5:3b",
+                f"\nInstale com: ollama pull {model}",
                 file=sys.stderr,
             )
         return 0
