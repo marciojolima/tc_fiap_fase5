@@ -70,7 +70,8 @@ services:
     depends_on:
       ollama-pull:
         condition: service_completed_successfully
-      - redis
+      redis:
+        condition: service_started
     command:
       - uvicorn
       - serving.app:app
@@ -87,11 +88,11 @@ services:
       # LLM_BASE_URL=http://host.docker.internal:11434
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
       TZ: America/Sao_Paulo
       PROJECT_TIMEZONE: America/Sao_Paulo
       FEAST_REDIS_CONNECTION_STRING: ${FEAST_REDIS_CONNECTION_STRING:-redis:6379}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./configs:/app/configs:ro
       - ./artifacts:/app/artifacts
