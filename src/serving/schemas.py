@@ -149,3 +149,21 @@ class ChurnPredictionResponse(BaseModel):
     threshold: float
     feature_source: str
     customer_id: int | None = None
+
+
+class LLMChatRequest(BaseModel):
+    """Request payload for LLM chat endpoint."""
+
+    message: str = Field(..., min_length=1, description="Pergunta do usuário.")
+    include_trace: bool = Field(
+        default=False,
+        description="Retorna trilha ReAct com ferramentas usadas.",
+    )
+
+
+class LLMChatResponse(BaseModel):
+    """Response payload for LLM chat endpoint."""
+
+    answer: str
+    used_tools: list[str]
+    trace: list[dict]

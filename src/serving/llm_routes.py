@@ -1,0 +1,232 @@
+from __future__ import annotations
+
+import json
+import os
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
+
+from fastapi import APIRouter, HTTPException
+
+from agent.react_agent import LLMClientProtocol, run_react_agent
+from common.config_loader import load_global_config
+from security.guardrails import InputGuardrail, OutputGuardrail
+from serving.schemas import LLMChatRequest, LLMChatResponse
+
+router = APIRouter(prefix="/llm", tags=["llm"])
+
+_DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
+HTTP_NOT_FOUND = 404
+MODEL_NAMES_PREVIEW = 15
+
+
+def resolve_ollama_base_url() -> str:
+    """Resolve Ollama URL: env overrides YAML (Docker vs host)."""
+
+    for key in ("LLM_BASE_URL", "OLLAMA_BASE_URL"):
+        raw = os.environ.get(key, "").strip()
+        if raw:
+            return raw.rstrip("/")
+
+    cfg = load_global_config().get("llm", {})
+    yaml_url = str(cfg.get("base_url", "") or "").strip()
+    if yaml_url:
+        return yaml_url.rstrip("/")
+
+    return _DEFAULT_OLLAMA_BASE
+
+
+@dataclass(frozen=True)
+class OllamaConfig:
+    base_url: str
+    model: str
+    timeout_seconds: int
+
+
+class OllamaClient(LLMClientProtocol):
+    """Client for an externally served quantized model via Ollama API."""
+
+    def __init__(self, config: OllamaConfig):
+        self.config = config
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        payload = json.dumps(
+            {
+                "model": self.config.model,
+                "messages": messages,
+                "stream": False,
+                "options": {"temperature": 0},
+            }
+        ).encode("utf-8")
+        request = urllib.request.Request(
+            url=f"{self.config.base_url.rstrip('/')}/api/chat",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(
+                request,
+                timeout=self.config.timeout_seconds,
+            ) as response:
+                parsed = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code == HTTP_NOT_FOUND:
+                base_tags = self.config.base_url.rstrip("/")
+                raise RuntimeError(
+                    f"Modelo '{self.config.model}' nao encontrado no Ollama "
+                    f"(HTTP {HTTP_NOT_FOUND} em /api/chat). "
+                    f"No host ou no container ollama, execute: "
+                    f"ollama pull {self.config.model} "
+                    f"— ou alinhe OLLAMA_MODEL / pipeline_global_config llm.model_name "
+                    f"com um nome listado em GET {base_tags}/api/tags."
+                ) from exc
+            raise RuntimeError(f"Falha ao chamar o LLM externo: {exc}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"Falha ao chamar o LLM externo: {exc}") from exc
+
+        message = parsed.get("message", {})
+        content = message.get("content", "")
+        if not content:
+            raise RuntimeError("LLM externo retornou resposta vazia.")
+        return content
+
+
+def _build_ollama_client() -> OllamaClient:
+    cfg = load_global_config().get("llm", {})
+    model = os.environ.get("OLLAMA_MODEL", "").strip() or str(
+        cfg.get("model_name", "qwen2.5:3b")
+    )
+    timeout_raw = os.environ.get("LLM_TIMEOUT_SECONDS", "").strip()
+    timeout_seconds = (
+        int(timeout_raw)
+        if timeout_raw.isdigit()
+        else int(cfg.get("timeout_seconds", 45))
+    )
+    return OllamaClient(
+        OllamaConfig(
+            base_url=resolve_ollama_base_url(),
+            model=model,
+            timeout_seconds=timeout_seconds,
+        )
+    )
+
+
+def fetch_ollama_tags_json(base_url: str, timeout_seconds: int = 5) -> dict | None:
+    """GET /api/tags — retorna JSON ou None se falhar."""
+
+    url = f"{base_url.rstrip('/')}/api/tags"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout_seconds) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+
+
+def list_model_names_from_tags(tags_payload: dict) -> list[str]:
+    models = tags_payload.get("models") or []
+    return [str(item.get("name", "")) for item in models if item.get("name")]
+
+
+def model_is_available_in_ollama(expected: str, installed_names: list[str]) -> bool:
+    """True se o nome pedido existe na lista (ex.: tag :latest)."""
+
+    if expected in installed_names:
+        return True
+    base = expected.split(":", maxsplit=1)[0]
+    for name in installed_names:
+        if name == base or name.startswith(base + ":"):
+            return True
+    return False
+
+
+def probe_ollama_http(base_url: str, timeout_seconds: int = 5) -> tuple[bool, str]:
+    """GET /api/tags — verifica se o daemon Ollama responde nessa base URL."""
+
+    url = f"{base_url.rstrip('/')}/api/tags"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout_seconds) as response:
+            _ = response.read()
+            return True, f"HTTP {response.status}"
+    except urllib.error.HTTPError as exc:
+        return False, f"HTTP {exc.code}: {exc.reason}"
+    except urllib.error.URLError as exc:
+        return False, str(exc)
+
+
+@router.get("/health")
+def llm_healthcheck() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@router.get("/status")
+def llm_status() -> dict[str, object]:
+    """Diagnostico: URL resolvida, modelo esperado e se o Ollama responde."""
+
+    base_url = resolve_ollama_base_url()
+    cfg = load_global_config().get("llm", {})
+    model = os.environ.get("OLLAMA_MODEL", "").strip() or str(
+        cfg.get("model_name", "qwen2.5:3b")
+    )
+    ok, detail = probe_ollama_http(base_url, timeout_seconds=5)
+    tags_payload = fetch_ollama_tags_json(base_url, timeout_seconds=5) if ok else None
+    installed = list_model_names_from_tags(tags_payload) if tags_payload else []
+    model_ready = bool(tags_payload) and model_is_available_in_ollama(model, installed)
+
+    hint = ""
+    if not ok:
+        if "127.0.0.1" in base_url or base_url.endswith("localhost:11434"):
+            hint = (
+                "Se a API roda dentro do Docker, 127.0.0.1/local host apontam para o "
+                "container, nao para o PC. Defina "
+                "LLM_BASE_URL=http://host.docker.internal:11434 "
+                "(Ollama no Windows) ou http://ollama:11434 "
+                "(servico ollama no Compose)."
+            )
+        else:
+            hint = (
+                "Confirme que o Ollama esta rodando e que o modelo foi baixado "
+                f"(`ollama pull {model}`). Teste no host: curl {base_url}/api/tags"
+            )
+    elif ok and not model_ready:
+        preview = installed[:MODEL_NAMES_PREVIEW]
+        truncated = "..." if len(installed) > MODEL_NAMES_PREVIEW else ""
+        hint = (
+            f"O daemon responde, mas o modelo '{model}' nao aparece em /api/tags. "
+            f"Isso gera HTTP {HTTP_NOT_FOUND} em /api/chat. Execute: "
+            f"ollama pull {model} "
+            "(no mesmo ambiente do Ollama que LLM_BASE_URL aponta). "
+            f"Modelos instalados agora: {preview}{truncated}"
+        )
+
+    return {
+        "llm_base_url_resolved": base_url,
+        "model_expected": model,
+        "ollama_reachable": ok,
+        "model_present_in_ollama": model_ready,
+        "models_installed": installed[:30],
+        "probe_detail": detail,
+        "hint_if_unreachable": hint if not ok else "",
+        "hint_if_model_missing": hint if ok and not model_ready else "",
+    }
+
+
+@router.post("/chat", response_model=LLMChatResponse)
+def chat_with_react_agent(payload: LLMChatRequest) -> LLMChatResponse:
+    input_guardrail = InputGuardrail()
+    output_guardrail = OutputGuardrail()
+    is_valid, reason = input_guardrail.validate(payload.message)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=reason)
+
+    try:
+        result = run_react_agent(payload.message, _build_ollama_client())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    safe_answer = output_guardrail.sanitize(result.answer)
+    return LLMChatResponse(
+        answer=safe_answer,
+        used_tools=result.used_tools,
+        trace=result.trace if payload.include_trace else [],
+    )

@@ -9,6 +9,7 @@ RUN apt-get update \
 COPY pyproject.toml README.md ./
 COPY feature_store ./feature_store
 COPY src ./src
+COPY evaluation ./evaluation
 
 RUN pip install --no-cache-dir .
 

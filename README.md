@@ -23,6 +23,7 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
 - [Como Executar](#como-executar)
+- [LLM, agente ReAct e Ollama](#llm-agente-react-e-ollama)
 - [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
@@ -48,7 +49,7 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - feature store local com Feast + Redis para materialização online incremental
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 
-Além da trilha tabular principal, o repositório também mantém módulos em evolução para agente, RAG, avaliação de LLM e segurança aplicada. Esses componentes fazem parte da direção do projeto, mas seu andamento detalhado está no documento de status.
+Além da trilha tabular principal, o repositório inclui uma trilha **LLM** (agente ReAct, RAG, guardrails e integração com **Ollama**) já utilizável via API; avaliação formal (RAGAS, benchmark com várias configs) e CI/CD específicos do agente são os próximos passos planejados. O andamento frente aos requisitos do Datathon continua detalhado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
 
 ## O que o Projeto Entrega
 
@@ -92,6 +93,35 @@ Hoje o repositório já possui uma base funcional e demonstrável nas seguintes 
 - relatórios HTML e arquivos JSON para auditoria em `artifacts/monitoring/`
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 - workflow básico de CI em [.github/workflows/ci.yml](.github/workflows/ci.yml)
+
+### 6. LLM, agente ReAct, RAG e segurança
+
+Implementação alinhada à opção **LLM quantizado servido fora do processo Python** ([Ollama](https://ollama.com/)), integrado à API FastAPI sem alterar o contrato do endpoint tabular `/predict`.
+
+- **API (FastAPI)**  
+  - `GET /llm/health` — health do router LLM.  
+  - `GET /llm/status` — URL do Ollama resolvida (`LLM_BASE_URL`), modelo esperado (`OLLAMA_MODEL` / `configs/pipeline_global_config.yaml`), lista de modelos instalados no daemon e dicas se o modelo não existir.  
+  - `POST /llm/chat` — pergunta do usuário, resposta do agente, lista de tools usadas e trace opcional.
+
+- **Agente ReAct** — [src/agent/react_agent.py](src/agent/react_agent.py): loop no estilo pensar → agir → observar, com limite de iterações e integração com guardrails de entrada e saída.
+
+- **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict`), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
+
+- **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação simples por sobreposição lexical sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
+
+- **Segurança** — [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py): validação básica de input e mascaramento de PII na resposta.
+
+- **Configuração** — blocos `llm`, `agent`, `rag` e `security` em [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml); variáveis de ambiente documentadas em [.env.example](.env.example) (`LLM_BASE_URL`, `OLLAMA_MODEL`, etc.).
+
+- **Testes** — [tests/test_agent.py](tests/test_agent.py), [tests/test_guardrails.py](tests/test_guardrails.py), [tests/test_llm_routes.py](tests/test_llm_routes.py).
+
+- **Utilitário** — [scripts/list_ollama_models.py](scripts/list_ollama_models.py) (task `ollama_list`): lista modelos no container `tc-fiap-ollama` ou, se indisponível, no Ollama em `127.0.0.1:11434`.
+
+- **Golden set (RAG / judge):** [configs/evaluation/golden_set.yaml](configs/evaluation/golden_set.yaml) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
+
+- **RAGAS (4 métricas):** [evaluation/ragas_eval.py](evaluation/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set (respostas geradas via Ollama + contextos do `rag_pipeline`; embeddings multilingues via `sentence-transformers`). Execução local: `poetry run task ragas_eval` (requer Ollama no ar; na primeira execução baixa o modelo de embeddings). Saída típica: `evaluation/results/ragas_scores.json` (pasta ignorada no Git se contiver apenas resultados).
+
+**Próximos passos planejados (ainda não concluídos no repositório):** pipeline de benchmark com ≥3 configs comparando runs, extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
 
 ## Arquitetura da Solução
 
@@ -316,13 +346,20 @@ poetry run task appstack
 
 A stack local sobe os seguintes serviços de forma integrada:
 
+- serving FastAPI
+- **Ollama** (LLM quantizado; volume `ollama_data` para modelos) e um job **one-shot** `ollama-pull` que executa `ollama pull` do modelo definido em `OLLAMA_MODEL` (padrão recomendado: `qwen2.5:3b`, tag válida na biblioteca Ollama)
+- MLflow server
 - Redis
 - Prometheus
 - Grafana
 - serving FastAPI
 - MLflow server
 
-Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local.
+Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local (incluindo rotas `/llm/*`).
+
+**Imagem Docker da aplicação:** o [Dockerfile](src/serving/Dockerfile) copia `src/` no *build*. Depois de alterar código Python ou configuração embutida na imagem, use `poetry run task observability_rebuild` para reconstruir e subir de novo. Para apenas iniciar containers com as imagens já existentes, `poetry run task observability` é mais rápido.
+
+**Diagnóstico LLM:** com a stack no ar, abra `http://127.0.0.1:8000/llm/status` ou execute `poetry run task ollama_list` para ver se o modelo esperado está instalado no mesmo Ollama que a API usa (`LLM_BASE_URL`, em geral `http://ollama:11434` dentro do Compose).
 
 Para encerrar os serviços:
 
@@ -399,6 +436,15 @@ poetry run task mlsyntheticdrift
 ```bash
 poetry run task test
 ```
+
+## LLM, agente ReAct e Ollama
+
+Este tópico resume o que foi implementado na trilha LLM e como operar em conjunto com o Docker Compose. O detalhamento por arquivo e endpoint está na subseção **6. LLM, agente ReAct, RAG e segurança**, em [O que o Projeto Entrega](#o-que-o-projeto-entrega).
+
+- **Integração:** a API conversa com o daemon **Ollama** por HTTP (`LLM_BASE_URL`). No Compose, o padrão é o serviço `ollama` na mesma rede (`http://ollama:11434`). No `.env`, alinhe `LLM_BASE_URL` e `OLLAMA_MODEL` com o que você realmente instalou (`poetry run task ollama_list` ou `GET /llm/status`).
+- **Modelo:** use uma **tag válida** na biblioteca Ollama (ex.: `qwen2.5:3b`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
+- **Container `ollama-pull`:** ao subir a stack, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
+- **Rebuild da imagem da app:** após mudanças em `src/`, rode `poetry run task observability_rebuild` para que o container `serving` inclua o código novo.
 
 ## Monitoramento e Observabilidade
 

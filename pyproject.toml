@@ -3,7 +3,8 @@ name = "tc-fiap-fase5"
 version = "0.1.0"
 description = "Projeto de Datathon - FIAP 2026"
 authors = [
-    {name = "Márcio Lima",email = "marciocad@gmail.com"}
+    {name = "Márcio Lima",email = "marciocad@gmail.com"},
+    {name = "Luca Poit",email = "lucapoit@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13,<4"
@@ -31,10 +32,18 @@ dependencies = [
     "rich>=13.9.0,<14",
     "xgboost>=2.1.0,<3",
     "prometheus-client>=0.22.1,<0.23",
+    "ragas>=0.4.0,<0.5",
+    "datasets>=2.14.0",
+    "langchain-community>=0.3.0",
+    "langchain-core>=0.3.0",
+    "sentence-transformers>=2.2.0",
+    # sentence-transformers puxa torch; 2.1.x não tem wheel cp313 (Win/Linux). 2.5+ suporta Python 3.13.
+    "torch>=2.5.0",
 ]
 
 [tool.poetry]
 packages = [
+    { include = "evaluation" },
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
     { include = "feast_ops", from = "src" },
@@ -60,7 +69,7 @@ preview = true
 select = ['I', 'F', 'E', 'W', 'PL', 'PT', 'FAST']
 
 [tool.pytest.ini_options]
-pythonpath = "."
+pythonpath = ["src", "."]
 addopts = '-p no:warnings'
 
 [tool.taskipy.tasks]
@@ -83,6 +92,17 @@ test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
 mlflow = 'mlflow server --backend-store-uri file:./mlruns --default-artifact-root ./mlruns --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
+# Sobe containers com as imagens ja existentes (rapido). Apos mudar codigo em src/ ou Dockerfile, rode task observability_rebuild.
+observability = 'docker compose up -d ollama ollama-pull serving mlflow prometheus grafana'
+# Reconstrói a imagem da app (COPY src) e sobe a stack — use quando a API estiver desatualizada no container.
+observability_rebuild = 'docker compose up -d --build ollama ollama-pull serving mlflow prometheus grafana'
+observability_down = 'docker compose down'
+# Lista modelos no Ollama (container tc-fiap-ollama ou, se falhar, host 127.0.0.1:11434).
+ollama_list = 'python scripts/list_ollama_models.py'
+# RAGAS (4 métricas) sobre o golden set — requer Ollama e download do modelo de embeddings (1ª vez).
+ragas_eval = 'python -m evaluation.ragas_eval'
+# LLM-as-judge (≥3 critérios, incl. negócio) — mesmo Ollama/golden que RAGAS
+llm_judge = 'python -m evaluation.llm_judge'
 appstack = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d redis serving mlflow prometheus grafana'
 appstack_down = 'docker compose down'
 
