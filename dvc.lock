@@ -13,16 +13,16 @@ stages:
       size: 837415
     - path: src/common/config_loader.py
       hash: md5
-      md5: d696fa66291cdc8c4bcfa9f80da091e6
-      size: 1322
+      md5: b315e5e29208d2c71033714ef6e2b004
+      size: 1411
     - path: src/common/data_loader.py
       hash: md5
       md5: b5491e0d88e5b8f314f07ebf9ee8c519
       size: 612
     - path: src/common/logger.py
       hash: md5
-      md5: ed0345d8d4a981440409ab02e7359bec
-      size: 510
+      md5: 565469f45d9fcb971ee7542affdb367a
+      size: 1525
     - path: src/common/seed.py
       hash: md5
       md5: e3863cbaf4b2627fabdafd56456a880f
@@ -108,3 +108,55 @@ stages:
       hash: md5
       md5: 55f6704ad4fdfcfda8918e56dd326e4b
       size: 747
+  export_feature_store:
+    cmd: python -m src.feast_ops.export
+    deps:
+    - path: artifacts/models/feature_pipeline.joblib
+      hash: md5
+      md5: c3db56dae2fed178f232ae94a85e2e2a
+      size: 5525
+    - path: configs/pipeline_global_config.yaml
+      hash: md5
+      md5: bf9a6183b425c50d5a64d47642b06210
+      size: 883
+    - path: data/raw/Customer-Churn-Records.csv
+      hash: md5
+      md5: e37acb179fefe4cac8a33e280a12f62c
+      size: 837415
+    - path: src/common/config_loader.py
+      hash: md5
+      md5: b315e5e29208d2c71033714ef6e2b004
+      size: 1411
+    - path: src/common/data_loader.py
+      hash: md5
+      md5: b5491e0d88e5b8f314f07ebf9ee8c519
+      size: 612
+    - path: src/common/logger.py
+      hash: md5
+      md5: 565469f45d9fcb971ee7542affdb367a
+      size: 1525
+    - path: src/feast_ops/config.py
+      hash: md5
+      md5: c497e40a4b99502f5abdb537cf0e71fb
+      size: 1135
+    - path: src/feast_ops/export.py
+      hash: md5
+      md5: eba2f6f80835397d265245a371dd7ac4
+      size: 4228
+    - path: src/features/feature_engineering.py
+      hash: md5
+      md5: c8c587409b0bc2e393de3d2b18e97b0f
+      size: 18322
+    - path: src/serving/pipeline.py
+      hash: md5
+      md5: 4354c8676e73f42e0ccdf50c3e22e5a7
+      size: 10022
+    outs:
+    - path: data/feature_store/customer_features.parquet
+      hash: md5
+      md5: 026520cbdf50c8ea432a4f126c1d17df
+      size: 640953
+    - path: data/feature_store/export_metadata.json
+      hash: md5
+      md5: 402cb8d157986cd02fd6c06d5702c5f5
+      size: 415

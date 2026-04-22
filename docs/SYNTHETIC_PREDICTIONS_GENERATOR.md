@@ -15,18 +15,25 @@ O formato gerado segue o mesmo padrão do log de inferência usado em produção
 incluindo:
 
 - `timestamp`
+- `monitoring_contract`
 - `model_name`
 - `model_version`
 - `threshold`
 - `churn_probability`
 - `churn_prediction`
-- features de entrada aceitas pelo serving
+- `feature_source`
+- features transformadas monitoráveis compatíveis com o drift batch
+
+Na prática, o gerador foi alinhado ao contrato de monitoramento
+`transformed_features_v1`. Isso o torna compatível com o pipeline batch de
+drift, mas não necessariamente idêntico ao fluxo operacional do endpoint
+`/predict` baseado em Feast.
 
 ## Módulo
 
 Arquivo:
 
-- [scripts/generate_synthetic_predictions.py](/home/marcio/dev/projects/python/tc_fiap_fase5/scripts/generate_synthetic_predictions.py)
+- [scripts/generate_synthetic_predictions.py](../scripts/generate_synthetic_predictions.py)
 
 Saída padrão:
 
@@ -88,12 +95,14 @@ Mais especificamente, o `with_drift` não cria linhas totalmente artificiais do
 zero. Ele segue esta estratégia:
 
 1. carrega a base bruta de referência em `data/raw/Customer-Churn-Records.csv`
-2. mantém apenas as colunas aceitas pelo serving e pelo monitoramento
+2. mantém apenas as colunas aceitas pelo pipeline de geração e monitoramento
 3. faz uma amostragem inicial com reposição para preservar o domínio real das
    features
 4. aplica deslocamentos fortes e intencionais em colunas que influenciam a
    distribuição observada pelo monitoramento
-5. usa o modelo atual para calcular `churn_probability` e `churn_prediction`
+5. aplica o mesmo `feature_pipeline` do projeto para gerar a matriz
+   transformada monitorável
+6. usa o modelo atual para calcular `churn_probability` e `churn_prediction`
 
 Isso é importante porque o objetivo do modo `with_drift` não é apenas gerar
 inputs válidos, mas gerar uma base corrente cuja distribuição fique
@@ -101,7 +110,7 @@ propositalmente diferente da base de referência usada no treino.
 
 Na implementação atual, o gerador reaproveita o cenário
 `build_mixed_extreme_drift_batch` de
-[src/scenario_analysis/synthetic_drifts.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/scenario_analysis/synthetic_drifts.py:260).
+[src/scenario_analysis/synthetic_drifts.py](../src/scenario_analysis/synthetic_drifts.py).
 Esse cenário foi pensado para deslocar a distribuição de forma suficientemente
 forte para que o monitoramento batch tenha alta chance de detectar drift.
 
@@ -132,7 +141,7 @@ Para usar o módulo, não.
 O script já usa a camada raw como base de domínio para:
 
 - preservar categorias válidas como `Geography`, `Gender` e `Card Type`
-- manter o formato esperado pelo serving
+- manter o formato esperado pelo contrato atual de monitoramento
 - evitar geração de combinações absurdas ou fora do contrato
 
 Mas para avaliar a qualidade do cenário `with_drift`, vale a pena analisar a
@@ -164,6 +173,22 @@ monitoramento.
 
 O artefato resultante pode ser inspecionado junto com:
 
-- [docs/DRIFT_MONITORING.md](/home/marcio/dev/projects/python/tc_fiap_fase5/docs/DRIFT_MONITORING.md)
-- [src/monitoring/inference_log.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/inference_log.py:1)
-- [src/monitoring/drift.py](/home/marcio/dev/projects/python/tc_fiap_fase5/src/monitoring/drift.py:1)
+- [DRIFT_MONITORING.md](DRIFT_MONITORING.md)
+- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
+- [src/monitoring/drift.py](../src/monitoring/drift.py)
+
+## Relação com o serving via Feast
+
+O lote sintético é compatível com o monitoramento batch, mas não replica todo o
+fluxo operacional do `/predict`.
+
+Diferenças importantes:
+
+- o serving online principal consulta a Feature Store por `customer_id`
+- o log real do `/predict` tende a usar `feature_source=feast_online_store`
+- o lote sintético normalmente usa outra proveniência e pode não carregar
+  `customer_id`
+
+Isso não impede o uso do gerador para testar o `mldrift`. A diferença é mais
+de rastreabilidade operacional do que de compatibilidade com o contrato de
+drift atual.

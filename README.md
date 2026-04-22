@@ -7,6 +7,8 @@
 ![Evidently](https://img.shields.io/badge/Evidently-drift%20monitoring-6E56CF?style=for-the-badge)
 ![Prometheus](https://img.shields.io/badge/Prometheus-monitoring-E6522C?style=for-the-badge&logo=prometheus)
 ![Grafana](https://img.shields.io/badge/Grafana-observability-F46800?style=for-the-badge&logo=grafana)
+![Feast](https://img.shields.io/badge/Feast-feature%20store-2F855A?style=for-the-badge)
+![Redis](https://img.shields.io/badge/Redis-online%20store-DC382D?style=for-the-badge&logo=redis)
 ![Poetry](https://img.shields.io/badge/Poetry-dependencies-60A5FA?style=for-the-badge&logo=poetry)
 
 Projeto integrador da Fase 05 do curso MLET da FIAP, desenvolvido no formato de Datathon. O repositório implementa uma solução de predição de churn bancário com foco em MLOps, rastreabilidade, observabilidade e evolução arquitetural para componentes com LLMs e agentes.
@@ -22,6 +24,7 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 - [Estrutura do Repositório](#estrutura-do-repositório)
 - [Como Executar](#como-executar)
 - [LLM, agente ReAct e Ollama](#llm-agente-react-e-ollama)
+- [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
 - [Documentação Complementar](#documentação-complementar)
@@ -43,6 +46,7 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - serving desacoplado via FastAPI
 - cenários de negócio versionados
 - monitoramento batch de drift com artefatos auditáveis
+- feature store local com Feast + Redis para materialização online incremental
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 
 Além da trilha tabular principal, o repositório inclui uma trilha **LLM** (agente ReAct, RAG, guardrails e integração com **Ollama**) já utilizável via API; avaliação formal (RAGAS, benchmark com várias configs) e CI/CD específicos do agente são os próximos passos planejados. O andamento frente aos requisitos do Datathon continua detalhado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
@@ -148,6 +152,8 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 - **Treinamento e modelagem:** Scikit-learn, XGBoost
 - **Experiment tracking:** MLflow
 - **Versionamento de dados:** DVC
+- **Feature Store:** Feast
+- **Online store:** Redis
 - **Validação de dados:** Pandera
 - **Serving:** FastAPI, Uvicorn
 - **Monitoramento de drift:** Evidently
@@ -159,23 +165,24 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 
 ```text
 tc_fiap_fase5/
-├── artifacts/          # modelos, relatórios de drift e saídas de retreino
-├── configs/            # treino, cenários, monitoramento e observabilidade
-├── data/               # camadas raw, interim e processed
-├── docs/               # documentação técnica e de governança
-├── evaluation/         # scripts de avaliação para trilhas com LLM
-├── notebooks/          # notebooks exploratórios e de apoio
-├── scripts/            # utilitários auxiliares
+├── artifacts/              # modelos, relatórios de drift e saídas de retreino
+├── configs/                # treino, cenários, monitoramento e observabilidade
+├── data/                   # camadas raw, interim e processed
+├── docs/                   # documentação técnica e de governança
+├── feature_store/          # repositório Feast e definições da feature store
+├── evaluation/             # scripts de avaliação para trilhas com LLM
+├── notebooks/              # notebooks exploratórios e de apoio
+├── scripts/                # utilitários auxiliares
 ├── src/
-│   ├── agent/          # componentes em evolução para agente e RAG
-│   ├── common/         # utilidades compartilhadas
-│   ├── features/       # engenharia e validação de features
-│   ├── models/         # treino, promoção e retreino
-│   ├── monitoring/     # drift, métricas e logging de inferências
-│   ├── scenario_analysis/
-│   ├── security/       # guardrails e PII em evolução
-│   └── serving/        # aplicação FastAPI e pipeline de inferência
-├── tests/              # suíte de testes automatizados
+│   ├── agent/              # componentes em evolução para agente e RAG
+│   ├── common/             # utilidades compartilhadas
+│   ├── features/           # engenharia e validação de features
+│   ├── models/             # treino, promoção e retreino
+│   ├── monitoring/         # drift, métricas e logging de inferências
+│   ├── scenario_analysis/  # cenários de negócio e geração de batches sintéticos
+│   ├── security/           # guardrails e PII em evolução
+│   └── serving/            # aplicação FastAPI e pipeline de inferência
+├── tests/                  # suíte de testes automatizados
 ├── docker-compose.yml
 ├── pyproject.toml
 ├── README.md
@@ -198,27 +205,128 @@ poetry install
 
 ### 2. Sincronização de dados versionados
 
-O projeto utiliza DVC para dados e artefatos versionados. Em um ambiente novo, execute:
+O projeto utiliza DVC para dados e artefatos versionados. No repositório atual, o remote padrão já está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
+
+Se o DVC já estiver instalado no ambiente, você pode usar `dvc ...` diretamente. Se preferir usar as dependências gerenciadas pelo projeto, utilize `poetry run dvc ...`.
+
+#### Como a configuração está organizada
+
+- `.dvc/config`: arquivo versionado no Git com a configuração compartilhada do remote, como nome e URL
+- `.dvc/config.local`: arquivo local, não versionado, usado para credenciais e segredos de cada máquina
+
+Em outras palavras:
+
+- o time pode versionar em `.dvc/config` que o remote se chama `datathon_remote`
+- cada pessoa configura em `.dvc/config.local` suas próprias credenciais de acesso
+
+#### 1. Verifique ou configure o remote
+
+No projeto atual, a configuração compartilhada já aponta para o remote `datathon_remote`. Se você precisar recriá-lo manualmente em outra máquina, o fluxo é:
+
+```bash
+dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
+```
+
+Se estiver usando o ambiente do projeto via Poetry:
+
+```bash
+poetry run dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
+```
+
+#### 2. Configure as credenciais locais do Google Drive
+
+As credenciais OAuth não devem ir para o Git. Por isso, elas devem ser gravadas localmente com `--local`, o que escreve em `.dvc/config.local`:
+
+```bash
+dvc remote modify --local datathon_remote gdrive_client_id <ID>
+dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
+```
+
+Ou, usando o ambiente do projeto:
+
+```bash
+poetry run dvc remote modify --local datathon_remote gdrive_client_id <ID>
+poetry run dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
+```
+
+#### 3. Garanta a permissão no Google Drive
+
+Não basta conhecer o `client_id` e o `client_secret`. A conta Google usada na autenticação também precisa ter permissão para acessar o storage apontado pelo remote.
+
+Na prática, isso significa que:
+
+- a pasta ou recurso do Google Drive referenciado pelo `gdrive://...` precisa estar compartilhado com a conta que fará o `dvc pull`
+- se a permissão não existir, a autenticação pode até funcionar, mas o download dos dados falhará por falta de acesso ao conteúdo
+
+Se o time estiver centralizando os dados em uma pasta compartilhada, confirme antes que sua conta foi adicionada com acesso apropriado.
+
+#### 4. Configure o OAuth no Google Cloud Console
+
+Para que o DVC possa autenticar no Google Drive via OAuth, é necessário existir um cliente OAuth configurado no Google Cloud Console. Em linhas gerais:
+
+1. crie ou selecione um projeto no Google Cloud Console
+2. habilite a Google Drive API para esse projeto
+3. configure a tela de consentimento OAuth
+4. crie credenciais do tipo OAuth Client ID
+5. use o `client_id` e o `client_secret` gerados nos comandos `dvc remote modify --local ...`
+
+Na primeira autenticação, o DVC pode abrir um fluxo de autorização OAuth no navegador. Essa etapa vincula a conta Google local ao client OAuth configurado e concede acesso ao storage do Drive.
+
+#### 5. Baixe os dados
+
+Depois do remote e das credenciais estarem corretos, baixe os dados com:
+
+```bash
+dvc pull
+```
+
+Ou:
 
 ```bash
 poetry run dvc pull
 ```
 
-Se o remote ainda não estiver configurado localmente, ele deve ser ajustado antes do `pull`.
+#### Resumo prático
+
+```bash
+dvc remote modify --local datathon_remote gdrive_client_id <ID>
+dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
+dvc pull
+```
+
+#### Observações importantes
+
+- não versione `.dvc/config.local`
+- não publique `client_id` e `client_secret` em README, issue, commit ou pull request
+- se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
+- `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 
 ### 3. Pipeline principal
 
-Engenharia de features:
+Fluxo recomendado para deixar o projeto pronto para treino, Feature Store e serving online:
 
 ```bash
-poetry run task mlfeateng
+poetry run dvc repro featurize
+poetry run dvc repro train
+poetry run dvc repro export_feature_store
+poetry run task feastapply
+poetry run task feastmaterialize
 ```
 
-Treinamento:
+Responsabilidade de cada gatilho:
 
-```bash
-poetry run task mltrain
-```
+- `dvc repro featurize`: gera `data/processed/train.parquet`, `data/processed/test.parquet` e `artifacts/models/feature_pipeline.joblib`
+- `dvc repro train`: treina o modelo e gera `artifacts/models/model_current.pkl`
+- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet`
+- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast
+- `task feastmaterialize`: lê a camada offline e materializa incrementalmente as features na online store Redis
+
+Observações importantes:
+
+- `dvc repro export_feature_store` depende do artefato `artifacts/models/feature_pipeline.joblib`, gerado no stage `featurize`
+- a API de predição completa também depende de `artifacts/models/model_current.pkl`, gerado no stage `train`
+- `feast apply` registra a estrutura da Feature Store; ele não publica dados no Redis
+- `feast materialize-incremental` depende de o Redis estar em execução
 
 Execução ampliada com múltiplos experimentos e cenários:
 
@@ -233,7 +341,7 @@ O arquivo efetivamente lido pelo `docker compose` é o `.env`, que você cria a 
 
 ```bash
 cp .env.example .env
-poetry run task observability
+poetry run task appstack
 ```
 
 A stack local sobe os seguintes serviços de forma integrada:
@@ -241,8 +349,11 @@ A stack local sobe os seguintes serviços de forma integrada:
 - serving FastAPI
 - **Ollama** (LLM quantizado; volume `ollama_data` para modelos) e um job **one-shot** `ollama-pull` que executa `ollama pull` do modelo definido em `OLLAMA_MODEL` (padrão recomendado: `qwen2.5:3b`, tag válida na biblioteca Ollama)
 - MLflow server
+- Redis
 - Prometheus
 - Grafana
+- serving FastAPI
+- MLflow server
 
 Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local (incluindo rotas `/llm/*`).
 
@@ -253,12 +364,40 @@ Com a stack em execução, a documentação interativa do FastAPI fica disponív
 Para encerrar os serviços:
 
 ```bash
-poetry run task observability_down
+poetry run task appstack_down
 ```
 
 ### 5. Execução manual isolada
 
 Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
+
+### Feature Store
+
+O projeto agora possui uma Feature Store local baseada em Feast, com Redis como online store. O objetivo é separar claramente a camada offline, usada para preparo e materialização, da camada online, usada para consulta de baixa latência.
+
+Além disso, a governança de consumo foi refinada com `FeatureServices` por versão de modelo. Isso deixa explícito qual contrato de features cada modelo usa no treino e no serving, mesmo quando diferentes versões ainda compartilham a mesma `FeatureView` base.
+
+Fluxo recomendado:
+
+```bash
+poetry run dvc repro featurize
+poetry run dvc repro train
+poetry run dvc repro export_feature_store
+docker compose up -d redis
+poetry run task feastapply
+poetry run task feastmaterialize
+poetry run task feastdemo
+```
+
+Arquivos principais dessa integração:
+
+- `feature_store/feature_store.yaml`
+- `feature_store/repo.py`
+- `src/feast_ops/export.py`
+- `src/feast_ops/demo.py`
+- `docs/FEATURE_STORE.md`
+
+Detalhamento completo, decisões arquiteturais, limitações e próximos passos estão em [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md).
 
 Serving:
 
@@ -328,10 +467,13 @@ Essas métricas são consumidas pela stack local configurada em `configs/observa
 
 As inferências podem ser registradas em `artifacts/monitoring/inference_logs/predictions.jsonl`, criando uma trilha de execução útil para:
 
-- auditoria de predições
+- auditoria das features efetivamente servidas ao modelo
 - composição do dataset corrente de monitoramento
 - análise posterior de drift
 - apoio a ciclos de retreino
+
+O contrato atual desse arquivo prioriza as features transformadas e monitoráveis
+consumidas pelo modelo em produção, com metadados mínimos de predição e origem.
 
 #### Monitoramento batch de drift
 
@@ -348,6 +490,13 @@ Na prática, isso permite:
 - calcular PSI por feature
 - consolidar um status geral de drift
 - manter histórico das execuções de monitoramento
+
+O relatório HTML agora também destaca no topo o resumo operacional do projeto,
+incluindo thresholds de `warning` e `critical` definidos no YAML e o status
+final calculado pelo pipeline batch. Esse arquivo passou a representar a visão
+oficial do projeto para drift, baseada no PSI persistido em
+`drift_metrics.json`, enquanto o Evidently fica disponível em um relatório
+auxiliar separado para diagnóstico complementar.
 
 #### Gatilho auditável de retreino
 
@@ -367,7 +516,7 @@ Essa trilha documenta:
 
 ### Stack local reproduzível
 
-Quando a stack é iniciada com `poetry run task observability`, os serviços ficam disponíveis em:
+Quando a stack é iniciada com `poetry run task appstack`, os serviços ficam disponíveis em:
 
 | Serviço | URL | Papel |
 |---|---|---|
@@ -382,7 +531,7 @@ O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis c
 ### Fluxo sugerido para validação local
 
 1. Copie `.env.example` para `.env`, se quiser customizar portas ou credenciais.
-2. Suba a stack com `poetry run task observability`.
+2. Suba a stack com `poetry run task appstack`.
 3. Gere tráfego pelo Swagger ou por chamadas ao endpoint de predição.
 4. Consulte as métricas no Prometheus.
 5. Abra o Grafana para visualizar os painéis provisionados.
@@ -401,17 +550,18 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 
 | Artefato | Papel no projeto |
 |---|---|
-| `data/interim/cleaned.parquet` | Camada intermediária já tratada, usada como ponto de auditoria entre ingestão e preparação final dos dados. |
-| `data/processed/train.parquet` | Base final de treino gerada pelo pipeline de features e usada nos experimentos do modelo. |
-| `data/processed/test.parquet` | Base final de teste usada para validação e comparação de desempenho. |
+| `data/interim/cleaned.parquet` | Base saneada da camada `interim`: já teve identificadores diretos removidos, passou por deduplicação, remoção de nulos e validação de schema, mas ainda não foi convertida para o formato final de modelagem. |
+| `data/processed/train.parquet` | Base final de treino da camada `processed`: já passou por split, criação de features derivadas, remoção de leakage, encoding e scaling, ficando pronta para consumo pelos algoritmos. |
+| `data/processed/test.parquet` | Base final de teste da camada `processed`, gerada com o mesmo pipeline do treino e mantida separada para validação sem vazamento. |
 | `data/processed/feature_columns.json` | Registra a ordem e os nomes finais das features, ajudando a manter consistência entre treino e inferência. |
 | `data/processed/schema_report.json` | Evidência da validação estrutural dos dados processados, reforçando a etapa de qualidade de dados. |
 | `artifacts/models/feature_pipeline.joblib` | Pipeline de transformação persistido para reutilização no serving, evitando divergência entre treino e produção. |
 | `artifacts/models/model_current.pkl` | Modelo champion atualmente mantido como versão principal para inferência. |
 | `artifacts/models/model_current_metadata.json` | Metadados do champion atual, incluindo informações de versão, configuração e métricas relevantes. |
 | `artifacts/models/challengers/` | Diretório reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promoção. |
-| `artifacts/monitoring/inference_logs/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior, principalmente nos fluxos de drift. |
-| `artifacts/monitoring/drift/drift_report.html` | Relatório HTML do Evidently para inspeção visual do comportamento das features e das distribuições monitoradas. |
+| `artifacts/monitoring/inference_logs/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. No contrato atual, ele registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
+| `artifacts/monitoring/drift/drift_report.html` | Relatório HTML oficial do projeto para drift, coerente com `drift_metrics.json` e com a decisão operacional baseada em PSI. |
+| `artifacts/monitoring/drift/drift_report_evidently.html` | Relatório auxiliar do Evidently, mantido para diagnóstico visual complementar das distribuições e widgets estatísticos. |
 | `artifacts/monitoring/drift/drift_metrics.json` | Consolidação das métricas de drift, incluindo PSI por feature e resumo para automação de decisão. |
 | `artifacts/monitoring/drift/drift_status.json` | Estado mais recente do monitoramento de drift, com classificação para apoio ao gatilho de retreino. |
 | `artifacts/monitoring/drift/drift_runs.jsonl` | Histórico de execuções do monitoramento, útil para trilha de auditoria e acompanhamento temporal. |
@@ -422,9 +572,11 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `configs/scenario_analysis/inference_cases.yaml` | Suíte versionada de cenários de inferência usada para validar comportamento do modelo em casos de negócio. |
 | `artifacts/scenario_analysis/drift/*.jsonl` | Lotes sintéticos construídos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
 | `artifacts/scenario_analysis/drift/*_report.html` | Relatórios HTML dos cenários sintéticos, usados para demonstração e validação do processo de drift. |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Visão consolidada das avaliações do projeto: modelo tabular, cenários, drift, retreino e trilha futura de LLM. |
 
 ## Documentação Complementar
 
+- [docs/EVALUATION.md](docs/EVALUATION.md)
 - [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
 - [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
 - [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)

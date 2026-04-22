@@ -40,6 +40,9 @@ def return_serving_config(experiment_config_path: str) -> ServingConfig:
         model_name="random_forest_v2",
         model_version="0.1.0",
         run_name="random_forest_v2",
+        feast_repo_path=Path("feature_store"),
+        feast_entity_key="customer_id",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
 
 

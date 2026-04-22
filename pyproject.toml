@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=2.2.0",
     "numpy>=1.26.0",
     "scikit-learn>=1.4.2",
+    "feast[redis]>=0.57.0,<0.62.0",
     "mlflow==3.10.1",
     "pandera>=0.19.3",
     "pyarrow>=16.0.0",
@@ -45,6 +46,7 @@ packages = [
     { include = "evaluation" },
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
+    { include = "feast_ops", from = "src" },
     { include = "features", from = "src" },
     { include = "models", from = "src" },
     { include = "monitoring", from = "src" },
@@ -75,12 +77,16 @@ lint = 'ruff check'
 pre_format = 'ruff check --fix'
 format = 'ruff format'
 mlfeateng = 'python -m src.features.feature_engineering'
-mltrain = 'python -m src.models.train'
-mlscenarios = 'python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
+feastexport = 'python -m src.feast_ops.export'
+feastapply = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store apply'
+feastmaterialize = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store materialize-incremental $(date -u +"%Y-%m-%dT%H:%M:%S")'
+feastdemo = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 python -m src.feast_ops.demo --customer-id 15634602'
+mltrain = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train'
+mlscenarios = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
 mldrift = 'python -m src.monitoring.drift'
 mldriftdemo = 'python -m src.monitoring.drift --current data/processed/test.parquet'
-mlsyntheticdrift = 'python -m src.scenario_analysis.synthetic_drifts --all'
-mlretrain = 'python -m src.models.retraining'
+mlsyntheticdrift = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.scenario_analysis.synthetic_drifts --all'
+mlretrain = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.retraining'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
@@ -97,6 +103,8 @@ ollama_list = 'python scripts/list_ollama_models.py'
 ragas_eval = 'python -m evaluation.ragas_eval'
 # LLM-as-judge (≥3 critérios, incl. negócio) — mesmo Ollama/golden que RAGAS
 llm_judge = 'python -m evaluation.llm_judge'
+appstack = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d redis serving mlflow prometheus grafana'
+appstack_down = 'docker compose down'
 
-pre_mlrunall = 'task mlfeateng'
-mlrunall = 'python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
+mlrunexperiments = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml'
+mlrunall = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'

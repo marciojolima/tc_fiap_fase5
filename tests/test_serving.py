@@ -6,15 +6,23 @@ import pandas as pd
 from prometheus_client import generate_latest
 
 from monitoring.metrics import (
+    finish_feast_lookup_for_monitor,
+    finish_model_predict_for_monitor,
     finish_predict_request_for_monitor,
     start_predict_request_for_monitor,
+    start_step_timer_for_monitor,
 )
 from serving.app import create_app
-from serving.pipeline import ServingConfig, prepare_inference_dataframe
-from serving.routes import predict_churn
-from serving.schemas import ChurnPredictionRequest
+from serving.pipeline import (
+    PreparedInferencePayload,
+    ServingConfig,
+    prepare_inference_dataframe,
+)
+from serving.routes import predict_churn, predict_churn_from_raw
+from serving.schemas import ChurnCustomerLookupRequest, ChurnPredictionRequest
 
 HTTP_OK = 200
+EXPECTED_CUSTOMER_ID = 15634602
 
 
 class DummyFeaturePipeline:
@@ -55,11 +63,33 @@ def return_route_config() -> ServingConfig:
         model_name="random_forest_current",
         model_version="0.2.0",
         run_name="random_forest_current",
+        feast_repo_path=Mock(),
+        feast_entity_key="customer_id",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
 
 
-def return_route_dataframe(payload, cfg) -> pd.DataFrame:
-    return pd.DataFrame([{"feature": 1.0}])
+def return_prepared_online_payload(customer_id, cfg) -> PreparedInferencePayload:
+    return PreparedInferencePayload(
+        transformed_features=pd.DataFrame([{"feature": 1.0}]),
+        monitoring_features={"feature": 1.0},
+        request_metadata={
+            "feature_source": "feast_online_store",
+            "customer_id": customer_id,
+        },
+        feature_source="feast_online_store",
+        customer_id=customer_id,
+    )
+
+
+def return_prepared_raw_payload(payload, cfg) -> PreparedInferencePayload:
+    return PreparedInferencePayload(
+        transformed_features=pd.DataFrame([{"feature": 1.0}]),
+        monitoring_features={"feature": 1.0},
+        request_metadata={"feature_source": "request_payload"},
+        feature_source="request_payload",
+        customer_id=None,
+    )
 
 
 def return_route_prediction(df_feat) -> tuple[float, int]:
@@ -94,6 +124,9 @@ def test_prepare_inference_dataframe_uses_feature_pipeline(monkeypatch) -> None:
         model_name="random_forest_current",
         model_version="0.2.0",
         run_name="random_forest_current",
+        feast_repo_path=Mock(),
+        feast_entity_key="customer_id",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
     monkeypatch.setattr(
         "serving.pipeline.load_feature_pipeline",
@@ -137,6 +170,9 @@ def test_prepare_inference_dataframe_logs_lgpd_governance(monkeypatch) -> None:
         model_name="random_forest_current",
         model_version="0.2.0",
         run_name="random_forest_current",
+        feast_repo_path=Mock(),
+        feast_entity_key="customer_id",
+        feast_feature_service_name="customer_churn_rf_v2",
     )
     monkeypatch.setattr(
         "serving.pipeline.load_feature_pipeline",
@@ -163,8 +199,8 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
         return_route_config,
     )
     monkeypatch.setattr(
-        "serving.routes.prepare_inference_dataframe",
-        return_route_dataframe,
+        "serving.routes.prepare_online_inference_payload",
+        return_prepared_online_payload,
     )
     monkeypatch.setattr(
         "serving.routes.predict_from_dataframe",
@@ -176,6 +212,38 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
     )
 
     response = predict_churn(
+        ChurnCustomerLookupRequest(customer_id=EXPECTED_CUSTOMER_ID)
+    )
+
+    assert response.model_dump() == {
+        "churn_probability": 0.81,
+        "churn_prediction": 1,
+        "model_name": "random_forest_current",
+        "threshold": 0.5,
+        "feature_source": "feast_online_store",
+        "customer_id": EXPECTED_CUSTOMER_ID,
+    }
+
+
+def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "serving.routes.load_serving_config",
+        return_route_config,
+    )
+    monkeypatch.setattr(
+        "serving.routes.prepare_request_inference_payload",
+        return_prepared_raw_payload,
+    )
+    monkeypatch.setattr(
+        "serving.routes.predict_from_dataframe",
+        return_route_prediction,
+    )
+    monkeypatch.setattr(
+        "serving.routes.log_prediction_for_monitoring",
+        lambda **_: None,
+    )
+
+    response = predict_churn_from_raw(
         ChurnPredictionRequest(
             **{
                 "CreditScore": 600,
@@ -199,12 +267,18 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
         "churn_prediction": 1,
         "model_name": "random_forest_current",
         "threshold": 0.5,
+        "feature_source": "request_payload",
+        "customer_id": None,
     }
 
 
 def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
     app = create_app()
     start_time = start_predict_request_for_monitor()
+    feast_start_time = start_step_timer_for_monitor()
+    model_start_time = start_step_timer_for_monitor()
+    finish_feast_lookup_for_monitor(feast_start_time)
+    finish_model_predict_for_monitor(model_start_time)
     finish_predict_request_for_monitor(
         start_time,
         method="POST",
@@ -215,3 +289,5 @@ def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
     assert any(getattr(route, "path", None) == "/metrics" for route in app.routes)
     assert "churn_serving_predict_latency_seconds" in metrics_payload
     assert "churn_serving_predict_requests_total" in metrics_payload
+    assert "churn_serving_predict_feast_lookup_latency_seconds" in metrics_payload
+    assert "churn_serving_predict_model_latency_seconds" in metrics_payload

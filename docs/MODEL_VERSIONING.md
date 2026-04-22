@@ -105,3 +105,36 @@ necessaria para:
 - promotion workflow futuro
 - champion/challenger com metadata confiavel
 - compliance com os requisitos de governanca do Datathon
+
+## Conexao com o que ja foi implementado
+
+No estado atual do projeto, esse versionamento ja sustenta partes reais do
+fluxo operacional:
+
+- o champion atual possui sidecar de metadados em
+  `artifacts/models/model_current_metadata.json`
+- o retreino gera challengers em `artifacts/models/challengers/`
+- o monitoramento de drift pode abrir um retreino auditavel
+- a comparacao champion-challenger produz `promotion_decision.json`
+
+Ou seja, a metadata ja nao e apenas decorativa. Ela participa da trilha de:
+
+- reproducao
+- auditoria
+- comparacao entre versoes
+- decisao de manutencao do champion
+
+## Limite atual da implementacao
+
+Ainda nao existe um Model Registry completo com:
+
+- approval workflow formal
+- aliases de producao gerenciados por registry
+- promocao automatica entre ambientes
+- rollback operacional baseado em registry externo
+
+Por isso, a situacao atual deve ser lida como:
+
+- boa base de governanca e rastreabilidade
+- promotion workflow inicial e auditavel
+- maturidade ainda abaixo de um registry operacional completo

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import warnings
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -19,6 +19,7 @@ from joblib import load
 
 from common.config_loader import DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH, load_config
 from common.logger import get_logger
+from common.timezone import now_isoformat
 from models.retraining import run_retraining_request
 
 DEFAULT_MONITORING_CONFIG_PATH = "configs/monitoring_config.yaml"
@@ -27,8 +28,12 @@ PREDICTION_PROBABILITY_COLUMN = "churn_probability"
 PREDICTION_CLASS_COLUMN = "churn_prediction"
 MONITORING_METADATA_COLUMNS = {
     "timestamp",
+    "monitoring_contract",
     "model_name",
+    "model_version",
     "threshold",
+    "feature_source",
+    "customer_id",
     PREDICTION_PROBABILITY_COLUMN,
     PREDICTION_CLASS_COLUMN,
 }
@@ -91,6 +96,16 @@ class RetrainingRequestContext:
     current_row_count: int
 
 
+@dataclass(frozen=True)
+class ProjectDriftReportContext:
+    """Contexto operacional exibido no topo do relatório HTML."""
+
+    warning_threshold: float
+    critical_threshold: float
+    decision: DriftDecision | None = None
+    feature_psi: dict[str, float] | None = None
+
+
 def load_monitoring_config(
     config_path: str = DEFAULT_MONITORING_CONFIG_PATH,
 ) -> dict[str, Any]:
@@ -140,7 +155,22 @@ def prepare_feature_matrix(
     """Resolve uma matriz transformada a partir de dados brutos ou já processados."""
 
     if set(feature_columns).issubset(dataset.columns):
+        _validate_transformed_monitoring_contract(
+            dataset=dataset,
+            feature_columns=feature_columns,
+        )
         return dataset[feature_columns].copy()
+
+    transformed_columns_present = [
+        column_name for column_name in feature_columns if column_name in dataset.columns
+    ]
+    if transformed_columns_present:
+        raise ValueError(
+            "Dataset de monitoramento possui contrato inconsistente: apenas parte "
+            "das features transformadas esperadas está presente. "
+            f"Presentes: {transformed_columns_present}. "
+            "Regere o arquivo current usando o contrato atual do serving."
+        )
 
     raw_features = dataset.drop(
         columns=[
@@ -152,6 +182,26 @@ def prepare_feature_matrix(
     feature_pipeline = load(feature_pipeline_path)
     transformed_features = feature_pipeline.transform(raw_features)
     return transformed_features[feature_columns].copy()
+
+
+def _validate_transformed_monitoring_contract(
+    dataset: pd.DataFrame,
+    feature_columns: list[str],
+) -> None:
+    """Valida que o dataset current contém uma matriz transformada consistente."""
+
+    rows_with_missing_features = dataset[feature_columns].isna().any(axis=1)
+    if not rows_with_missing_features.any():
+        return
+
+    inconsistent_row_count = int(rows_with_missing_features.sum())
+    raise ValueError(
+        "Dataset de monitoramento possui linhas incompatíveis com o contrato atual "
+        "de features transformadas. "
+        f"Linhas afetadas: {inconsistent_row_count}. "
+        "Limpe o arquivo current ou gere um novo lote de inferências com o serving "
+        "atual antes de executar o drift."
+    )
 
 
 def build_reference_predictions(
@@ -373,6 +423,7 @@ def build_evidently_report(
     reference_features: pd.DataFrame,
     current_features: pd.DataFrame,
     output_path: str | Path,
+    project_report_context: ProjectDriftReportContext | None = None,
 ) -> None:
     """Gera o relatório HTML de drift usando Evidently."""
 
@@ -384,7 +435,15 @@ def build_evidently_report(
             MIN_CURRENT_SAMPLE_SIZE_FOR_REPORT,
         )
 
-    report = Report([DataDriftPreset()])
+    preset = build_evidently_drift_preset(
+        feature_columns=reference_features.columns.tolist(),
+        warning_threshold=(
+            project_report_context.warning_threshold
+            if project_report_context is not None
+            else None
+        ),
+    )
+    report = Report([preset])
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore",
@@ -412,7 +471,357 @@ def build_evidently_report(
         )
     report_output_path = Path(output_path)
     report_output_path.parent.mkdir(parents=True, exist_ok=True)
-    snapshot.save_html(str(report_output_path))
+    evidently_output_path = report_output_path.with_name(
+        f"{report_output_path.stem}_evidently.html"
+    )
+    snapshot.save_html(str(evidently_output_path))
+    if project_report_context is not None:
+        inject_project_drift_summary_into_html(
+            html_path=report_output_path,
+            report_context=project_report_context,
+            evidently_report_path=evidently_output_path,
+        )
+    else:
+        evidently_output_path.replace(report_output_path)
+
+
+def build_evidently_drift_preset(
+    feature_columns: list[str],
+    warning_threshold: float | None,
+) -> DataDriftPreset:
+    """Configura o preset do Evidently para ficar próximo da regra do projeto."""
+
+    drift_share = 1 / max(len(feature_columns), 1)
+    preset_kwargs: dict[str, Any] = {
+        "columns": feature_columns,
+        "method": "psi",
+        "drift_share": drift_share,
+    }
+    if warning_threshold is not None:
+        preset_kwargs["threshold"] = warning_threshold
+    return DataDriftPreset(**preset_kwargs)
+
+
+def inject_project_drift_summary_into_html(
+    html_path: str | Path,
+    report_context: ProjectDriftReportContext,
+    evidently_report_path: str | Path | None = None,
+) -> None:
+    """Gera o HTML principal coerente com as métricas oficiais do projeto."""
+
+    report_path = Path(html_path)
+    decision = report_context.decision
+    status_label = decision.status if decision is not None else "not_evaluated"
+    max_feature_psi = decision.max_feature_psi if decision is not None else None
+    prediction_psi = decision.prediction_psi if decision is not None else None
+    drifted_features = decision.drifted_features if decision is not None else []
+    summary_lines = _build_project_summary_lines(
+        report_context=report_context,
+        status_label=status_label,
+        max_feature_psi=max_feature_psi,
+        prediction_psi=prediction_psi,
+        drifted_features=drifted_features,
+    )
+    report_path.write_text(
+        build_project_drift_html_document(
+            report_context=report_context,
+            summary_lines=summary_lines,
+            evidently_report_path=evidently_report_path,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _format_optional_float(value: float | None) -> str:
+    """Formata métricas opcionais para exibição no HTML."""
+
+    if value is None:
+        return "n/a"
+    return f"{value:.3f}"
+
+
+def _build_status_badge_style(status_label: str) -> str:
+    """Define o visual do selo de status no cabeçalho."""
+
+    palette_by_status = {
+        "critical": ("#7f1d1d", "#fee2e2", "#fecaca"),
+        "warning": ("#92400e", "#fef3c7", "#fde68a"),
+        "ok": ("#166534", "#dcfce7", "#bbf7d0"),
+        "insufficient_data": ("#334155", "#e2e8f0", "#cbd5e1"),
+    }
+    text_color, background, border = palette_by_status.get(
+        status_label,
+        ("#1f2937", "#e5e7eb", "#d1d5db"),
+    )
+    return (
+        "padding: 10px 16px; border-radius: 999px; font-size: 13px; "
+        "font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; "
+        f"color: {text_color}; background: {background}; border: 1px solid {border};"
+    )
+
+
+def _build_project_summary_lines(
+    *,
+    report_context: ProjectDriftReportContext,
+    status_label: str,
+    max_feature_psi: float | None,
+    prediction_psi: float | None,
+    drifted_features: list[str],
+) -> list[str]:
+    """Monta o conteúdo HTML do cabeçalho customizado do relatório."""
+
+    drifted_features_label = (
+        ", ".join(drifted_features) if drifted_features else "nenhuma"
+    )
+    status_badge_style = _build_status_badge_style(status_label)
+    cards = [
+        _build_summary_card_html(
+            title="Thresholds PSI",
+            value_lines=[
+                f"<strong>Warning:</strong> {report_context.warning_threshold:.3f}",
+                f"<strong>Critical:</strong> {report_context.critical_threshold:.3f}",
+            ],
+        ),
+        _build_summary_card_html(
+            title="PSI do Projeto",
+            value_lines=[_format_optional_float(max_feature_psi)],
+            footer="Maior PSI de feature",
+            value_size_px=24,
+        ),
+        _build_summary_card_html(
+            title="PSI de Predição",
+            value_lines=[_format_optional_float(prediction_psi)],
+            footer="Usado na decisão operacional quando habilitado",
+            value_size_px=24,
+        ),
+        _build_summary_card_html(
+            title="Colunas em Warning+",
+            value_lines=[f"{len(drifted_features)}/15"],
+            footer="Segundo a regra PSI do projeto",
+            value_size_px=24,
+        ),
+    ]
+    return [
+        (
+            '<section style="margin: 24px auto 20px auto; max-width: 1180px; '
+            'padding: 28px; border-radius: 24px; border: 1px solid #d8dee4; '
+            'background: linear-gradient(135deg, #fffdf8 0%, #f7fbff 100%); '
+            'box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08); '
+            'font-family: Georgia, \'Times New Roman\', serif;">'
+        ),
+        (
+            '  <div style="display: flex; justify-content: space-between; '
+            'align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px;">'
+        ),
+        (
+            '    <div><p style="margin: 0 0 6px 0; font-size: 12px; '
+            'letter-spacing: 0.14em; text-transform: uppercase; color: #6b7280;">'
+            "Monitoramento Operacional"
+            "</p>"
+        ),
+        (
+            '    <h2 style="margin: 0; font-size: 30px; line-height: 1.1; '
+            'color: #132238;">Resumo de Drift</h2></div>'
+        ),
+        (
+            '    <span style="display: inline-flex; align-items: center; '
+            f'{status_badge_style}">{html.escape(status_label)}</span>'
+        ),
+        "  </div>",
+        (
+            '  <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.6; '
+            'color: #4b5563;">O bloco abaixo resume a decisão operacional do '
+            'projeto com base em <strong>PSI</strong>. O painel do Evidently '
+            'logo abaixo também foi configurado para <strong>PSI</strong>, '
+            'usando o threshold de <strong>warning</strong> do projeto para '
+            'marcação por coluna e drift de dataset quando ao menos uma coluna '
+            "ultrapassa o limite.</p>"
+        ),
+        (
+            '  <div style="display: grid; grid-template-columns: repeat(auto-fit, '
+            'minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px;">'
+        ),
+        *cards,
+        "  </div>",
+        (
+            '  <div style="padding: 18px; border-radius: 18px; background: '
+            'rgba(17, 24, 39, 0.04); border: 1px dashed #cbd5e1;">'
+            '<p style="margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; '
+            'letter-spacing: 0.08em; color: #6b7280;">Features em warning ou acima</p>'
+            f"{_build_feature_list_html(drifted_features_label)}"
+            '<p style="margin: 10px 0 0 0; font-size: 14px; '
+            'line-height: 1.6; color: #57606a;">'
+            'Fonte operacional: <code>configs/monitoring_config.yaml</code>. '
+            'O quadro do Evidently abaixo foi alinhado para usar PSI, mas o '
+            'status operacional continua sendo decidido pela lógica batch do '
+            'projeto, incluindo thresholds de warning e critical.'
+            '</p></div>'
+        ),
+        "</section>",
+    ]
+
+
+def build_project_drift_html_document(
+    *,
+    report_context: ProjectDriftReportContext,
+    summary_lines: list[str],
+    evidently_report_path: str | Path | None,
+) -> str:
+    """Monta o documento HTML oficial de drift do projeto."""
+
+    evidently_link_block = ""
+    if evidently_report_path is not None:
+        evidently_name = Path(evidently_report_path).name
+        evidently_link_block = (
+            '<section style="margin: 0 auto 32px auto; max-width: 1180px; '
+            'padding: 20px 24px; border-radius: 18px; border: 1px solid #d8dee4; '
+            'background: #ffffff; box-shadow: 0 14px 40px rgba(15, 23, 42, 0.05);">'
+            '<h3 style="margin: 0 0 10px 0; font-size: 20px; color: #132238;">'
+            "Diagnóstico complementar</h3>"
+            '<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #57606a;">'
+            "O relatório oficial acima é a fonte de verdade operacional do projeto. "
+            "Se quiser consultar os widgets estatísticos nativos do Evidently, abra "
+            f'<a href="{html.escape(evidently_name)}" style="color: #0f766e; '
+            'font-weight: 700; text-decoration: none;">'
+            "este relatório auxiliar</a>.</p></section>"
+        )
+
+    psi_table = _build_project_psi_table_html(
+        feature_psi=report_context.feature_psi or {},
+        warning_threshold=report_context.warning_threshold,
+        critical_threshold=report_context.critical_threshold,
+    )
+    summary_block = "\n".join(summary_lines)
+    return (
+        "<!DOCTYPE html>"
+        "<html lang=\"pt-BR\">"
+        "<head>"
+        "<meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<title>Relatório de Drift</title>"
+        "</head>"
+        "<body style=\"margin: 0; background: #f4f1ea; color: #132238;\">"
+        f"{summary_block}"
+        f"{psi_table}"
+        f"{evidently_link_block}"
+        "</body>"
+        "</html>"
+    )
+
+
+def _build_project_psi_table_html(
+    *,
+    feature_psi: dict[str, float],
+    warning_threshold: float,
+    critical_threshold: float,
+) -> str:
+    """Monta a tabela oficial de PSI por feature."""
+
+    rows = []
+    for feature_name, psi_value in sorted(
+        feature_psi.items(),
+        key=lambda item: item[1],
+        reverse=True,
+    ):
+        status = _classify_psi_status(
+            psi_value=psi_value,
+            warning_threshold=warning_threshold,
+            critical_threshold=critical_threshold,
+        )
+        badge_style = _build_status_badge_style(status)
+        rows.append(
+            "<tr>"
+            f"<td style=\"padding: 12px 14px; border-bottom: 1px solid "
+            f"#e5e7eb;\">{html.escape(feature_name)}</td>"
+            f"<td style=\"padding: 12px 14px; border-bottom: 1px solid "
+            f"#e5e7eb;\">{psi_value:.6f}</td>"
+            f"<td style=\"padding: 12px 14px; border-bottom: 1px solid "
+            f"#e5e7eb;\">"
+            f"<span style=\"display: inline-flex; align-items: center; "
+            f"{badge_style}\">{html.escape(status)}</span>"
+            "</td></tr>"
+        )
+    table_rows = "".join(rows) if rows else (
+        '<tr><td colspan="3" style="padding: 14px;">'
+        "Nenhuma métrica disponível.</td></tr>"
+    )
+    return (
+        '<section style="margin: 0 auto 24px auto; max-width: 1180px; '
+        'padding: 24px; border-radius: 20px; border: 1px solid #d8dee4; '
+        'background: #ffffff; box-shadow: 0 14px 40px rgba(15, 23, 42, 0.05);">'
+        '<h3 style="margin: 0 0 8px 0; font-size: 22px; color: #132238;">'
+        "PSI oficial por feature</h3>"
+        '<p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.6; '
+        'color: #57606a;">'
+        "Esta tabela é derivada diretamente do cálculo persistido em "
+        "<code>drift_metrics.json</code> e representa a visão oficial usada na "
+        "decisão operacional.</p>"
+        '<div style="overflow-x: auto;"><table style="width: 100%; '
+        'border-collapse: collapse; '
+        'font-family: Arial, sans-serif; font-size: 14px;">'
+        '<thead><tr style="background: #f8fafc;">'
+        '<th style="padding: 12px 14px; text-align: left; border-bottom: '
+        '1px solid #d8dee4;">Feature</th>'
+        '<th style="padding: 12px 14px; text-align: left; border-bottom: '
+        '1px solid #d8dee4;">PSI</th>'
+        '<th style="padding: 12px 14px; text-align: left; border-bottom: '
+        '1px solid #d8dee4;">Status</th>'
+        f"</tr></thead><tbody>{table_rows}</tbody></table></div></section>"
+    )
+
+
+def _classify_psi_status(
+    *,
+    psi_value: float,
+    warning_threshold: float,
+    critical_threshold: float,
+) -> str:
+    """Classifica uma feature conforme os thresholds operacionais."""
+
+    if psi_value >= critical_threshold:
+        return "critical"
+    if psi_value >= warning_threshold:
+        return "warning"
+    return "ok"
+
+
+def _build_summary_card_html(
+    *,
+    title: str,
+    value_lines: list[str],
+    footer: str | None = None,
+    value_size_px: int = 16,
+) -> str:
+    """Monta um card resumido para o cabeçalho do relatório."""
+
+    card_lines = [
+        '    <article style="padding: 18px; border-radius: 18px; '
+        'background: rgba(255, 255, 255, 0.85); border: 1px solid #e5e7eb;">',
+        '<p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; '
+        f'letter-spacing: 0.08em; color: #6b7280;">{html.escape(title)}</p>',
+    ]
+    for index, value in enumerate(value_lines):
+        margin_top = "0" if index == 0 else "6px"
+        card_lines.append(
+            f'<p style="margin: {margin_top} 0 0 0; font-size: {value_size_px}px; '
+            f'color: #111827;">{value}</p>'
+        )
+    if footer is not None:
+        card_lines.append(
+            '<p style="margin: 6px 0 0 0; font-size: 13px; color: #6b7280;">'
+            f"{html.escape(footer)}</p>"
+        )
+    card_lines.append("</article>")
+    return "".join(card_lines)
+
+
+def _build_feature_list_html(feature_list_label: str) -> str:
+    """Monta o bloco com a lista de features sinalizadas pelo PSI."""
+
+    return (
+        '<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #132238;">'
+        f"{html.escape(feature_list_label)}</p>"
+    )
 
 
 def write_json(path: str | Path, payload: dict[str, Any]) -> None:
@@ -477,7 +886,7 @@ def write_retraining_placeholder(
         "reason": "critical_data_or_prediction_drift",
         "model_path": context.model_path,
         "training_config_path": context.training_config_path,
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": now_isoformat(),
         "trigger_mode": context.trigger_mode,
         "promotion_policy": "manual_approval_required",
         "promotion_decision_path": context.promotion_decision_path,
@@ -558,12 +967,6 @@ def run_drift_monitoring(
 
     prepared_inputs = prepare_monitoring_inputs(drift_config, current_data_path)
 
-    build_evidently_report(
-        reference_features=prepared_inputs.reference_features,
-        current_features=prepared_inputs.current_features,
-        output_path=drift_config["report_html_path"],
-    )
-
     psi_by_feature = calculate_feature_psi(
         prepared_inputs.reference_features,
         prepared_inputs.current_features,
@@ -602,8 +1005,19 @@ def run_drift_monitoring(
             minimum_current_sample_size_for_decision
         ),
     )
+    build_evidently_report(
+        reference_features=prepared_inputs.reference_features,
+        current_features=prepared_inputs.current_features,
+        output_path=drift_config["report_html_path"],
+        project_report_context=ProjectDriftReportContext(
+            warning_threshold=drift_config["data_drift"]["warning_threshold"],
+            critical_threshold=drift_config["data_drift"]["critical_threshold"],
+            decision=decision,
+            feature_psi=psi_by_feature,
+        ),
+    )
     execution_context = MonitoringExecutionContext(
-        created_at=datetime.now(UTC).isoformat(),
+        created_at=now_isoformat(),
         reference_row_count=prepared_inputs.reference_row_count,
         current_row_count=prepared_inputs.current_row_count,
         minimum_current_sample_size_for_decision=(

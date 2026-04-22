@@ -3,9 +3,13 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from datetime import datetime
 
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.text import Text
+
+from common.timezone import configure_process_timezone, get_project_timezone
 
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_LOG_FORMAT = "%(name)s | %(message)s"
@@ -24,11 +28,13 @@ def _configure_logging() -> None:
     if getattr(_configure_logging, "_configured", False):
         return
 
+    configure_process_timezone()
     console = Console(stderr=False)
     handler = RichHandler(
         console=console,
         show_path=False,
         rich_tracebacks=True,
+        log_time_format=_format_log_time,
         markup=False,
         omit_repeated_times=False,
     )
@@ -43,6 +49,13 @@ def _configure_logging() -> None:
     logging.captureWarnings(True)
     sys.excepthook = sys.__excepthook__
     _configure_logging._configured = True
+
+
+def _format_log_time(log_time: datetime) -> Text:
+    """Formata a coluna de horário do logger no timezone do projeto."""
+
+    localized_time = log_time.astimezone(get_project_timezone())
+    return Text(localized_time.strftime("%Y-%m-%d %H:%M:%S %z"))
 
 
 def get_logger(name: str) -> logging.Logger:

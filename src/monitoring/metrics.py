@@ -25,6 +25,16 @@ PREDICT_REQUEST_LATENCY_SECONDS = Histogram(
     "Latencia das requisicoes do endpoint de predicao em segundos.",
     buckets=(0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0),
 )
+PREDICT_FEAST_LOOKUP_LATENCY_SECONDS = Histogram(
+    "churn_serving_predict_feast_lookup_latency_seconds",
+    "Latencia da consulta de features online no Feast em segundos.",
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0),
+)
+PREDICT_MODEL_LATENCY_SECONDS = Histogram(
+    "churn_serving_predict_model_latency_seconds",
+    "Latencia da inferencia do modelo em segundos.",
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0),
+)
 PREDICT_REQUESTS_IN_PROGRESS = Gauge(
     "churn_serving_predict_requests_in_progress",
     "Quantidade de requisicoes de predicao em andamento.",
@@ -55,6 +65,12 @@ def start_predict_request_for_monitor() -> float:
     return perf_counter()
 
 
+def start_step_timer_for_monitor() -> float:
+    """Marca o inicio de uma etapa interna da inferencia."""
+
+    return perf_counter()
+
+
 def finish_predict_request_for_monitor(
     start_time: float,
     *,
@@ -70,3 +86,15 @@ def finish_predict_request_for_monitor(
         status_code=status_code,
     ).inc()
     PREDICT_REQUESTS_IN_PROGRESS.dec()
+
+
+def finish_feast_lookup_for_monitor(start_time: float) -> None:
+    """Registra a latencia da consulta online ao Feast."""
+
+    PREDICT_FEAST_LOOKUP_LATENCY_SECONDS.observe(perf_counter() - start_time)
+
+
+def finish_model_predict_for_monitor(start_time: float) -> None:
+    """Registra a latencia da inferencia do modelo."""
+
+    PREDICT_MODEL_LATENCY_SECONDS.observe(perf_counter() - start_time)

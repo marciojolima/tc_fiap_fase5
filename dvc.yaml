@@ -33,4 +33,21 @@ stages:
     outs:
       - artifacts/models/model_current.pkl
       - artifacts/models/model_current_metadata.json
+
+  export_feature_store:
+    cmd: python -m src.feast_ops.export
+    deps:
+      - src/common/config_loader.py
+      - src/common/data_loader.py
+      - src/common/logger.py
+      - src/features/feature_engineering.py
+      - src/serving/pipeline.py
+      - src/feast_ops/config.py
+      - src/feast_ops/export.py
+      - configs/pipeline_global_config.yaml
+      - data/raw/Customer-Churn-Records.csv
+      - artifacts/models/feature_pipeline.joblib
+    outs:
+      - data/feature_store/customer_features.parquet
+      - data/feature_store/export_metadata.json
       

@@ -48,6 +48,7 @@ class ExperimentTrainingConfig(NamedTuple):
     model_params: dict[str, Any]
     threshold: float
     feature_set: str
+    feature_service_name: str
     model_path: Path
     training_data_version: str
     git_sha: str
@@ -196,6 +197,7 @@ def load_experiment_training_config(
         model_params=experiment_cfg["training"]["params"],
         threshold=experiment_cfg["inference"]["threshold"],
         feature_set=experiment_cfg["dataset"]["feature_set"],
+        feature_service_name=experiment_cfg["feast"]["feature_service_name"],
         model_path=Path(experiment_cfg["artifacts"]["model_path"]),
         training_data_version=compute_training_data_version(),
         git_sha=resolve_git_sha(),
@@ -320,6 +322,7 @@ def log_run_metadata(
     mlflow.log_param("n_samples", datasets.X_train.shape[0])
     mlflow.log_param("threshold", cfg.threshold)
     mlflow.log_param("feature_set", cfg.feature_set)
+    mlflow.log_param("feature_service_name", cfg.feature_service_name)
     mlflow.log_param("fairness_checked", cfg.fairness_checked)
 
     mlflow.set_tag("model_type", "classification")
@@ -327,6 +330,7 @@ def log_run_metadata(
     mlflow.set_tag("algorithm", cfg.algorithm)
     mlflow.set_tag("model_name", cfg.experiment_name)
     mlflow.set_tag("model_version", cfg.model_version)
+    mlflow.set_tag("feature_service_name", cfg.feature_service_name)
     mlflow.set_tag("training_data_version", cfg.training_data_version)
     mlflow.set_tag("git_sha", cfg.git_sha)
     mlflow.set_tag("git_tag", cfg.git_tag)
@@ -421,6 +425,7 @@ def train_and_log_model(
                     "model_path": str(spec.output_path),
                     "threshold": cfg.threshold,
                     "feature_set": cfg.feature_set,
+                    "feature_service_name": cfg.feature_service_name,
                     "training_data_version": cfg.training_data_version,
                     "git_sha": cfg.git_sha,
                     "git_tag": cfg.git_tag,

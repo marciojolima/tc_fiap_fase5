@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -19,8 +20,8 @@ from scripts.generate_synthetic_predictions import (
     validate_generation_config,
 )
 
-EXPECTED_ROUNDED_BALANCE = 10000.12
-EXPECTED_ROUNDED_ESTIMATED_SALARY = 50000.99
+EXPECTED_MONITORED_BALANCE = 10000.12345
+EXPECTED_MONITORED_ESTIMATED_SALARY = 50000.98765
 
 
 def build_base_dataframe() -> pd.DataFrame:
@@ -90,12 +91,47 @@ def test_generate_input_batch_supports_both_modes() -> None:
 
 
 def test_build_prediction_records_includes_full_monitoring_contract() -> None:
-    batch_dataframe = build_base_dataframe()
-    batch_dataframe.loc[0, "Balance"] = 10000.12345
-    batch_dataframe.loc[0, "EstimatedSalary"] = 50000.98765
+    monitoring_features_dataframe = pd.DataFrame(
+        [
+            {
+                "Card Type": 1.0,
+                "Gender": 0.0,
+                "Geo_Germany": 0.0,
+                "Geo_Spain": 0.0,
+                "CreditScore": 0.25,
+                "Age": 0.5,
+                "Tenure": 0.2,
+                "Balance": 10000.12345,
+                "NumOfProducts": 0.3,
+                "HasCrCard": 1.0,
+                "IsActiveMember": 1.0,
+                "EstimatedSalary": 50000.98765,
+                "Point Earned": 0.4,
+                "BalancePerProduct": 5000.0,
+                "PointsPerSalary": 0.005,
+            },
+            {
+                "Card Type": 3.0,
+                "Gender": 1.0,
+                "Geo_Germany": 1.0,
+                "Geo_Spain": 0.0,
+                "CreditScore": 1.5,
+                "Age": 1.2,
+                "Tenure": 0.7,
+                "Balance": 82000.0,
+                "NumOfProducts": -1.0,
+                "HasCrCard": 0.0,
+                "IsActiveMember": 1.0,
+                "EstimatedSalary": 92000.0,
+                "Point Earned": 2.4,
+                "BalancePerProduct": 82000.0,
+                "PointsPerSalary": 0.0076,
+            },
+        ]
+    )
 
     records = build_prediction_records(
-        batch_dataframe=batch_dataframe,
+        monitoring_features_dataframe=monitoring_features_dataframe,
         probabilities=np.array([0.2, 0.8]),
         predictions=np.array([0, 1]),
         context=PredictionOutputContext(
@@ -106,11 +142,18 @@ def test_build_prediction_records_includes_full_monitoring_contract() -> None:
     )
 
     assert len(records) == 2  # noqa: PLR2004
+    assert records[0]["monitoring_contract"] == "transformed_features_v1"
+    assert records[0]["feature_source"] == "synthetic_transformed_batch"
     assert records[0]["model_version"] == "0.2.0"
     assert records[1]["churn_prediction"] == 1
-    assert records[0]["Balance"] == EXPECTED_ROUNDED_BALANCE
-    assert records[0]["EstimatedSalary"] == EXPECTED_ROUNDED_ESTIMATED_SALARY
+    assert records[0]["Balance"] == EXPECTED_MONITORED_BALANCE
+    assert records[0]["EstimatedSalary"] == EXPECTED_MONITORED_ESTIMATED_SALARY
+    assert "Geography" not in records[0]
+    assert "Geo_Germany" in records[0]
     assert "timestamp" in records[0]
+    assert datetime.fromisoformat(records[0]["timestamp"]).utcoffset() == timedelta(
+        hours=-3
+    )
 
 
 def test_build_generation_metadata_reports_summary() -> None:
@@ -119,8 +162,46 @@ def test_build_generation_metadata_reports_summary() -> None:
         drift_mode="with_drift",
         output_path=Path("artifacts/out.jsonl"),
     )
+    monitoring_features_dataframe = pd.DataFrame(
+        [
+            {
+                "Card Type": 1.0,
+                "Gender": 0.0,
+                "Geo_Germany": 0.0,
+                "Geo_Spain": 0.0,
+                "CreditScore": 0.25,
+                "Age": 0.5,
+                "Tenure": 0.2,
+                "Balance": 10000.12345,
+                "NumOfProducts": 0.3,
+                "HasCrCard": 1.0,
+                "IsActiveMember": 1.0,
+                "EstimatedSalary": 50000.98765,
+                "Point Earned": 0.4,
+                "BalancePerProduct": 5000.0,
+                "PointsPerSalary": 0.005,
+            },
+            {
+                "Card Type": 3.0,
+                "Gender": 1.0,
+                "Geo_Germany": 1.0,
+                "Geo_Spain": 0.0,
+                "CreditScore": 1.5,
+                "Age": 1.2,
+                "Tenure": 0.7,
+                "Balance": 82000.0,
+                "NumOfProducts": -1.0,
+                "HasCrCard": 0.0,
+                "IsActiveMember": 1.0,
+                "EstimatedSalary": 92000.0,
+                "Point Earned": 2.4,
+                "BalancePerProduct": 82000.0,
+                "PointsPerSalary": 0.0076,
+            },
+        ]
+    )
     records = build_prediction_records(
-        batch_dataframe=build_base_dataframe(),
+        monitoring_features_dataframe=monitoring_features_dataframe,
         probabilities=np.array([0.1, 0.9]),
         predictions=np.array([0, 1]),
         context=PredictionOutputContext(
@@ -167,6 +248,28 @@ def test_run_generation_writes_jsonl_and_optional_metadata(
     monkeypatch.setattr(
         "scripts.generate_synthetic_predictions.score_prediction_batch",
         lambda batch_dataframe, experiment_config_path: (
+            pd.DataFrame(
+                [
+                    {
+                        "Card Type": 1.0,
+                        "Gender": 0.0,
+                        "Geo_Germany": 0.0,
+                        "Geo_Spain": 1.0,
+                        "CreditScore": 0.1,
+                        "Age": 0.2,
+                        "Tenure": 0.3,
+                        "Balance": 0.4,
+                        "NumOfProducts": 0.5,
+                        "HasCrCard": 1.0,
+                        "IsActiveMember": 1.0,
+                        "EstimatedSalary": 0.6,
+                        "Point Earned": 0.7,
+                        "BalancePerProduct": 0.8,
+                        "PointsPerSalary": 0.9,
+                    }
+                ]
+                * 4
+            ),
             np.array([0.1, 0.2, 0.7, 0.9]),
             np.array([0, 0, 1, 1]),
             PredictionOutputContext(

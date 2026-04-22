@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +19,7 @@ from common.config_loader import (
 from common.data_loader import load_raw_data
 from common.logger import get_logger
 from common.seed import set_global_seed
+from common.timezone import now_isoformat
 from monitoring.drift import (
     DEFAULT_MONITORING_CONFIG_PATH,
     build_evidently_report,
@@ -355,7 +355,7 @@ def build_prediction_records(
 ) -> list[dict[str, Any]]:
     """Converte o lote em registros compatíveis com o monitoramento current."""
 
-    created_at = datetime.now(UTC).isoformat()
+    created_at = now_isoformat()
     records: list[dict[str, Any]] = []
     for row, probability, prediction in zip(
         batch_dataframe.to_dict(orient="records"),
@@ -433,7 +433,7 @@ def write_batch_manifest(
         "mean_probability": float(probabilities.mean()),
         "positive_rate": float(predictions.mean()),
         "report_path": str(report_path) if report_path is not None else None,
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": now_isoformat(),
     }
     manifest_path.write_text(
         json.dumps(manifest_payload, indent=2, ensure_ascii=False),
