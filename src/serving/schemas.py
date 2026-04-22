@@ -148,7 +148,7 @@ class ChurnPredictionResponse(BaseModel):
     model_name: str
     threshold: float
     feature_source: str
-    customer_id: int | None = None      
+    customer_id: int | None = None
 
 
 class LLMChatRequest(BaseModel):
