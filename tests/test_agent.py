@@ -9,6 +9,8 @@ from agent.react_agent import (
 )
 from agent.tools import AgentTool, build_default_tools
 
+SECOND_CALL = 2
+
 
 class StubLLMClient(LLMClientProtocol):
     def __init__(self):
@@ -130,6 +132,11 @@ class DocumentaryQuestionLLMClient(LLMClientProtocol):
                 '{"thought":"vou tentar predição",'
                 '"action":"predict_churn","action_input":"{}"}'
             )
+        if self.calls == SECOND_CALL:
+            return (
+                '{"thought":"vou buscar evidência documental",'
+                '"action":"rag_search","action_input":"rotas llm"}'
+            )
         return (
             '{"thought":"agora respondo com base no repositório",'
             '"final_answer":"As rotas são /llm/health, /llm/status e /llm/chat."}'
@@ -156,13 +163,72 @@ def test_react_agent_restricts_documental_questions_to_rag_search() -> None:
         "Quais rotas HTTP o projeto expõe especificamente para o assistente LLM?",
         llm_client=DocumentaryQuestionLLMClient(),
         tools=[rag_tool, predict_tool, aux_tool],
-        max_iterations=2,
+        max_iterations=3,
     )
 
     assert "llm/health" in result.answer
-    assert result.used_tools == []
+    assert result.used_tools == ["rag_search"]
     assert result.trace[0]["question_mode"] == "documental"
     assert "Ferramenta 'predict_churn' inválida" in result.trace[0]["observation"]
+
+
+class DocumentaryFinalAnswerWithoutEvidenceLLMClient(LLMClientProtocol):
+    def __init__(self):
+        self.calls = 0
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        self.calls += 1
+        if self.calls == 1:
+            return (
+                '{"thought":"acho que já sei",'
+                '"final_answer":"As ferramentas são rag_search, '
+                'predict_churn e drift_status."}'
+            )
+        if self.calls == SECOND_CALL:
+            return (
+                '{"thought":"vou buscar no repositório",'
+                '"action":"rag_search","action_input":"ferramentas react datathon"}'
+            )
+        return (
+            '{"thought":"agora posso concluir",'
+            '"final_answer":"As ferramentas incluem rag_search, '
+            'predict_churn, drift_status e scenario_prediction."}'
+        )
+
+
+def test_react_agent_requires_rag_search_before_documental_final_answer() -> None:
+    rag_tool = AgentTool(
+        name="rag_search",
+        description="Busca documental",
+        run=lambda _: (
+            "Ferramentas: rag_search, predict_churn, drift_status, "
+            "scenario_prediction"
+        ),
+    )
+    predict_tool = AgentTool(
+        name="predict_churn",
+        description="Predição",
+        run=lambda _: "não deveria executar",
+    )
+    aux_tool = AgentTool(
+        name="scenario_prediction",
+        description="Cenário",
+        run=lambda _: "não deveria executar",
+    )
+    result = run_react_agent(
+        "Cite pelo menos três ferramentas do agente ReAct ligadas ao domínio "
+        "do datathon.",
+        llm_client=DocumentaryFinalAnswerWithoutEvidenceLLMClient(),
+        tools=[rag_tool, predict_tool, aux_tool],
+        max_iterations=3,
+    )
+
+    assert "scenario_prediction" in result.answer
+    assert result.used_tools == ["rag_search"]
+    assert (
+        result.trace[0]["parse_status"] == "missing_documentary_evidence"
+    )
+    assert "use rag_search antes da resposta final" in result.trace[0]["observation"]
 
 
 def test_rag_search_tool_returns_structured_evidence(monkeypatch) -> None:

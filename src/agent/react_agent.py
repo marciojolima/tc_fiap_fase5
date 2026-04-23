@@ -156,7 +156,7 @@ def is_documental_question(user_input: str) -> bool:
     return any(pattern in normalized for pattern in DOCUMENTAL_PATTERNS)
 
 
-def run_react_agent(  # noqa: PLR0914, PLR0915
+def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
     user_input: str,
     llm_client: LLMClientProtocol,
     tools: list[AgentTool] | None = None,
@@ -202,6 +202,7 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
     trace: list[dict[str, Any]] = []
     used_tools: list[str] = []
     scratchpad: list[str] = []
+    documentary_context_observed = False
 
     for step in range(max_steps):
         iteration_start = perf_counter()
@@ -245,6 +246,39 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
         thought = str(parsed.get("thought", "")).strip()
 
         if "final_answer" in parsed:
+            if question_mode == "documental" and not documentary_context_observed:
+                observation = (
+                    "Para perguntas documentais, use rag_search antes da "
+                    "resposta final e baseie a resposta na evidência observada."
+                )
+                trace.append(
+                    {
+                        "iteration": step + 1,
+                        "question_mode": question_mode,
+                        "thought": thought,
+                        "final_answer": str(parsed["final_answer"]),
+                        "parse_status": "missing_documentary_evidence",
+                        "fallback_reason": (
+                            "Pergunta documental sem uso prévio de "
+                            "rag_search."
+                        ),
+                        "raw_llm_output": llm_answer,
+                        "observation": observation,
+                        "llm_metadata": llm_metadata,
+                        "iteration_latency_seconds": round(
+                            perf_counter() - iteration_start,
+                            6,
+                        ),
+                    }
+                )
+                scratchpad.append(f"Thought: {thought}")
+                scratchpad.append(
+                    "Attempted Final Answer: "
+                    f"{str(parsed['final_answer']).strip()}"
+                )
+                scratchpad.append(f"Observation: {observation}")
+                continue
+
             final_answer = output_guardrail.sanitize(str(parsed["final_answer"]))
             trace.append(
                 {
@@ -305,6 +339,8 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
             try:
                 observation = tool.run(action_input)
                 used_tools.append(action_name)
+                if question_mode == "documental" and action_name == "rag_search":
+                    documentary_context_observed = True
             except Exception as exc:  # noqa: BLE001
                 observation = f"Erro ao executar ferramenta {action_name}: {exc}"
 
