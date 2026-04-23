@@ -1,3 +1,7 @@
+import json
+from types import SimpleNamespace
+
+from agent import tools as agent_tools
 from agent.react_agent import (
     LLMClientProtocol,
     is_documental_question,
@@ -159,3 +163,87 @@ def test_react_agent_restricts_documental_questions_to_rag_search() -> None:
     assert result.used_tools == []
     assert result.trace[0]["question_mode"] == "documental"
     assert "Ferramenta 'predict_churn' inválida" in result.trace[0]["observation"]
+
+
+def test_rag_search_tool_returns_structured_evidence(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "agent.tools.retrieve_contexts",
+        lambda *_args, **_kwargs: [
+            (
+                "README.md\nAs rotas /llm/health, /llm/status e /llm/chat "
+                "fazem parte da API."
+            )
+        ],
+    )
+    payload = json.loads(
+        agent_tools._rag_search_tool(
+            "Quais rotas HTTP o projeto expõe especificamente para o assistente LLM?"
+        )
+    )
+
+    assert payload["tool_name"] == "rag_search"
+    assert payload["status"] == "ok"
+    assert payload["sources"] == ["README.md"]
+    assert payload["evidence"]
+
+
+def test_predict_churn_tool_returns_structured_output(monkeypatch) -> None:
+    cfg = SimpleNamespace(threshold=0.5, model_name="modelo_teste")
+    monkeypatch.setattr("agent.tools.load_serving_config", lambda: cfg)
+    monkeypatch.setattr("agent.tools.prepare_inference_dataframe", lambda *_args: "df")
+    monkeypatch.setattr(
+        "agent.tools.predict_from_dataframe_with_config",
+        lambda *_args: (0.812345, 1),
+    )
+    payload = json.loads(
+        agent_tools._predict_churn_tool(
+            '{"CreditScore": 600, "Geography": "France", "Gender": "Female", '
+            '"Age": 40, "Tenure": 5, "Balance": 0.0, "NumOfProducts": 1, '
+            '"HasCrCard": 1, "IsActiveMember": 1, "EstimatedSalary": 50000.0, '
+            '"Card Type": "SILVER", "Point Earned": 100}'
+        )
+    )
+
+    assert payload["tool_name"] == "predict_churn"
+    assert payload["status"] == "ok"
+    assert payload["result"]["churn_prediction"] == 1
+    assert payload["evidence"]
+
+
+def test_drift_status_tool_returns_structured_output(tmp_path, monkeypatch) -> None:
+    status_dir = tmp_path / "artifacts" / "monitoring" / "drift"
+    status_dir.mkdir(parents=True, exist_ok=True)
+    (status_dir / "drift_status.json").write_text(
+        '{"status": "critical", "message": "PSI acima do limite"}',
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    payload = json.loads(agent_tools._drift_status_tool(""))
+
+    assert payload["tool_name"] == "drift_status"
+    assert payload["status"] == "ok"
+    assert payload["result"]["drift_status"] == "critical"
+    assert payload["evidence"]
+
+
+def test_scenario_prediction_tool_returns_structured_output(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "agent.tools.run_scenario_prediction",
+        lambda _scenario: type(
+            "ScenarioResult",
+            (),
+            {
+                "_asdict": lambda self: {
+                    "churn_probability": 0.62,
+                    "churn_prediction": 1,
+                }
+            },
+        )(),
+    )
+    payload = json.loads(agent_tools._scenario_prediction_tool('{"Age": 45}'))
+
+    assert payload["tool_name"] == "scenario_prediction"
+    assert payload["status"] == "ok"
+    assert payload["result"]["churn_prediction"] == 1
+    assert payload["evidence"]
