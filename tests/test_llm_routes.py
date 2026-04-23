@@ -9,7 +9,7 @@ from prometheus_client import generate_latest
 from agent.react_agent import AgentRunResult
 from agent.tools import AgentTool
 from serving.app import create_app
-from serving.llm_routes import chat_with_react_agent
+from serving.llm_routes import OllamaClient, OllamaConfig, chat_with_react_agent
 from serving.schemas import LLMChatRequest
 
 CANONICAL_CASES = (
@@ -223,6 +223,23 @@ def test_chat_with_react_agent_updates_llm_metrics(monkeypatch) -> None:
         'churn_serving_llm_chat_requests_total{method="POST",status_code="200"}'
         in metrics_payload
     )
+
+
+def test_ollama_client_translates_timeout_to_runtime_error(monkeypatch) -> None:
+    def fake_urlopen(*_args: object, **_kwargs: object) -> object:
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    client = OllamaClient(
+        OllamaConfig(
+            base_url="http://ollama:11434",
+            model="qwen2.5:3b",
+            timeout_seconds=45,
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="tempo limite"):
+        client.chat([{"role": "user", "content": "teste"}])
 
 
 @pytest.mark.parametrize("case", CANONICAL_CASES)

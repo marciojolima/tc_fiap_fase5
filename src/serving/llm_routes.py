@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -129,6 +130,17 @@ class OllamaClient(LLMClientProtocol):
                 exc,
             )
             raise RuntimeError(f"Falha ao chamar o LLM externo: {exc}") from exc
+        except (TimeoutError, socket.timeout) as exc:
+            logger.warning(
+                "Timeout ao chamar Ollama | model=%s | timeout=%ss | latency=%.3fs",
+                self.config.model,
+                self.config.timeout_seconds,
+                perf_counter() - request_start,
+            )
+            raise RuntimeError(
+                "Ollama excedeu o tempo limite da requisição "
+                f"({self.config.timeout_seconds}s)."
+            ) from exc
         finally:
             finish_llm_chat_ollama_call_for_monitor(ollama_start_time)
 
