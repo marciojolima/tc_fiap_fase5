@@ -121,7 +121,9 @@ Implementação alinhada à opção **LLM quantizado servido fora do processo Py
 
 - **RAGAS (4 métricas):** [evaluation/ragas_eval.py](evaluation/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set (respostas geradas via Ollama + contextos do `rag_pipeline`; embeddings multilingues via `sentence-transformers`). Execução local: `poetry run task ragas_eval` (requer Ollama no ar; na primeira execução baixa o modelo de embeddings). Saída típica: `evaluation/results/ragas_scores.json` (pasta ignorada no Git se contiver apenas resultados).
 
-**Próximos passos planejados (ainda não concluídos no repositório):** pipeline de benchmark com ≥3 configs comparando runs, extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
+- **Prompt A/B (3 variantes):** [evaluation/ab_test_prompts.py](evaluation/ab_test_prompts.py) — benchmark offline com três variantes de prompt sobre o golden set, comparando cobertura lexical mínima da resposta e, opcionalmente, notas do `llm_judge`. Execução local: `poetry run task ab_test_prompts` ou `poetry run python -m evaluation.ab_test_prompts --with-judge`. Saída típica: `evaluation/results/prompt_ab_results.json`.
+
+**Próximos passos planejados (ainda não concluídos no repositório):** extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
 
 ## Arquitetura da Solução
 

@@ -26,6 +26,7 @@ Este documento resume os principais pontos de entrada do projeto, mostrando:
 | Feast materialize | Infra manual | `feast materialize-incremental` | Materializa features no Redis |
 | Cenários de inferência | Batch manual | `python -m src.scenario_analysis.inference_cases` | Valida casos de negócio |
 | Drift sintético | Batch manual | `python -m src.scenario_analysis.synthetic_drifts --all` | Gera lotes e artefatos de teste |
+| Prompt A/B | Batch manual | `python -m evaluation.ab_test_prompts` | Compara 3 variantes de prompt no golden set |
 | Stack local | Infra manual | `docker compose up` | Sobe Redis, serving, MLflow, Prometheus e Grafana |
 
 ## Visão Geral
@@ -576,7 +577,41 @@ Raw data
 `mlflow server ...`
 -> sobe servidor local de tracking para treino e retreino
 
-## 9. Mapa por Natureza do Gatilho
+## 9. Gatilhos de Avaliação LLM
+
+### 9.1 Prompt A/B offline
+
+**Tipo:** batch manual  
+**Start:** `python -m evaluation.ab_test_prompts` ou `task ab_test_prompts`
+
+**Cadeia**
+
+`evaluation.ab_test_prompts`
+-> carrega [`configs/evaluation/golden_set.yaml`](../../configs/evaluation/golden_set.yaml)
+-> para cada pergunta:
+-> usa [`retrieve_contexts`](../agent/rag_pipeline.py)
+-> executa 3 variantes de prompt com o mesmo Ollama
+-> calcula `keyword_coverage` contra a resposta de referência
+-> opcionalmente roda `judge_one` com `--with-judge`
+-> agrega ranking das variantes
+-> salva `evaluation/results/prompt_ab_results.json`
+
+**Arquivos envolvidos**
+
+- [`evaluation/ab_test_prompts.py`](../../evaluation/ab_test_prompts.py)
+- [`configs/evaluation/golden_set.yaml`](../../configs/evaluation/golden_set.yaml)
+- [`src/agent/rag_pipeline.py`](../agent/rag_pipeline.py)
+- [`evaluation/llm_judge.py`](../../evaluation/llm_judge.py)
+
+**Observações**
+
+- Este fluxo não participa da resposta online do agente.
+- Ele funciona como benchmark offline e gatilho de qualidade para decidir qual
+  prompt vale promover.
+- O modo `--with-judge` aproxima o A/B dos critérios da etapa 3, mas continua
+  sendo avaliação offline.
+
+## 10. Mapa por Natureza do Gatilho
 
 ### Online
 
@@ -593,6 +628,7 @@ Raw data
 - `python -m src.feast_ops.export`
 - `python -m src.scenario_analysis.inference_cases`
 - `python -m src.scenario_analysis.synthetic_drifts --all`
+- `python -m evaluation.ab_test_prompts`
 
 ### Batch manual com DVC
 
@@ -615,7 +651,7 @@ Raw data
   -> executa retreino challenger
   -> gera decisão de promoção
 
-## 10. O Que Não Existe Hoje
+## 11. O Que Não Existe Hoje
 
 Atualmente o repositório **não possui**:
 
@@ -625,7 +661,7 @@ Atualmente o repositório **não possui**:
 - promoção automática do challenger para substituir `model_current.pkl`
 - serving consultando Feast online em produção
 
-## 11. Resumo Executivo
+## 12. Resumo Executivo
 
 Se reduzirmos o projeto aos gatilhos centrais, o mapa fica assim:
 

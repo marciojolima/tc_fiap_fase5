@@ -103,6 +103,8 @@ ollama_list = 'python scripts/list_ollama_models.py'
 ragas_eval = 'python -m evaluation.ragas_eval'
 # LLM-as-judge (≥3 critérios, incl. negócio) — mesmo Ollama/golden que RAGAS
 llm_judge = 'python -m evaluation.llm_judge'
+# Benchmark offline com 3 variantes de prompt; use --with-judge para enriquecer.
+ab_test_prompts = 'python -m evaluation.ab_test_prompts'
 appstack = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d redis serving mlflow prometheus grafana'
 appstack_down = 'docker compose down'
 

@@ -50,7 +50,7 @@ llm:
   provider: ollama
   base_url: http://127.0.0.1:11434
   # Fallback da aplicacao quando OLLAMA_MODEL nao estiver definido no ambiente.
-  model_name: qwen2.5:0.5b
+  model_name: qwen2.5:3b
   timeout_seconds: 45
 
 agent:

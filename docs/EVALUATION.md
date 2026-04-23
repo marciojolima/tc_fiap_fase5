@@ -143,28 +143,53 @@ Ele permite:
 Essa camada é importante porque ajuda a validar o software de monitoramento sem
 depender apenas de tráfego real.
 
-### 6. Avaliação futura para trilhas com LLM
+### 6. Avaliação para trilhas com LLM
 
-A pasta `evaluation/` existe hoje como espaço reservado para avaliação de IA
-generativa, mas seus módulos ainda estão em placeholder:
+A pasta `evaluation/` agora concentra três trilhas complementares de avaliação
+para IA generativa:
 
 - [evaluation/ragas_eval.py](../evaluation/ragas_eval.py)
 - [evaluation/llm_judge.py](../evaluation/llm_judge.py)
 - [evaluation/ab_test_prompts.py](../evaluation/ab_test_prompts.py)
 
-No estado atual, eles não representam avaliação operacional do sistema. Servem
-mais como taxonomia reservada para:
+Esses módulos não fazem parte do fluxo online do agente. Eles funcionam como
+gatilhos offline de benchmark e controle de qualidade:
 
 - RAGAS
 - LLM-as-judge
 - A/B test de prompts
 
-Por isso, a leitura correta do projeto hoje é:
+Hoje a leitura correta do projeto é:
 
 - a avaliação tabular já existe e está viva
 - a avaliação operacional de drift já existe e está viva
 - a avaliação champion-challenger já existe e está viva
-- a avaliação de LLM ainda não está implementada de ponta a ponta
+- a avaliação de LLM já existe como benchmark offline sobre o golden set
+
+#### 6.1 Prompt A/B
+
+O benchmark A/B de prompts acontece em:
+
+- [evaluation/ab_test_prompts.py](../evaluation/ab_test_prompts.py)
+
+Ele compara três variantes de prompt sobre o mesmo golden set, sempre com o
+mesmo `retrieve_contexts()` e o mesmo modelo Ollama configurado, para responder:
+
+- qual prompt cobre melhor os termos esperados da referência?
+- qual variante se sai melhor quando enriquecida com `LLM-as-judge`?
+- qual prompt vale promover como candidato principal para a trilha RAG/LLM?
+
+O fluxo gera:
+
+- `evaluation/results/prompt_ab_results.json`
+
+Métricas usadas hoje:
+
+- `keyword_coverage` determinística contra a referência
+- `mean_judge_score` opcional, quando o benchmark é executado com `--with-judge`
+
+Isso permite transformar “troca de prompt” em benchmark reproduzível, e não em
+ajuste subjetivo manual.
 
 ## Resumo Executivo
 
