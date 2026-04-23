@@ -9,6 +9,7 @@ from time import perf_counter
 
 from fastapi import APIRouter, HTTPException
 
+from agent.rag_pipeline import get_rag_runtime_summary
 from agent.react_agent import LLMClientProtocol, run_react_agent
 from common.config_loader import load_global_config, resolve_ollama_model
 from common.logger import get_logger
@@ -57,6 +58,14 @@ class OllamaClient(LLMClientProtocol):
 
     def __init__(self, config: OllamaConfig):
         self.config = config
+
+    def metadata(self) -> dict[str, object]:
+        return {
+            "provider": "ollama",
+            "model_name": self.config.model,
+            "base_url": self.config.base_url,
+            "timeout_seconds": self.config.timeout_seconds,
+        }
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         ollama_start_time = start_step_timer_for_monitor()
@@ -252,10 +261,22 @@ def llm_status() -> dict[str, object]:
         "probe_detail": detail,
         "hint_if_unreachable": hint if not ok else "",
         "hint_if_model_missing": hint if ok and not model_ready else "",
+        "rag": get_rag_runtime_summary(),
     }
 
 
-@router.post("/chat", response_model=LLMChatResponse)
+@router.post(
+    "/chat",
+    response_model=LLMChatResponse,
+    description=(
+        "Executa uma pergunta no agente ReAct com tools de domínio e RAG sobre o "
+        "repositório. Para um smoke test simples, use a pergunta "
+        "`Cite pelo menos três ferramentas do agente ReAct ligadas ao domínio do "
+        "datathon.`. A resposta esperada deve mencionar `rag_search`, "
+        "`predict_churn`, `drift_status` e/ou `scenario_prediction`. "
+        "Mantenha `include_trace=true` para depuração."
+    ),
+)
 def chat_with_react_agent(payload: LLMChatRequest) -> LLMChatResponse:
     start_time = start_llm_chat_request_for_monitor()
     status_code = "500"

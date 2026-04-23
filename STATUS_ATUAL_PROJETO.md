@@ -1,6 +1,6 @@
 # Status Atual do Projeto
 
-Última revisão: 2026-04-19
+Última revisão: 2026-04-23
 
 O objetivo aqui é ser honesto sobre o que já está de pé, o que está parcial e
 o que ainda falta para a banca.
@@ -25,12 +25,10 @@ defensável de:
 Os maiores gaps frente ao que a live enfatizou continuam em:
 
 - baseline adicional em PyTorch
-- golden set formal
-- agente ReAct com tools reais
-- pipeline RAG operacional
 - guardrails e PII efetivos
 - fairness audit e explicabilidade formal
 - CI/CD com deploy e gate formal de cobertura
+- benchmark agregando multiplas configuracoes de RAG/LLM
 
 ## Checklist da Datathon
 
@@ -46,7 +44,7 @@ Os maiores gaps frente ao que a live enfatizou continuam em:
 - [x] Execução de múltiplos experimentos de treino por configuração
 - [ ] Baseline adicional em PyTorch
 - [x] Notebook de EDA incluído no repositório
-- [ ] Golden set formal em `data/golden_set/`
+- [x] Golden set formal em `configs/evaluation/golden_set.yaml`
 - [x] Feature store com Feast introduzida no projeto
 - [x] Redis configurado como online store local via Docker Compose
 - [x] Camada offline da feature store derivada do pipeline atual, sem duplicar regras de features
@@ -73,17 +71,22 @@ Observações:
 - [x] API FastAPI para serving
 - [x] Schemas de entrada e saída para inferência
 - [x] Análise de cenários com payloads versionados
-- [ ] Agente ReAct funcional com pelo menos 3 tools
-- [ ] Tools de negócio implementadas
-- [ ] Pipeline RAG operacional
-- [ ] Integração com LLM de serving
-- [ ] Endpoints adicionais para agente ou RAG
+- [x] Agente ReAct funcional com pelo menos 3 tools
+- [x] Tools de negócio implementadas
+- [x] Pipeline RAG operacional
+- [x] Integração com LLM de serving
+- [x] Endpoints adicionais para agente ou RAG
 
 Observações:
 
 - A parte tabular de inferência está implementada e testada.
-- `src/agent/` existe, mas ainda é placeholder e não deve ser apresentada como
-  entrega funcional completa.
+- A trilha `src/agent/` agora ja nao e mais placeholder: o agente usa ReAct com
+  quatro tools de dominio e um RAG operacional com embeddings em memoria.
+- O corpus e descoberto automaticamente a partir de `README.md`,
+  `docs/**/*.md` e JSON hardcoded relevantes; novos `.md` entram no indice no
+  proximo startup da stack.
+- O RAG possui cache persistido em `artifacts/rag/cache/` com manifesto de
+  fontes e historico em `artifacts/rag/index_build_history.jsonl`.
 
 ### Etapa 3: Avaliação e observabilidade
 
@@ -111,6 +114,9 @@ Observações:
   métrica primária e melhoria mínima, mas a promoção final continua manual.
 - Ainda não existe agendamento/cron formal nem canal de alerta externo, então a
   automação operacional ainda não está completa no sentido mais forte da live.
+- A observabilidade da trilha de LLM foi reforcada com metricas Prometheus e um
+  dashboard dedicado ao RAG, cobrindo corpus, chunks, bytes, memoria estimada,
+  delta de RSS, tempo por etapa de startup, cache hit e latencia da busca.
 
 ### Etapa 4: Segurança e governança
 
@@ -174,9 +180,6 @@ interessada em engenharia de machine learning do que em “ter o melhor modelo�
 
 Os pontos abaixo não devem ser “vendidos como prontos” sem ressalva:
 
-- agente ReAct
-- tools de negócio
-- RAG
 - LLM-as-judge
 - RAGAS
 - guardrails efetivos

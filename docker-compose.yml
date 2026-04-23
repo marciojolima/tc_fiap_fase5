@@ -94,7 +94,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      - ./README.md:/app/README.md:ro
       - ./configs:/app/configs:ro
+      - ./data/feature_store:/app/data/feature_store:ro
+      - ./data/processed:/app/data/processed:ro
+      - ./docs:/app/docs:ro
       - ./artifacts:/app/artifacts
       - ./feature_store:/app/feature_store:ro
     networks:

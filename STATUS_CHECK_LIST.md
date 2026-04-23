@@ -1,6 +1,6 @@
 # Status Check List
 
-Última revisão: 2026-04-19
+Última revisão: 2026-04-23
 
 Este arquivo funciona como uma checagem rápida de entrega. A regra aqui é
 simples:
@@ -38,9 +38,9 @@ Observações:
 
 ### Etapa 2 — LLM + Agente
 
-- [ ] LLM servido via API com quantização aplicada
-- [ ] Agente ReAct funcional com ≥ 3 tools relevantes ao domínio
-- [ ] RAG retornando contexto relevante dos dados fornecidos
+- [x] LLM servido via API com quantização aplicada
+- [x] Agente ReAct funcional com ≥ 3 tools relevantes ao domínio
+- [x] RAG retornando contexto relevante dos dados fornecidos
 - [x] CI/CD pipeline funcional (GitHub Actions)
 - [ ] Benchmark documentado com ≥ 3 configurações
 
@@ -48,12 +48,15 @@ Observações:
 
 - O CI atual já roda install, lint, compile, test e `pip check`, mas ainda não
   tem deploy nem gates mais maduros.
-- A trilha de LLM, agente e RAG ainda está em placeholder e não deve ser
-  contada como entregue.
+- A trilha de LLM agora conta com endpoints operacionais, agente ReAct com 4
+  tools, busca vetorial com embeddings, corpus automatico sobre `README.md` e
+  `docs/**/*.md`, cache persistido e status do RAG exposto no `/llm/status`.
+- O benchmark formal comparando varias configuracoes de LLM/RAG ainda nao foi
+  consolidado como artefato de apresentacao.
 
 ### Etapa 3 — Avaliação + Observabilidade
 
-- [ ] Golden set com ≥ 20 pares relevantes ao domínio
+- [x] Golden set com ≥ 20 pares relevantes ao domínio
 - [ ] RAGAS: 4 métricas calculadas e reportadas
 - [ ] LLM-as-judge com ≥ 3 critérios (incluindo critério de negócio)
 - [x] Telemetria e dashboard funcionando end-to-end
@@ -68,7 +71,11 @@ Observações:
   por amostra insuficiente, retreino auditável e comparação champion-challenger.
 - O modo configurado hoje é `auto_train_manual_promote`: drift crítico elegível
   abre solicitação, executa retreino local e persiste a decisão de promoção.
-- A parte de avaliação para LLM ainda não está operacional.
+- A trilha LLM passou a ter observabilidade propria para o RAG, com metricas de
+  corpus, chunks, memoria estimada, delta de RSS, tempo de startup, cache hit e
+  latencia da busca vetorial em dashboard dedicado.
+- A parte de avaliação automatizada com RAGAS e LLM-as-judge ainda precisa ser
+  executada e reportada formalmente.
 
 ### Etapa 4 — Segurança + Governança
 
@@ -113,8 +120,8 @@ Hoje o projeto está mais forte em:
 
 Os maiores gaps ainda estão em:
 
-- trilha de LLM/agente/RAG
-- golden set e avaliação LLM
+- benchmark comparativo da trilha de LLM/agente/RAG
+- execução e reporte formal de RAGAS e judge
 - segurança aplicada
 - governança documental mais profunda
 - orquestração formal dos ingestion jobs

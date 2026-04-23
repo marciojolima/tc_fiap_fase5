@@ -50,7 +50,7 @@ llm:
   provider: ollama
   base_url: http://127.0.0.1:11434
   # Fallback da aplicacao quando OLLAMA_MODEL nao estiver definido no ambiente.
-  model_name: gemma3:270m
+  model_name: qwen2.5:0.5b
   timeout_seconds: 45
 
 agent:
@@ -58,7 +58,14 @@ agent:
   min_tools: 3
 
 rag:
-  top_k: 3
+  top_k: 4
+  chunk_size: 900
+  chunk_overlap: 150
+  embedding_model_name: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  cache_dir: artifacts/rag/cache
+  history_path: artifacts/rag/index_build_history.jsonl
+  lexical_rerank_weight: 0.15
+  vector_candidate_multiplier: 4
 
 security:
   max_input_chars: 4096

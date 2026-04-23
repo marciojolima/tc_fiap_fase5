@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable
 
 from agent.rag_pipeline import retrieve_contexts
+from common.config_loader import load_global_config
 from common.logger import get_logger
 from scenario_analysis.inference_cases import AnalysisScenario, run_scenario_prediction
 from serving.pipeline import (
@@ -53,7 +54,8 @@ def _predict_churn_tool(raw_input: str) -> str:
 def _rag_search_tool(query: str) -> str:
     """Retrieve relevant project context for a natural language query."""
 
-    contexts = retrieve_contexts(query, top_k=3)
+    rag_cfg = load_global_config().get("rag", {})
+    contexts = retrieve_contexts(query, top_k=int(rag_cfg.get("top_k", 4)))
     if not contexts:
         return "Nenhum contexto relevante encontrado."
     return "\n\n---\n\n".join(contexts)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any
 
 from agent.tools import AgentTool, build_default_tools
@@ -42,7 +43,7 @@ class LLMClientProtocol:
         raise NotImplementedError
 
 
-def _safe_parse_json(raw_text: str) -> dict[str, Any]:
+def _safe_parse_json(raw_text: str) -> tuple[dict[str, Any] | None, str, str]:
     """Parse model answer into a dict expected by the ReAct loop."""
 
     cleaned = raw_text.strip()
@@ -53,15 +54,24 @@ def _safe_parse_json(raw_text: str) -> dict[str, Any]:
     try:
         parsed = json.loads(cleaned)
     except json.JSONDecodeError:
-        logger.warning("LLM returned non-JSON output; forcing final answer fallback.")
-        return {"final_answer": raw_text}
+        logger.warning("LLM returned invalid JSON output; requesting retry.")
+        return None, "json_invalid", "O modelo nao retornou um JSON unico e valido."
 
     if not isinstance(parsed, dict):
-        return {"final_answer": raw_text}
-    return parsed
+        return None, "json_non_dict", "O modelo retornou JSON, mas nao um objeto."
+    return parsed, "ok", ""
 
 
-def run_react_agent(  # noqa: PLR0914
+def _resolve_llm_metadata(llm_client: LLMClientProtocol) -> dict[str, Any]:
+    metadata_fn = getattr(llm_client, "metadata", None)
+    if callable(metadata_fn):
+        raw_metadata = metadata_fn()
+        if isinstance(raw_metadata, dict):
+            return raw_metadata
+    return {}
+
+
+def run_react_agent(  # noqa: PLR0914, PLR0915
     user_input: str,
     llm_client: LLMClientProtocol,
     tools: list[AgentTool] | None = None,
@@ -73,6 +83,7 @@ def run_react_agent(  # noqa: PLR0914
     agent_cfg = config.get("agent", {})
     max_steps = max_iterations or int(agent_cfg.get("max_iterations", 6))
     active_tools = tools or build_default_tools()
+    llm_metadata = _resolve_llm_metadata(llm_client)
 
     if len(active_tools) < MIN_TOOLS_EXPECTED:
         logger.warning(
@@ -96,6 +107,7 @@ def run_react_agent(  # noqa: PLR0914
     scratchpad: list[str] = []
 
     for step in range(max_steps):
+        iteration_start = perf_counter()
         prompt = (
             f"{REACT_SYSTEM_PROMPT}\n"
             f"Ferramentas disponíveis:\n{tool_descriptions}\n\n"
@@ -108,7 +120,29 @@ def run_react_agent(  # noqa: PLR0914
                 {"role": "user", "content": prompt},
             ]
         )
-        parsed = _safe_parse_json(llm_answer)
+        parsed, parse_status, parse_message = _safe_parse_json(llm_answer)
+        if parsed is None:
+            observation = (
+                f"Saida invalida do modelo ({parse_status}). "
+                "Responda com um unico objeto JSON valido e sem markdown."
+            )
+            trace.append(
+                {
+                    "iteration": step + 1,
+                    "parse_status": parse_status,
+                    "fallback_reason": parse_message,
+                    "raw_llm_output": llm_answer,
+                    "observation": observation,
+                    "llm_metadata": llm_metadata,
+                    "iteration_latency_seconds": round(
+                        perf_counter() - iteration_start,
+                        6,
+                    ),
+                }
+            )
+            scratchpad.append(f"Observation: {observation}")
+            continue
+
         thought = str(parsed.get("thought", "")).strip()
 
         if "final_answer" in parsed:
@@ -118,6 +152,13 @@ def run_react_agent(  # noqa: PLR0914
                     "iteration": step + 1,
                     "thought": thought,
                     "final_answer": final_answer,
+                    "parse_status": parse_status,
+                    "llm_metadata": llm_metadata,
+                    "raw_llm_output": llm_answer,
+                    "iteration_latency_seconds": round(
+                        perf_counter() - iteration_start,
+                        6,
+                    ),
                 }
             )
             return AgentRunResult(
@@ -128,6 +169,31 @@ def run_react_agent(  # noqa: PLR0914
 
         action_name = str(parsed.get("action", "")).strip()
         action_input = str(parsed.get("action_input", "")).strip()
+        if action_name == "tool_name":
+            observation = (
+                "Ferramenta placeholder detectada. Substitua 'tool_name' por uma "
+                f"tool real: {', '.join(tool_by_name)}."
+            )
+            trace.append(
+                {
+                    "iteration": step + 1,
+                    "thought": thought,
+                    "action": action_name,
+                    "action_input": action_input,
+                    "parse_status": "placeholder_action",
+                    "fallback_reason": "O modelo repetiu o template do prompt.",
+                    "raw_llm_output": llm_answer,
+                    "observation": observation,
+                    "llm_metadata": llm_metadata,
+                    "iteration_latency_seconds": round(
+                        perf_counter() - iteration_start,
+                        6,
+                    ),
+                }
+            )
+            scratchpad.append(f"Observation: {observation}")
+            continue
+
         tool = tool_by_name.get(action_name)
         if tool is None:
             observation = (
@@ -148,6 +214,13 @@ def run_react_agent(  # noqa: PLR0914
                 "action": action_name,
                 "action_input": action_input,
                 "observation": observation,
+                "parse_status": parse_status,
+                "raw_llm_output": llm_answer,
+                "llm_metadata": llm_metadata,
+                "iteration_latency_seconds": round(
+                    perf_counter() - iteration_start,
+                    6,
+                ),
             }
         )
         scratchpad.append(f"Thought: {thought}")

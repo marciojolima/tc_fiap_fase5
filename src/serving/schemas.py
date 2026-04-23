@@ -154,11 +154,33 @@ class ChurnPredictionResponse(BaseModel):
 class LLMChatRequest(BaseModel):
     """Request payload for LLM chat endpoint."""
 
-    message: str = Field(..., min_length=1, description="Pergunta do usuário.")
-    include_trace: bool = Field(
-        default=False,
-        description="Retorna trilha ReAct com ferramentas usadas.",
+    message: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Pergunta do usuário para o agente ReAct. "
+            "Para smoke test, use perguntas alinhadas ao golden set do projeto."
+        ),
     )
+    include_trace: bool = Field(
+        default=True,
+        description=(
+            "Quando `true`, retorna a trilha ReAct com parse, tools usadas, "
+            "observações e metadados úteis para debug."
+        ),
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": (
+                    "Cite pelo menos três ferramentas do agente ReAct "
+                    "ligadas ao domínio do datathon."
+                ),
+                "include_trace": True,
+            }
+        }
+    }
 
 
 class LLMChatResponse(BaseModel):
