@@ -1,5 +1,5 @@
 from agent.react_agent import LLMClientProtocol, run_react_agent
-from agent.tools import AgentTool
+from agent.tools import AgentTool, build_default_tools
 
 
 class StubLLMClient(LLMClientProtocol):
@@ -93,3 +93,10 @@ def test_react_agent_retries_when_llm_returns_invalid_json() -> None:
     assert result.used_tools == ["fake_tool"]
     assert result.trace[0]["parse_status"] == "json_invalid"
     assert "raw_llm_output" in result.trace[0]
+
+
+def test_default_predict_churn_tool_mentions_predict_raw_contract() -> None:
+    tools = {tool.name: tool for tool in build_default_tools()}
+
+    assert "predict_churn" in tools
+    assert "/predict/raw" in tools["predict_churn"].description

@@ -105,7 +105,7 @@ Implementação alinhada à opção **LLM quantizado servido fora do processo Py
 
 - **Agente ReAct** — [src/agent/react_agent.py](src/agent/react_agent.py): loop no estilo pensar → agir → observar, com limite de iterações e integração com guardrails de entrada e saída.
 
-- **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict`), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
+- **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict/raw`, com payload bruto), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
 
 - **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação simples por sobreposição lexical sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
 

@@ -102,7 +102,7 @@ def build_default_tools() -> list[AgentTool]:
             name="predict_churn",
             description=(
                 "Executa predição de churn para um payload JSON no mesmo "
-                "formato do endpoint /predict."
+                "formato do endpoint /predict/raw."
             ),
             run=_predict_churn_tool,
         ),

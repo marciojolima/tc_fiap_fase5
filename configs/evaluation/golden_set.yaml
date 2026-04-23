@@ -92,7 +92,7 @@ items:
   - id: gs-017
     category: rag_llm
     query: Cite pelo menos três ferramentas (tools) do agente ReAct ligadas ao domínio do datathon.
-    expected_answer: "Exemplos: rag_search (recuperação sobre documentação do repositório), predict_churn (predição alinhada ao /predict), drift_status (leitura de status de drift), scenario_prediction (cenário hipotético com schema de serving)."
+    expected_answer: "Exemplos: rag_search (recuperação sobre documentação do repositório), predict_churn (predição alinhada ao /predict/raw com payload bruto), drift_status (leitura de status de drift), scenario_prediction (cenário hipotético com schema de serving)."
 
   - id: gs-018
     category: rag_llm
