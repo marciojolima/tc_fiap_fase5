@@ -9,36 +9,53 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13,<4"
 dependencies = [
-    "pandas>=2.2.0",
+    "joblib>=1.4.2",
     "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "pyyaml>=6.0.1",
+    "rich>=13.9.0,<14",
     "scikit-learn>=1.4.2",
+]
+
+[project.optional-dependencies]
+serving = [
+    "cryptography>=41.0.0",
+    "fastapi[standard]>=0.135.3,<0.136.0",
+    "feast[redis]>=0.57.0,<0.62.0",
+    "mlflow==3.10.1",
+    "prometheus-client>=0.22.1,<0.23",
+    "pyarrow>=16.0.0",
+    "pyopenssl>=23.0.0",
+    "sentence-transformers>=2.2.0",
+    # sentence-transformers puxa torch; 2.1.x não tem wheel cp313 (Win/Linux). 2.5+ suporta Python 3.13.
+    "torch>=2.5.0",
+    "uvicorn>=0.30.0",
+]
+training = [
+    "cryptography>=41.0.0",
     "feast[redis]>=0.57.0,<0.62.0",
     "mlflow==3.10.1",
     "pandera>=0.19.3",
     "pyarrow>=16.0.0",
-    "pyyaml>=6.0.1",
-    "joblib>=1.4.2",
-    "dvc[gdrive] (>=3.67.1,<4.0.0)",
-    "pytest>=8.2.0",
-    "fastapi[standard] (>=0.135.3,<0.136.0)",
-    "uvicorn>=0.30.0",
-    "graphene==3.4.3",
-    "graphql-core==3.2.6",
-    "graphql-relay==3.2.0",
-    "taskipy (>=1.14.1,<2.0.0)",
-    "pyopenssl (>=23.0.0)",
-    "cryptography (>=41.0.0)",
-    "evidently>=0.7.21,<0.8",
-    "rich>=13.9.0,<14",
+    "pyopenssl>=23.0.0",
     "xgboost>=2.1.0,<3",
-    "prometheus-client>=0.22.1,<0.23",
-    "ragas>=0.4.0,<0.5",
+]
+monitoring = [
+    "evidently>=0.7.21,<0.8",
+    "mlflow==3.10.1",
+    "pyarrow>=16.0.0",
+]
+evaluation = [
     "datasets>=2.14.0",
     "langchain-community>=0.3.0",
     "langchain-core>=0.3.0",
+    "ragas>=0.4.0,<0.5",
     "sentence-transformers>=2.2.0",
     # sentence-transformers puxa torch; 2.1.x não tem wheel cp313 (Win/Linux). 2.5+ suporta Python 3.13.
     "torch>=2.5.0",
+]
+ops = [
+    "dvc[gdrive]>=3.67.1,<4.0.0",
 ]
 
 [tool.poetry]
@@ -59,6 +76,7 @@ packages = [
 pytest = "^9.0.2"
 pytest-cov = "^7.1.0"
 ruff = "^0.15.9"
+taskipy = "^1.14.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

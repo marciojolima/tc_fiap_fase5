@@ -7,14 +7,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
-COPY docs ./docs
-COPY data/feature_store ./data/feature_store
-COPY data/processed ./data/processed
-COPY feature_store ./feature_store
+COPY configs ./configs
 COPY src ./src
 COPY evaluation ./evaluation
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[serving]"
 
 EXPOSE 8000
 
