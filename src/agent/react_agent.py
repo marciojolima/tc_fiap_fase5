@@ -15,6 +15,56 @@ from security.guardrails import InputGuardrail, OutputGuardrail
 logger = get_logger("agent.react_agent")
 
 MIN_TOOLS_EXPECTED = 3
+DOCUMENTAL_KEYWORDS = (
+    "/llm",
+    "/predict",
+    "api",
+    "artefato",
+    "artefatos",
+    "arquivo",
+    "arquivos",
+    "config",
+    "configuração",
+    "configs",
+    "contrato",
+    "docs",
+    "documentação",
+    "dvc",
+    "endpoint",
+    "endpoints",
+    "feature store",
+    "ferramenta",
+    "ferramentas",
+    "mlflow",
+    "monitoramento",
+    "métrica",
+    "métricas",
+    "pipeline",
+    "projeto",
+    "rag",
+    "react",
+    "readme",
+    "rota",
+    "rotas",
+    "schema",
+    "serving",
+    "tool",
+    "tools",
+    "yaml",
+)
+DOCUMENTAL_PATTERNS = (
+    "cite",
+    "como o projeto",
+    "explique",
+    "o que significa",
+    "onde fica",
+    "onde ficam",
+    "onde está",
+    "onde estão",
+    "quais são",
+    "qual rota",
+    "quais rotas",
+)
 
 REACT_SYSTEM_PROMPT = """Você é um assistente especialista no projeto de churn.
 Você pode usar ferramentas para responder com precisão.
@@ -71,6 +121,18 @@ def _resolve_llm_metadata(llm_client: LLMClientProtocol) -> dict[str, Any]:
     return {}
 
 
+def is_documental_question(user_input: str) -> bool:
+    """Heurística leve para perguntas cuja resposta deve vir do repositório."""
+
+    normalized = " ".join(user_input.lower().split())
+    if not normalized:
+        return False
+
+    if any(keyword in normalized for keyword in DOCUMENTAL_KEYWORDS):
+        return True
+    return any(pattern in normalized for pattern in DOCUMENTAL_PATTERNS)
+
+
 def run_react_agent(  # noqa: PLR0914, PLR0915
     user_input: str,
     llm_client: LLMClientProtocol,
@@ -98,6 +160,18 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
     if not is_valid:
         return AgentRunResult(answer=reason, trace=[], used_tools=[])
 
+    question_mode = "documental" if is_documental_question(user_input) else "default"
+    if question_mode == "documental":
+        rag_tool = next(
+            (tool for tool in active_tools if tool.name == "rag_search"),
+            None,
+        )
+        if rag_tool is not None:
+            active_tools = [rag_tool]
+            logger.info(
+                "Pergunta documental detectada; restringindo tools para rag_search."
+            )
+
     tool_by_name = {tool.name: tool for tool in active_tools}
     tool_descriptions = "\n".join(
         f"- {tool.name}: {tool.description}" for tool in active_tools
@@ -110,6 +184,7 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
         iteration_start = perf_counter()
         prompt = (
             f"{REACT_SYSTEM_PROMPT}\n"
+            f"Modo da pergunta: {question_mode}\n"
             f"Ferramentas disponíveis:\n{tool_descriptions}\n\n"
             f"Pergunta do usuário: {user_input}\n\n"
             f"Histórico ReAct:\n" + "\n".join(scratchpad)
@@ -129,6 +204,7 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
             trace.append(
                 {
                     "iteration": step + 1,
+                    "question_mode": question_mode,
                     "parse_status": parse_status,
                     "fallback_reason": parse_message,
                     "raw_llm_output": llm_answer,
@@ -150,6 +226,7 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
             trace.append(
                 {
                     "iteration": step + 1,
+                    "question_mode": question_mode,
                     "thought": thought,
                     "final_answer": final_answer,
                     "parse_status": parse_status,
@@ -177,6 +254,7 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
             trace.append(
                 {
                     "iteration": step + 1,
+                    "question_mode": question_mode,
                     "thought": thought,
                     "action": action_name,
                     "action_input": action_input,
@@ -210,6 +288,7 @@ def run_react_agent(  # noqa: PLR0914, PLR0915
         trace.append(
             {
                 "iteration": step + 1,
+                "question_mode": question_mode,
                 "thought": thought,
                 "action": action_name,
                 "action_input": action_input,
