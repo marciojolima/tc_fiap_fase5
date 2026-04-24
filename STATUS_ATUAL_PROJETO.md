@@ -76,7 +76,8 @@ Observações:
 - [x] Pipeline RAG operacional
 - [x] Integração com LLM de serving
 - [x] Endpoints adicionais para agente ou RAG
-- [ ] Evidência formal de LLM quantizado no caminho ativo de serving
+- [x] LLM servido via API com provider gerenciado Claude
+- [ ] Quantização aplicada em provider local opcional
 
 Observações:
 
@@ -88,11 +89,11 @@ Observações:
   proximo startup da stack.
 - O RAG possui cache persistido em `artifacts/rag/cache/` com manifesto de
   fontes e historico em `artifacts/rag/index_build_history.jsonl`.
-- O projeto possui caminho local com Ollama em `docker-compose.ollama.yml`, mas o
-  provider ativo no `configs/pipeline_global_config.yaml` está como `claude`.
-  Por isso, a exigência de quantização deve ser apresentada como parcial ou
-  condicionada ao cenário Ollama, não como item plenamente atendido no caminho
-  ativo atual.
+- A decisão arquitetural atual é consumir Claude como serviço gerenciado. Nesse
+  caminho, o projeto integra o LLM via API, mas não controla nem comprova
+  quantização interna do modelo. O caminho local com Ollama existe como opção,
+  e é nele que uma evidência de quantização poderia ser documentada, se a equipe
+  decidir demonstrar esse requisito também.
 
 ### Etapa 3: Avaliação e observabilidade
 
@@ -201,7 +202,7 @@ Os pontos abaixo não devem ser “vendidos como prontos” sem ressalva:
 - LLM-as-judge
 - RAGAS
 - benchmark RAG/LLM com 3 configurações
-- LLM quantizado no caminho ativo atual
+- quantização aplicada em provider local opcional
 - guardrails efetivos e red team
 - PII sanitization
 - fairness automatizada

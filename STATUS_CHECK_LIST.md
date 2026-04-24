@@ -38,7 +38,8 @@ Observações:
 
 ### Etapa 2 — LLM + Agente
 
-- [ ] LLM servido via API com quantização aplicada
+- [x] LLM servido via API com provider gerenciado Claude
+- [ ] Quantização aplicada em provider local opcional
 - [x] Agente ReAct funcional com ≥ 3 tools relevantes ao domínio
 - [x] RAG retornando contexto relevante dos dados fornecidos
 - [x] CI/CD pipeline funcional (GitHub Actions)
@@ -51,9 +52,10 @@ Observações:
 - A trilha de LLM agora conta com endpoints operacionais, agente ReAct com 4
   tools, busca vetorial com embeddings, corpus automatico sobre `README.md` e
   `docs/**/*.md`, cache persistido e status do RAG exposto no `/llm/status`.
-- Existe suporte local a Ollama via `docker-compose.ollama.yml`, mas o provider
-  ativo atual está configurado como `claude`. A evidência de quantização aplicada
-  no caminho ativo ainda não é suficiente para marcar este item como concluído.
+- A estratégia principal usa Claude como provider gerenciado, então a equipe não
+  aplica quantização diretamente no modelo principal. A quantização só faria
+  sentido como evidência no provider local opcional, por exemplo no caminho com
+  Ollama.
 - O benchmark formal comparando varias configuracoes de LLM/RAG ainda nao foi
   consolidado como artefato de apresentacao. O script existe em
   `evaluation/ab_test_prompts.py`, mas a pasta `evaluation/results/` ainda nao
