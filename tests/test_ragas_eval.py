@@ -16,8 +16,9 @@ def test_load_golden_items_from_default_path() -> None:
     assert all("query" in i and "expected_answer" in i for i in items)
 
 
-def test_claude_ragas_factory_does_not_send_temperature(monkeypatch) -> None:
+def test_claude_ragas_factory_removes_conflicting_top_p(monkeypatch) -> None:
     captured_kwargs: dict[str, object] = {}
+    fake_llm = SimpleNamespace(model_args={"temperature": 0, "top_p": 0.1})
 
     class FakeAnthropic:
         def __init__(self, **kwargs: object) -> None:
@@ -25,7 +26,7 @@ def test_claude_ragas_factory_does_not_send_temperature(monkeypatch) -> None:
 
     def fake_llm_factory(*_args: object, **kwargs: object) -> object:
         captured_kwargs.update(kwargs)
-        return object()
+        return fake_llm
 
     monkeypatch.setattr(
         "evaluation.ragas_eval.import_module",
@@ -49,4 +50,5 @@ def test_claude_ragas_factory_does_not_send_temperature(monkeypatch) -> None:
 
     assert captured_kwargs["provider"] == "anthropic"
     assert captured_kwargs["max_tokens"] == _FAKE_MAX_TOKENS
-    assert "temperature" not in captured_kwargs
+    assert captured_kwargs["temperature"] == 0
+    assert fake_llm.model_args == {"temperature": 0}

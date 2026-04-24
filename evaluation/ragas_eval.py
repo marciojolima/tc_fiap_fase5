@@ -147,12 +147,18 @@ def _instructor_llm_from_provider(
         if base_url:
             client_kwargs["base_url"] = base_url
         client = anthropic_client_cls(**client_kwargs)
-        return llm_factory(
+        llm = llm_factory(
             model,
             provider="anthropic",
             client=client,
+            temperature=0,
             max_tokens=max_tokens,
         )
+        # RAGAS 0.4.3 cria InstructorModelArgs com temperature e top_p por
+        # padrao. Anthropic rejeita chamadas que enviam ambos.
+        if hasattr(llm, "model_args") and isinstance(llm.model_args, dict):
+            llm.model_args.pop("top_p", None)
+        return llm
 
     raise ValueError(f"Provider '{provider}' nao suportado pelo ragas_eval.")
 
