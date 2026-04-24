@@ -25,6 +25,7 @@ from evaluation.artifacts import (
     RUNS_DIR,
     append_jsonl,
     build_run_metadata,
+    relative_path,
     write_json,
 )
 from evaluation.artifacts import persist_result_with_history as persist_result
@@ -278,7 +279,7 @@ def run_prompt_ab_test(  # noqa: PLR0914
     return {
         "schema": "prompt_ab_v1",
         "goal": "benchmark offline de prompts para LLM/RAG",
-        "golden": str(Path(golden_path).resolve()),
+        "golden": relative_path(golden_path),
         "llm_provider": metadata.get("provider"),
         "llm_model": metadata.get("model_name"),
         "timeout_seconds": t,
@@ -344,7 +345,7 @@ def main() -> None:
                 "schema": "prompt_ab_v1",
                 **failure_metadata,
                 "status": "failed",
-                "golden": str(Path(args.golden).resolve()),
+                "golden": relative_path(args.golden),
                 "top_k": args.top_k,
                 "include_judge": args.with_judge,
             },
@@ -356,7 +357,7 @@ def main() -> None:
                 **failure_metadata,
                 "type": "prompt_ab",
                 "status": "failed",
-                "output_path": str(Path(args.out)),
+                "output_path": relative_path(args.out),
             },
         )
         raise SystemExit(1) from None
@@ -381,8 +382,8 @@ def main() -> None:
             **metadata,
             "type": "prompt_ab",
             "status": "completed",
-            "output_path": str(Path(args.out)),
-            "golden": str(Path(args.golden)),
+            "output_path": relative_path(args.out),
+            "golden": relative_path(args.golden),
             "top_k": args.top_k,
             "n_items": result["aggregate"]["n_items"],
             "include_judge": args.with_judge,

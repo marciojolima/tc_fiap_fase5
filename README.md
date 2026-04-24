@@ -127,6 +127,14 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
 - **Prompt A/B (3 variantes):** [evaluation/ab_test_prompts.py](evaluation/ab_test_prompts.py) — benchmark offline com três variantes de prompt sobre o golden set, comparando cobertura lexical mínima da resposta e, opcionalmente, notas do `llm_judge`. Execução local: `poetry run task eval_ab_test_prompts` ou `poetry run python -m evaluation.ab_test_prompts --with-judge`. Saída típica: `artifacts/evaluation/results/prompt_ab_results.json`, com histórico em `artifacts/evaluation/runs/prompt_ab_runs.jsonl`.
 
+- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. Se o modelo de embeddings já estiver baixado no cache local, `poetry run task eval_all_offline` força reuso local (`HF_HUB_OFFLINE=1` e `TRANSFORMERS_OFFLINE=1`) e evita novas chamadas ao Hugging Face.
+
+  Se `artifacts/rag/` tiver sido criado por um container antigo com outro usuário, corrija a posse uma vez antes da execução local:
+
+  ```bash
+  sudo chown -R "$(id -u):$(id -g)" artifacts/rag
+  ```
+
 **Próximos passos planejados (ainda não concluídos no repositório):** extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
 
 ## Arquitetura da Solução

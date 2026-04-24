@@ -11,6 +11,7 @@ from common.timezone import now_isoformat
 
 RESULTS_DIR = Path("artifacts/evaluation/results")
 RUNS_DIR = Path("artifacts/evaluation/runs")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def build_run_metadata() -> dict[str, str]:
@@ -20,6 +21,17 @@ def build_run_metadata() -> dict[str, str]:
         "run_id": str(uuid4()),
         "created_at": now_isoformat(),
     }
+
+
+def relative_path(path: str | Path) -> str:
+    """Retorna caminho relativo ao repositório quando possível."""
+
+    raw_path = Path(path)
+    resolved = raw_path if raw_path.is_absolute() else PROJECT_ROOT / raw_path
+    try:
+        return str(resolved.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(raw_path)
 
 
 def write_json(path: str | Path, payload: dict[str, Any]) -> None:

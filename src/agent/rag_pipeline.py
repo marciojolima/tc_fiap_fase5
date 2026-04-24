@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import resource
 import threading
 from dataclasses import asdict, dataclass
@@ -135,6 +136,15 @@ def _cache_dir() -> Path:
 
 def _embedding_cache_dir() -> Path:
     return ROOT_DIR / _rag_config()["embedding_cache_dir"]
+
+
+def _hf_local_files_only() -> bool:
+    """Detecta modo offline do Hugging Face/Transformers para reusar cache local."""
+
+    return any(
+        os.environ.get(var_name, "").strip().lower() in {"1", "true", "yes", "on"}
+        for var_name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
+    )
 
 
 def _history_path() -> Path:
@@ -359,10 +369,12 @@ def _load_encoder(model_name: str) -> SentenceTransformer:
         model_name,
         embedding_cache_dir,
     )
-    encoder = SentenceTransformer(
-        model_name,
-        cache_folder=str(embedding_cache_dir),
-    )
+    sentence_transformer_kwargs: dict[str, object] = {
+        "cache_folder": str(embedding_cache_dir),
+    }
+    if _hf_local_files_only():
+        sentence_transformer_kwargs["local_files_only"] = True
+    encoder = SentenceTransformer(model_name, **sentence_transformer_kwargs)
     _replace_runtime_state(
         RAGRuntimeState(
             index=state.index,

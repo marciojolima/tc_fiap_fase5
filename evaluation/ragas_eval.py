@@ -54,6 +54,7 @@ from ragas.run_config import RunConfig
 # Imports do projeto (pacote instalado com poetry install -e .)
 from agent.rag_pipeline import retrieve_contexts
 from common.config_loader import (
+    load_global_config,
     resolve_llm_api_key,
     resolve_llm_base_url,
     resolve_llm_max_tokens,
@@ -66,6 +67,7 @@ from evaluation.artifacts import (
     append_jsonl,
     build_run_metadata,
     persist_result_with_history,
+    relative_path,
     write_json,
 )
 from llm.factory import build_llm_client
@@ -164,7 +166,32 @@ def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper
     evaluate().
     """
 
-    embedder = LangChainHuggingFaceEmbeddings(model_name=model_name)
+    rag_cfg = load_global_config().get("rag", {})
+    embedding_cache_path = Path(
+        str(
+            rag_cfg.get(
+                "embedding_cache_dir",
+                "artifacts/rag/embedding_model_cache",
+            )
+        )
+    )
+    embedding_cache_dir = str(embedding_cache_path)
+    local_files_only = os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    } or os.environ.get("TRANSFORMERS_OFFLINE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    embedder = LangChainHuggingFaceEmbeddings(
+        model_name=model_name,
+        cache_folder=embedding_cache_dir,
+        model_kwargs={"local_files_only": local_files_only},
+    )
     return LangchainEmbeddingsWrapper(embedder)
 
 
@@ -424,7 +451,7 @@ def main() -> None:
                 "schema": "ragas_scores_v1",
                 **failure_metadata,
                 "status": "failed",
-                "golden": str(Path(args.golden).resolve()),
+                "golden": relative_path(args.golden),
                 "top_k": args.top_k,
                 "embed_model": args.embed_model,
                 "timeout_sec": _timeout_seconds(args.timeout),
@@ -437,7 +464,7 @@ def main() -> None:
                 **failure_metadata,
                 "type": "ragas",
                 "status": "failed",
-                "output_path": str(Path(args.output)),
+                "output_path": relative_path(args.output),
             },
         )
         raise SystemExit(1) from None
@@ -449,7 +476,7 @@ def main() -> None:
         **metadata,
         "status": "completed",
         "metrics_mean": scores,
-        "golden": str(Path(args.golden).resolve()),
+        "golden": relative_path(args.golden),
         "top_k": args.top_k,
         "n_items": item_count,
         "embed_model": args.embed_model,
@@ -462,8 +489,8 @@ def main() -> None:
         **metadata,
         "type": "ragas",
         "status": "completed",
-        "output_path": str(Path(args.output)),
-        "golden": str(Path(args.golden)),
+        "output_path": relative_path(args.output),
+        "golden": relative_path(args.golden),
         "top_k": args.top_k,
         "n_items": item_count,
         **scores,

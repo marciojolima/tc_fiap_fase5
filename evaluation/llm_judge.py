@@ -33,6 +33,7 @@ from evaluation.artifacts import (
     append_jsonl,
     build_run_metadata,
     persist_result_with_history,
+    relative_path,
     write_json,
 )
 from llm.factory import build_llm_client
@@ -222,7 +223,7 @@ def run_llm_judge(  # noqa: PLR0914
             "correcao_conteudo": "Consistência com referência e plausibilidade",
             "clareza_utilidade": "Clareza e utilidade",
         },
-        "golden": str(Path(golden_path).resolve()),
+        "golden": relative_path(golden_path),
         "llm_provider": metadata.get("provider"),
         "llm_model": metadata.get("model_name"),
         "top_k": top_k,
@@ -278,7 +279,7 @@ def main() -> None:
                 "schema": "llm_judge_scores_v1",
                 **failure_metadata,
                 "status": "failed",
-                "golden": str(Path(args.golden).resolve()),
+                "golden": relative_path(args.golden),
                 "top_k": args.top_k,
             },
         )
@@ -289,7 +290,7 @@ def main() -> None:
                 **failure_metadata,
                 "type": "llm_judge",
                 "status": "failed",
-                "output_path": str(Path(args.output)),
+                "output_path": relative_path(args.output),
             },
         )
         raise SystemExit(1) from None
@@ -310,8 +311,8 @@ def main() -> None:
             **metadata,
             "type": "llm_judge",
             "status": "completed",
-            "output_path": str(Path(args.output)),
-            "golden": str(Path(args.golden)),
+            "output_path": relative_path(args.output),
+            "golden": relative_path(args.golden),
             "top_k": args.top_k,
             "overall_mean": payload["overall_mean"],
             **payload["aggregate_mean_per_criterion"],

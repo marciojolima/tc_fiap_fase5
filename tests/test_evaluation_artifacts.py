@@ -4,7 +4,12 @@ import json
 
 from evaluation.ab_test_prompts import DEFAULT_HISTORY_OUT as PROMPT_HISTORY_OUT
 from evaluation.ab_test_prompts import DEFAULT_OUT as PROMPT_OUT
-from evaluation.artifacts import append_jsonl, persist_result_with_history, write_json
+from evaluation.artifacts import (
+    append_jsonl,
+    persist_result_with_history,
+    relative_path,
+    write_json,
+)
 from evaluation.llm_judge import DEFAULT_HISTORY_OUT as JUDGE_HISTORY_OUT
 from evaluation.llm_judge import DEFAULT_OUT as JUDGE_OUT
 from evaluation.ragas_eval import DEFAULT_HISTORY_OUT as RAGAS_HISTORY_OUT
@@ -58,4 +63,11 @@ def test_persist_result_with_history_writes_both_outputs(tmp_path) -> None:
     assert (
         json.loads(history_path.read_text(encoding="utf-8"))["schema"]
         == "history_v1"
+    )
+
+
+def test_relative_path_keeps_project_paths_portable() -> None:
+    assert (
+        relative_path("configs/evaluation/golden_set.yaml")
+        == "configs/evaluation/golden_set.yaml"
     )
