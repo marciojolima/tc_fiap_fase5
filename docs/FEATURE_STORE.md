@@ -180,7 +180,7 @@ Esse desenho resolve o principal gap arquitetural do projeto: evitar uma online 
 ### 1. Instalar dependências
 
 ```bash
-poetry install
+poetry install --all-extras
 ```
 
 ### 2. Subir o Redis
@@ -189,22 +189,25 @@ poetry install
 docker compose up -d redis
 ```
 
-### 3. Gerar features do pipeline principal
+### 3. Gerar features e modelo do pipeline principal
 
 ```bash
-poetry run python -m src.features.feature_engineering
+poetry run dvc repro featurize
+poetry run dvc repro train
 ```
 
 ### 4. Exportar a camada offline do Feast
 
 ```bash
-poetry run python -m src.feast_ops.export
+poetry run dvc repro export_feature_store
 ```
 
-Se preferir reaproveitar o DVC:
+Se preferir executar os módulos diretamente durante desenvolvimento:
 
 ```bash
-poetry run dvc repro export_feature_store
+poetry run python -m src.features.feature_engineering
+poetry run python -m src.models.train
+poetry run python -m src.feast_ops.export
 ```
 
 ### 5. Aplicar as definições do Feast

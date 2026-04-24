@@ -210,13 +210,41 @@ tc_fiap_fase5/
 ### Pré-requisitos
 
 - Python 3.13
-- Poetry
-- Docker e Docker Compose, caso queira subir a stack de observabilidade
+- Poetry 2.x
+- Docker e Docker Compose, para Redis, serving, MLflow, Prometheus, Grafana e, opcionalmente, Ollama
+- acesso ao remote DVC no Google Drive, caso vá baixar os dados versionados em vez de reconstruir a partir de arquivos locais
 
-### 1. Instalação
+### 1. Instalação completa do ambiente
+
+Entre na raiz do repositório e instale as dependências do projeto. Para gerar todos os artefatos documentados neste README, use os extras opcionais de treino, serving, monitoramento, avaliação e operações:
+
+```bash
+poetry install --all-extras
+```
+
+Se a intenção for apenas trabalhar no núcleo Python sem DVC, Feast, MLflow, Evidently ou avaliação LLM, a instalação mínima também funciona:
 
 ```bash
 poetry install
+```
+
+Depois da instalação, valide se as tasks do projeto estão disponíveis:
+
+```bash
+poetry run task --list
+```
+
+Crie também o arquivo `.env` local usado pelo Docker Compose e pelos providers externos de LLM:
+
+```bash
+cp .env.example .env
+```
+
+Quando usar OpenAI ou Claude como provider ativo, preencha no `.env` as variáveis correspondentes:
+
+```bash
+OPENAI_API_KEY=<sua-chave>
+ANTHROPIC_API_KEY=<sua-chave>
 ```
 
 ### 2. Sincronização de dados versionados
@@ -317,37 +345,150 @@ dvc pull
 - se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
 - `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 
-### 3. Pipeline principal
+### 3. Produção dos artefatos principais
 
-Fluxo recomendado para deixar o projeto pronto para treino, Feature Store e serving online:
+Esta é a sequência recomendada para sair de um clone novo do repositório e produzir os artefatos necessários para treino, serving, Feature Store e monitoramento.
+
+#### 3.1 Preparar dados, features e modelo champion
+
+Execute os stages do DVC na ordem de dependência:
 
 ```bash
 poetry run dvc repro featurize
 poetry run dvc repro train
 poetry run dvc repro export_feature_store
-poetry run task feastapply
-poetry run task feastmaterialize
 ```
 
 Responsabilidade de cada gatilho:
 
-- `dvc repro featurize`: gera `data/processed/train.parquet`, `data/processed/test.parquet` e `artifacts/models/feature_pipeline.joblib`
-- `dvc repro train`: treina o modelo e gera `artifacts/models/model_current.pkl`
-- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet`
-- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast
-- `task feastmaterialize`: lê a camada offline e materializa incrementalmente as features na online store Redis
+- `dvc repro featurize`: gera `data/interim/cleaned.parquet`, `data/processed/train.parquet`, `data/processed/test.parquet`, `data/processed/feature_columns.json`, `data/processed/schema_report.json` e `artifacts/models/feature_pipeline.joblib`
+- `dvc repro train`: treina o modelo champion e gera `artifacts/models/model_current.pkl` e `artifacts/models/model_current_metadata.json`
+- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet` e `data/feature_store/export_metadata.json`
 
 Observações importantes:
 
 - `dvc repro export_feature_store` depende do artefato `artifacts/models/feature_pipeline.joblib`, gerado no stage `featurize`
 - a API de predição completa também depende de `artifacts/models/model_current.pkl`, gerado no stage `train`
-- `feast apply` registra a estrutura da Feature Store; ele não publica dados no Redis
-- `feast materialize-incremental` depende de o Redis estar em execução
 
-Execução ampliada com múltiplos experimentos e cenários:
+#### 3.2 Registrar e materializar a Feature Store
+
+A materialização online depende do Redis. Para subir apenas o Redis:
+
+```bash
+docker compose up -d redis
+```
+
+Depois registre as definições do Feast e materialize os dados para a online store:
+
+```bash
+poetry run task feastapply
+poetry run task feastmaterialize
+```
+
+Responsabilidade de cada comando:
+
+- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast, gerando `feature_store/data/registry.db`
+- `task feastmaterialize`: lê `data/feature_store/customer_features.parquet` e materializa incrementalmente as features na online store Redis
+- `task feastdemo`: valida uma leitura online de exemplo para o cliente `15634602`
+
+Validação opcional:
+
+```bash
+poetry run task feastdemo
+```
+
+#### 3.3 Produzir experimentos, cenários e trilha MLflow
+
+Para executar o champion, os challengers configurados e a suíte de cenários de negócio em uma única sequência:
 
 ```bash
 poetry run task mlrunall
+```
+
+Esse comando registra runs no MLflow local configurado em `file:./mlruns` quando nenhum `MLFLOW_TRACKING_URI` externo é informado. Ele também gera modelos experimentais em `artifacts/models/` conforme os caminhos declarados em `configs/training/experiments/`.
+
+Também é possível executar partes isoladas:
+
+```bash
+poetry run task mltrain
+poetry run task mlrunexperiments
+poetry run task mlscenarios
+```
+
+#### 3.4 Produzir artefatos de monitoramento e drift
+
+Com o modelo e os dados processados disponíveis, gere uma execução demonstrável de drift usando a base de teste como base corrente:
+
+```bash
+poetry run task mldriftdemo
+```
+
+Para executar o monitoramento sobre o log real de inferências da API, primeiro suba a stack, gere predições no endpoint `/predict` e depois rode:
+
+```bash
+poetry run task mldrift
+```
+
+Os principais artefatos gerados ficam em:
+
+- `artifacts/monitoring/inference_logs/predictions.jsonl`
+- `artifacts/monitoring/drift/drift_report.html`
+- `artifacts/monitoring/drift/drift_report_evidently.html`
+- `artifacts/monitoring/drift/drift_metrics.json`
+- `artifacts/monitoring/drift/drift_status.json`
+- `artifacts/monitoring/drift/drift_runs.jsonl`
+- `artifacts/monitoring/retraining/`, quando o gatilho de retreino é acionado
+
+#### 3.5 Produzir artefatos de avaliação LLM
+
+As avaliações LLM usam o provider configurado em `configs/pipeline_global_config.yaml`. Com o provider pronto, rode:
+
+```bash
+poetry run task eval_ragas
+poetry run task eval_llm_judge
+poetry run task eval_ab_test_prompts
+```
+
+Ou execute tudo em sequência:
+
+```bash
+poetry run task eval_all
+```
+
+Se o modelo de embeddings já estiver em cache e o objetivo for evitar novas chamadas ao Hugging Face:
+
+```bash
+poetry run task eval_all_offline
+```
+
+Saídas esperadas:
+
+- `artifacts/evaluation/results/ragas_scores.json`
+- `artifacts/evaluation/results/llm_judge_scores.json`
+- `artifacts/evaluation/results/prompt_ab_results.json`
+- `artifacts/evaluation/runs/*.jsonl`
+
+#### 3.6 Sequência curta para reproduzir os artefatos essenciais
+
+Para uma execução local completa e objetiva:
+
+```bash
+poetry install --all-extras
+cp .env.example .env
+poetry run dvc pull
+poetry run dvc repro featurize
+poetry run dvc repro train
+poetry run dvc repro export_feature_store
+docker compose up -d redis
+poetry run task feastapply
+poetry run task feastmaterialize
+poetry run task mldriftdemo
+```
+
+Se quiser validar também serving, dashboards e MLflow:
+
+```bash
+poetry run task appstack
 ```
 
 ### 4. Stack local com Docker Compose
@@ -368,14 +509,14 @@ A stack local sobe os seguintes serviços de forma integrada:
 - Prometheus
 - Grafana
 
-Quando o `llm_provider` ativo for `ollama`, use o override [docker-compose.ollama.yml](docker-compose.ollama.yml) via `poetry run task observability_ollama` ou `poetry run task observability_ollama_rebuild`. Nesse modo, a stack adiciona:
+Quando o `llm_provider` ativo for `ollama`, use o override [docker-compose.ollama.yml](docker-compose.ollama.yml) via `poetry run task appstack_ollama` ou `poetry run task appstack_ollama_rebuild`. Nesse modo, a stack adiciona:
 
 - **Ollama** (volume `ollama_data` para modelos)
 - job **one-shot** `ollama-pull`, que executa `ollama pull` do modelo definido em `llm.providers.ollama.model_name`
 
 Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local (incluindo rotas `/llm/*`).
 
-**Imagem Docker da aplicação:** o [Dockerfile](src/serving/Dockerfile) copia `src/` no *build*. Depois de alterar código Python ou configuração embutida na imagem, use `poetry run task observability_rebuild` para stack base ou `poetry run task observability_ollama_rebuild` para o cenário com Ollama local.
+**Imagem Docker da aplicação:** o [Dockerfile](src/serving/Dockerfile) copia `src/` no *build*. Depois de alterar código Python ou configuração embutida na imagem, use `poetry run task appstack_rebuild` para stack base ou `poetry run task appstack_ollama_rebuild` para o cenário com Ollama local.
 
 **Diagnóstico LLM:** com a stack no ar, abra `http://127.0.0.1:8000/llm/status` para ver o `llm_provider` ativo, o modelo esperado e o diagnóstico específico do provider. Se o provider for `ollama`, `poetry run task ollama_list` ajuda a confirmar os modelos instalados nessa instância.
 
@@ -461,12 +602,12 @@ Este tópico resume o que foi implementado na trilha LLM e como operar em conjun
 
 - **Integração:** a API usa o `llm_provider` ativo definido em `configs/pipeline_global_config.yaml`, com implementação para `ollama`, `openai` e `claude`.
 - **Segredos:** providers externos leem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY` do `.env`.
-- **Compose base:** `poetry run task observability` sobe apenas a stack comum, sem carregar container local de modelo.
-- **Compose com Ollama:** `poetry run task observability_ollama` adiciona `ollama` e `ollama-pull`. Esse é o modo indicado quando `llm.active_provider=ollama`.
+- **Compose base:** `poetry run task appstack` sobe apenas a stack comum, sem carregar container local de modelo.
+- **Compose com Ollama:** `poetry run task appstack_ollama` adiciona `ollama` e `ollama-pull`. Esse é o modo indicado quando `llm.active_provider=ollama`.
 - **Base URL no Docker:** no cenário com Ollama local, o override do Compose injeta `LLM_BASE_URL=http://ollama:11434` no `serving`, porque `127.0.0.1` dentro do container apontaria para o próprio container da API.
 - **Modelo Ollama:** use uma **tag válida** na biblioteca Ollama (por exemplo `gemma3:270m`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
 - **Container `ollama-pull`:** ao subir a stack com override Ollama, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
-- **Rebuild da imagem da app:** após mudanças em `src/`, rode `poetry run task observability_rebuild` para a stack base ou `poetry run task observability_ollama_rebuild` quando estiver usando Ollama local.
+- **Rebuild da imagem da app:** após mudanças em `src/`, rode `poetry run task appstack_rebuild` para a stack base ou `poetry run task appstack_ollama_rebuild` quando estiver usando Ollama local.
 
 ## Monitoramento e Observabilidade
 
