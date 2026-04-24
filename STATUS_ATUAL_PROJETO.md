@@ -1,6 +1,6 @@
 # Status Atual do Projeto
 
-Última revisão: 2026-04-23
+Última revisão: 2026-04-24
 
 O objetivo aqui é ser honesto sobre o que já está de pé, o que está parcial e
 o que ainda falta para a banca.
@@ -25,10 +25,10 @@ defensável de:
 Os maiores gaps frente ao que a live enfatizou continuam em:
 
 - baseline adicional em PyTorch
-- guardrails e PII efetivos
+- guardrails, PII e red team efetivos
 - fairness audit e explicabilidade formal
 - CI/CD com deploy e gate formal de cobertura
-- benchmark agregando multiplas configuracoes de RAG/LLM
+- execução e reporte formal de RAGAS, LLM-as-judge e benchmark RAG/LLM
 
 ## Checklist da Datathon
 
@@ -76,6 +76,7 @@ Observações:
 - [x] Pipeline RAG operacional
 - [x] Integração com LLM de serving
 - [x] Endpoints adicionais para agente ou RAG
+- [ ] Evidência formal de LLM quantizado no caminho ativo de serving
 
 Observações:
 
@@ -87,6 +88,11 @@ Observações:
   proximo startup da stack.
 - O RAG possui cache persistido em `artifacts/rag/cache/` com manifesto de
   fontes e historico em `artifacts/rag/index_build_history.jsonl`.
+- O projeto possui caminho local com Ollama em `docker-compose.ollama.yml`, mas o
+  provider ativo no `configs/pipeline_global_config.yaml` está como `claude`.
+  Por isso, a exigência de quantização deve ser apresentada como parcial ou
+  condicionada ao cenário Ollama, não como item plenamente atendido no caminho
+  ativo atual.
 
 ### Etapa 3: Avaliação e observabilidade
 
@@ -99,6 +105,7 @@ Observações:
 - [x] Comparação champion-challenger com decisão persistida de promoção
 - [ ] RAGAS com 4 métricas efetivamente executadas
 - [ ] LLM-as-judge com pelo menos 3 critérios efetivamente executados
+- [ ] Benchmark RAG/LLM com 3 configurações consolidado em artefato
 - [ ] Alertas automáticos
 - [ ] Observabilidade LLM com Langfuse ou TruLens
 
@@ -117,6 +124,11 @@ Observações:
 - A observabilidade da trilha de LLM foi reforcada com metricas Prometheus e um
   dashboard dedicado ao RAG, cobrindo corpus, chunks, bytes, memoria estimada,
   delta de RSS, tempo por etapa de startup, cache hit e latencia da busca.
+- `evaluation/ragas_eval.py`, `evaluation/llm_judge.py` e
+  `evaluation/ab_test_prompts.py` existem e têm testes de suporte, mas a pasta
+  `evaluation/results/` ainda não existe. Portanto, a entrega de avaliação LLM
+  deve ser tratada como implementada em código, mas pendente em execução e
+  reporte formal.
 
 ### Etapa 4: Segurança e governança
 
@@ -127,8 +139,8 @@ Observações:
 - [ ] System Card efetivamente preenchido
 - [ ] Mapeamento OWASP documentado de forma substantiva
 - [ ] Red Team Report documentado de forma substantiva
-- [ ] Guardrails de input/output implementados de forma efetiva
-- [ ] Detecção e sanitização de PII implementadas
+- [ ] Guardrails de input/output robustos e evidenciados por cenários adversariais
+- [ ] Detecção e sanitização de PII aplicadas de ponta a ponta
 - [ ] Fairness audit automatizada e anexada ao ciclo de treino
 - [ ] Explicabilidade formal da predição
 
@@ -138,7 +150,11 @@ Observações:
   `docs/RED_TEAM_REPORT.md` existem, mas hoje estão essencialmente vazios e não
   sustentam banca como entrega concluída.
 - Os módulos `src/security/guardrails.py` e `src/security/pii_detection.py`
-  ainda não configuram segurança aplicada de ponta a ponta.
+  já implementam uma camada básica: bloqueio de alguns padrões de prompt
+  injection, limite de tamanho de input e mascaramento simples de e-mail,
+  telefone e CPF. Isso é útil como base, mas ainda não configura segurança
+  aplicada de ponta a ponta nem substitui OWASP mapping, red team e relatório de
+  mitigação.
 
 ### Engenharia de software e qualidade
 
@@ -155,6 +171,8 @@ Observações:
 
 - O workflow atual em `.github/workflows/ci.yml` já roda checkout, install,
   lint, compile, test e `pip check`.
+- A verificação local mais recente executou `poetry run ruff check` com sucesso e
+  `poetry run pytest -q` com 114 testes aprovados.
 - Ainda não há deploy/staging nem `--cov-fail-under`.
 - `.pre-commit-config.yaml` existe, mas está praticamente vazia.
 
@@ -182,7 +200,9 @@ Os pontos abaixo não devem ser “vendidos como prontos” sem ressalva:
 
 - LLM-as-judge
 - RAGAS
-- guardrails efetivos
+- benchmark RAG/LLM com 3 configurações
+- LLM quantizado no caminho ativo atual
+- guardrails efetivos e red team
 - PII sanitization
 - fairness automatizada
 - System Card / OWASP / Red Team como governança madura
@@ -223,9 +243,9 @@ Se a intenção for maximizar aderência aos requisitos com menor risco, a ordem
 mais segura hoje parece ser:
 
 1. consolidar a narrativa da trilha tabular já funcional
-2. completar documentação de governança crítica
-3. fortalecer segurança aplicada com evidência concreta
-4. decidir se vale fechar um agente mínimo funcional ou tirar essa promessa da narrativa
+2. executar e reportar RAGAS, LLM-as-judge e benchmark de prompts/RAG
+3. completar documentação de governança crítica
+4. fortalecer segurança aplicada com evidência concreta
 5. amadurecer CI/CD e gates de qualidade
 
 ## Evidências-Chave do Repositório
@@ -240,11 +260,19 @@ mais segura hoje parece ser:
 - `artifacts/models/model_current.pkl`
 - `artifacts/models/model_current_metadata.json`
 - `artifacts/models/challengers/`
+- `artifacts/rag/cache/manifest.json`
+- `artifacts/rag/index_build_history.jsonl`
+- `configs/evaluation/golden_set.yaml`
+- `evaluation/ragas_eval.py`
+- `evaluation/llm_judge.py`
+- `evaluation/ab_test_prompts.py`
 
 ## Conclusão
 
 O projeto já demonstra um ciclo relevante de engenharia de machine learning para
 modelo tabular, com drift, gatilho de retreino, challenger, feature store e
-governança operacional básica. A parte mais frágil frente aos requisitos
-continua sendo a trilha de IA generativa, segurança aplicada e governança
-documental profunda.
+governança operacional básica. A trilha de IA generativa agora possui agente,
+RAG, rotas e scripts de avaliação, mas ainda precisa transformar esses scripts
+em resultados reportados. A parte mais frágil frente aos requisitos continua
+sendo segurança aplicada, red team, governança documental profunda, fairness e
+explicabilidade.

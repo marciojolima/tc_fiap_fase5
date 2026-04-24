@@ -1,6 +1,6 @@
 # Status Check List
 
-Última revisão: 2026-04-23
+Última revisão: 2026-04-24
 
 Este arquivo funciona como uma checagem rápida de entrega. A regra aqui é
 simples:
@@ -38,7 +38,7 @@ Observações:
 
 ### Etapa 2 — LLM + Agente
 
-- [x] LLM servido via API com quantização aplicada
+- [ ] LLM servido via API com quantização aplicada
 - [x] Agente ReAct funcional com ≥ 3 tools relevantes ao domínio
 - [x] RAG retornando contexto relevante dos dados fornecidos
 - [x] CI/CD pipeline funcional (GitHub Actions)
@@ -51,8 +51,13 @@ Observações:
 - A trilha de LLM agora conta com endpoints operacionais, agente ReAct com 4
   tools, busca vetorial com embeddings, corpus automatico sobre `README.md` e
   `docs/**/*.md`, cache persistido e status do RAG exposto no `/llm/status`.
+- Existe suporte local a Ollama via `docker-compose.ollama.yml`, mas o provider
+  ativo atual está configurado como `claude`. A evidência de quantização aplicada
+  no caminho ativo ainda não é suficiente para marcar este item como concluído.
 - O benchmark formal comparando varias configuracoes de LLM/RAG ainda nao foi
-  consolidado como artefato de apresentacao.
+  consolidado como artefato de apresentacao. O script existe em
+  `evaluation/ab_test_prompts.py`, mas a pasta `evaluation/results/` ainda nao
+  possui resultado versionado/reportado.
 
 ### Etapa 3 — Avaliação + Observabilidade
 
@@ -74,8 +79,9 @@ Observações:
 - A trilha LLM passou a ter observabilidade propria para o RAG, com metricas de
   corpus, chunks, memoria estimada, delta de RSS, tempo de startup, cache hit e
   latencia da busca vetorial em dashboard dedicado.
-- A parte de avaliação automatizada com RAGAS e LLM-as-judge ainda precisa ser
-  executada e reportada formalmente.
+- A parte de avaliação automatizada com RAGAS e LLM-as-judge ja possui scripts
+  (`evaluation/ragas_eval.py` e `evaluation/llm_judge.py`), mas ainda precisa ser
+  executada e reportada formalmente em artefatos de resultado.
 
 ### Etapa 4 — Segurança + Governança
 
@@ -90,6 +96,9 @@ Observações:
 
 - Existe documentação inicial de LGPD, Model Card e governança, mas a trilha de
   segurança aplicada ainda não está suficientemente madura para marcar como concluída.
+- Existem guardrails básicos de input/output e mascaramento simples de PII, mas
+  ainda não há evidência de cobertura robusta contra ameaças OWASP, red team e
+  cenários adversariais documentados.
 - `fairness_checked` continua `false` no metadata atual do champion.
 - `System Card`, `OWASP Mapping` e `Red Team Report` ainda precisam ser
   aprofundados para sustentar banca como entrega efetiva.
@@ -122,7 +131,7 @@ Os maiores gaps ainda estão em:
 
 - benchmark comparativo da trilha de LLM/agente/RAG
 - execução e reporte formal de RAGAS e judge
-- segurança aplicada
+- segurança aplicada e red team documentado
 - governança documental mais profunda
 - orquestração formal dos ingestion jobs
 - preparação final de Demo Day
