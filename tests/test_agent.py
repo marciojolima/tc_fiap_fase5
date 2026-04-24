@@ -10,6 +10,7 @@ from agent.react_agent import (
 from agent.tools import AgentTool, build_default_tools
 
 SECOND_CALL = 2
+PREDICTION_THRESHOLD = 0.5
 
 
 class StubLLMClient(LLMClientProtocol):
@@ -30,6 +31,23 @@ class StubLLMClient(LLMClientProtocol):
         return (
             '{"thought":"agora sei responder",'
             '"final_answer":"Cliente com alto risco de churn."}'
+        )
+
+
+class StructuredActionInputLLMClient(LLMClientProtocol):
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        _ = self
+        _ = messages
+        return json.dumps(
+            {
+                "thought": "vou simular um cenário",
+                "action": "scenario_prediction",
+                "action_input": {
+                    "baseline_scenario": {"Age": 45, "NumOfProducts": 1},
+                    "improved_scenario": {"Age": 45, "NumOfProducts": 3},
+                },
+            },
+            ensure_ascii=False,
         )
 
 
@@ -58,6 +76,40 @@ def test_react_agent_executes_tool_then_returns_final_answer() -> None:
     assert "alto risco" in result.answer.lower()
     assert result.used_tools
     assert result.trace[0]["llm_metadata"]["model_name"] == "stub-react"
+
+
+def test_react_agent_serializes_structured_action_input_as_json() -> None:
+    captured_inputs: list[str] = []
+    tool = AgentTool(
+        name="scenario_prediction",
+        description="Ferramenta de teste de cenário",
+        run=lambda raw_input: captured_inputs.append(raw_input) or "ok",
+    )
+    aux_tool_1 = AgentTool(
+        name="aux_tool_1",
+        description="Auxiliar",
+        run=lambda _: "ok",
+    )
+    aux_tool_2 = AgentTool(
+        name="aux_tool_2",
+        description="Auxiliar",
+        run=lambda _: "ok",
+    )
+
+    result = run_react_agent(
+        "Simule um cenário com mais produtos.",
+        llm_client=StructuredActionInputLLMClient(),
+        tools=[tool, aux_tool_1, aux_tool_2],
+        max_iterations=1,
+    )
+
+    assert result.used_tools == ["scenario_prediction"]
+    assert captured_inputs == [
+        (
+            '{"baseline_scenario": {"Age": 45, "NumOfProducts": 1}, '
+            '"improved_scenario": {"Age": 45, "NumOfProducts": 3}}'
+        )
+    ]
 
 
 class InvalidJsonThenValidLLMClient(LLMClientProtocol):
@@ -313,3 +365,72 @@ def test_scenario_prediction_tool_returns_structured_output(monkeypatch) -> None
     assert payload["status"] == "ok"
     assert payload["result"]["churn_prediction"] == 1
     assert payload["evidence"]
+
+
+def test_scenario_prediction_tool_compares_two_scenarios(monkeypatch) -> None:
+    def fake_run_scenario_prediction(scenario):
+        if scenario.name.endswith("_baseline"):
+            probability = 0.71
+        else:
+            probability = 0.33
+        return type(
+            "ScenarioResult",
+            (),
+            {
+                "_asdict": lambda self: {
+                    "scenario_name": scenario.name,
+                    "churn_probability": probability,
+                    "churn_prediction": int(probability >= PREDICTION_THRESHOLD),
+                    "threshold": PREDICTION_THRESHOLD,
+                    "model_name": "modelo_teste",
+                    "run_name": "run_teste",
+                }
+            },
+        )()
+
+    monkeypatch.setattr(
+        "agent.tools.run_scenario_prediction",
+        fake_run_scenario_prediction,
+    )
+
+    payload = json.loads(
+        agent_tools._scenario_prediction_tool(
+            json.dumps(
+                {
+                    "baseline_scenario": {"Age": 45, "NumOfProducts": 1},
+                    "improved_scenario": {"Age": 45, "NumOfProducts": 3},
+                    "comparison_description": "mais produtos e mais atividade",
+                },
+                ensure_ascii=False,
+            )
+        )
+    )
+
+    assert payload["tool_name"] == "scenario_prediction"
+    assert payload["status"] == "ok"
+    assert payload["result"]["baseline_scenario"]["churn_prediction"] == 1
+    assert payload["result"]["improved_scenario"]["churn_prediction"] == 0
+    assert payload["result"]["better_scenario_for_retention"] == "improved_scenario"
+
+
+def test_predict_churn_tool_accepts_python_literal_like_payload(monkeypatch) -> None:
+    cfg = SimpleNamespace(threshold=0.5, model_name="modelo_teste")
+    monkeypatch.setattr("agent.tools.load_serving_config", lambda: cfg)
+    monkeypatch.setattr("agent.tools.prepare_inference_dataframe", lambda *_args: "df")
+    monkeypatch.setattr(
+        "agent.tools.predict_from_dataframe_with_config",
+        lambda *_args: (0.212345, 0),
+    )
+
+    payload = json.loads(
+        agent_tools._predict_churn_tool(
+            "{'CreditScore': 600, 'Geography': 'France', 'Gender': 'Female', "
+            "'Age': 40, 'Tenure': 5, 'Balance': 0.0, 'NumOfProducts': 1, "
+            "'HasCrCard': 1, 'IsActiveMember': 1, 'EstimatedSalary': 50000.0, "
+            "'Card Type': 'SILVER', 'Point Earned': 100}"
+        )
+    )
+
+    assert payload["tool_name"] == "predict_churn"
+    assert payload["status"] == "ok"
+    assert payload["result"]["churn_prediction"] == 0

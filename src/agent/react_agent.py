@@ -82,6 +82,12 @@ Tool usage rules:
 - Use rag_search to retrieve relevant project, business, API, or documentation context.
 - Use drift_status only for monitoring, model health, or drift-related questions.
 - For repository or documentation questions, prefer rag_search before answering.
+- For scenario or prediction questions grounded in customer/business situations,
+  do not prefer rag_search unless the user is explicitly asking about docs,
+  routes, files, or repository behavior.
+- If a scenario question omits part of the customer payload but clearly describes
+  the intended change, build a reasonable representative payload using defaults
+  from the serving schema and compare scenarios instead of stopping early.
 - Do not invent tool results.
 - If a tool is needed, call the tool instead of guessing.
 - Do not claim facts about routes, tools, files, configs, artifacts, or project
@@ -97,6 +103,8 @@ You must respond ALWAYS with valid JSON and no extra text:
 IMPORTANT:
 - final_answer MUST be in Brazilian Portuguese.
 - Never return text outside the JSON object.
+- When action_input is structured, return it as a valid JSON object or JSON
+  string with double-quoted keys and strings. Never use Python dict notation.
 """
 
 
@@ -142,6 +150,18 @@ def _resolve_llm_metadata(llm_client: LLMClientProtocol) -> dict[str, Any]:
         if isinstance(raw_metadata, dict):
             return raw_metadata
     return {}
+
+
+def _normalize_action_input(raw_action_input: Any) -> str:
+    """Normalize structured action input into stable JSON for tool execution."""
+
+    if raw_action_input is None:
+        return ""
+    if isinstance(raw_action_input, str):
+        return raw_action_input.strip()
+    if isinstance(raw_action_input, (dict, list, int, float, bool)):
+        return json.dumps(raw_action_input, ensure_ascii=False)
+    return str(raw_action_input).strip()
 
 
 def is_documental_question(user_input: str) -> bool:
@@ -302,7 +322,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
             )
 
         action_name = str(parsed.get("action", "")).strip()
-        action_input = str(parsed.get("action_input", "")).strip()
+        action_input = _normalize_action_input(parsed.get("action_input", ""))
         if action_name == "tool_name":
             observation = (
                 "Ferramenta placeholder detectada. Substitua 'tool_name' por uma "
