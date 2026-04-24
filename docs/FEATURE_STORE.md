@@ -1,5 +1,23 @@
 # Feature Store com Feast e Redis
 
+## Índice
+
+- [Objetivo no contexto do projeto](#objetivo-no-contexto-do-projeto)
+- [Por que esta abordagem foi escolhida](#por-que-esta-abordagem-foi-escolhida)
+- [Offline store x Online store](#offline-store-x-online-store)
+- [Features expostas na Feature Store](#features-expostas-na-feature-store)
+- [Feature Services por versão de modelo](#feature-services-por-versão-de-modelo)
+- [Materialização incremental](#materialização-incremental)
+- [O que `apply` e `materialize` fazem](#o-que-apply-e-materialize-fazem)
+- [Quando a online store é atualizada](#quando-a-online-store-é-atualizada)
+- [Relação entre offline e online no projeto](#relação-entre-offline-e-online-no-projeto)
+- [Fluxo local recomendado](#fluxo-local-recomendado)
+- [Fluxo operacional recomendado](#fluxo-operacional-recomendado)
+- [Desenho lógico](#desenho-lógico)
+- [Integração com a narrativa MLOps](#integração-com-a-narrativa-mlops)
+- [Limitações assumidas](#limitações-assumidas)
+- [Próximos passos naturais](#próximos-passos-naturais)
+
 ## Objetivo no contexto do projeto
 
 Esta evolução adiciona uma Feature Store ao projeto de churn bancário sem reescrever o pipeline já existente. A ideia é aproximar a arquitetura de um cenário produtivo, mantendo a execução local simples, didática e defensável em banca.

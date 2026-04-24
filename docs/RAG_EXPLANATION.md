@@ -1,6 +1,6 @@
 # RAG Explanation
 
-## Indice
+## Índice
 
 - [Objetivo](#objetivo)
 - [Fontes de Contexto](#fontes-de-contexto)

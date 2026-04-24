@@ -1,5 +1,22 @@
 # Mapa de Gatilhos do Projeto
 
+## Índice
+
+- [Leitura Rápida](#leitura-rápida)
+- [Visão Geral](#visão-geral)
+- [1. Gatilhos de Serving](#1-gatilhos-de-serving)
+- [2. Gatilhos de Features](#2-gatilhos-de-features)
+- [3. Gatilhos de Treino](#3-gatilhos-de-treino)
+- [4. Gatilhos de Monitoramento](#4-gatilhos-de-monitoramento)
+- [5. Gatilhos de Retreino](#5-gatilhos-de-retreino)
+- [6. Gatilhos da Feature Store](#6-gatilhos-da-feature-store)
+- [7. Gatilhos de Cenários e Validação](#7-gatilhos-de-cenários-e-validação)
+- [8. Gatilhos de Infraestrutura Local](#8-gatilhos-de-infraestrutura-local)
+- [9. Gatilhos de Avaliação LLM](#9-gatilhos-de-avaliação-llm)
+- [10. Mapa por Natureza do Gatilho](#10-mapa-por-natureza-do-gatilho)
+- [11. O Que Não Existe Hoje](#11-o-que-não-existe-hoje)
+- [12. Resumo Executivo](#12-resumo-executivo)
+
 Este documento resume os principais pontos de entrada do projeto, mostrando:
 
 - qual evento inicia cada fluxo
@@ -54,13 +71,13 @@ Raw data
 **Cadeia**
 
 `GET /health`
--> rota [`healthcheck`](../serving/routes.py)
+-> rota [`healthcheck`](../src/serving/routes.py)
 -> retorna `{"status": "ok"}`
 
 **Arquivos envolvidos**
 
-- [`src/serving/app.py`](../serving/app.py)
-- [`src/serving/routes.py`](../serving/routes.py)
+- [`src/serving/app.py`](../src/serving/app.py)
+- [`src/serving/routes.py`](../src/serving/routes.py)
 
 ### 1.2 `POST /predict`
 
@@ -70,26 +87,26 @@ Raw data
 **Cadeia**
 
 `POST /predict`
--> schema [`ChurnCustomerLookupRequest`](../serving/schemas.py)
--> rota [`predict_churn`](../serving/routes.py)
--> função [`load_serving_config`](../serving/pipeline.py)
--> função [`prepare_online_inference_payload`](../serving/pipeline.py)
--> função [`fetch_online_features_from_feast`](../serving/pipeline.py)
+-> schema [`ChurnCustomerLookupRequest`](../src/serving/schemas.py)
+-> rota [`predict_churn`](../src/serving/routes.py)
+-> função [`load_serving_config`](../src/serving/pipeline.py)
+-> função [`prepare_online_inference_payload`](../src/serving/pipeline.py)
+-> função [`fetch_online_features_from_feast`](../src/serving/pipeline.py)
 -> carrega o repositório Feast local
 -> resolve o `FeatureService` do modelo ativo
 -> consulta a online store Redis pelo `customer_id`
--> função [`predict_from_dataframe`](../serving/pipeline.py)
--> função [`load_prediction_model`](../serving/pipeline.py)
+-> função [`predict_from_dataframe`](../src/serving/pipeline.py)
+-> função [`load_prediction_model`](../src/serving/pipeline.py)
 -> usa `artifacts/models/model_current.pkl`
 -> aplica `predict_proba`
--> threshold definido em [`configs/training/model_current.yaml`](../../configs/training/model_current.yaml)
--> retorna [`ChurnPredictionResponse`](../serving/schemas.py)
+-> threshold definido em [`configs/training/model_current.yaml`](../configs/training/model_current.yaml)
+-> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Entradas**
 
 - payload HTTP contendo `customer_id`
-- [`configs/training/model_current.yaml`](../../configs/training/model_current.yaml)
-- [`feature_store/repo.py`](../../feature_store/repo.py)
+- [`configs/training/model_current.yaml`](../configs/training/model_current.yaml)
+- [`feature_store/repo.py`](../feature_store/repo.py)
 - `feature_store/data/registry.db`
 - Redis com features materializadas
 - `artifacts/models/model_current.pkl`
@@ -117,16 +134,16 @@ Raw data
 **Cadeia**
 
 `POST /predict/raw`
--> schema [`ChurnPredictionRequest`](../serving/schemas.py)
--> rota [`predict_churn_from_raw`](../serving/routes.py)
--> função [`load_serving_config`](../serving/pipeline.py)
--> função [`prepare_request_inference_payload`](../serving/pipeline.py)
--> função [`prepare_inference_dataframe`](../serving/pipeline.py)
--> função [`load_feature_pipeline`](../serving/pipeline.py)
+-> schema [`ChurnPredictionRequest`](../src/serving/schemas.py)
+-> rota [`predict_churn_from_raw`](../src/serving/routes.py)
+-> função [`load_serving_config`](../src/serving/pipeline.py)
+-> função [`prepare_request_inference_payload`](../src/serving/pipeline.py)
+-> função [`prepare_inference_dataframe`](../src/serving/pipeline.py)
+-> função [`load_feature_pipeline`](../src/serving/pipeline.py)
 -> aplica `artifacts/models/feature_pipeline.joblib`
--> função [`predict_from_dataframe`](../serving/pipeline.py)
+-> função [`predict_from_dataframe`](../src/serving/pipeline.py)
 -> usa `artifacts/models/model_current.pkl`
--> retorna [`ChurnPredictionResponse`](../serving/schemas.py)
+-> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Observações**
 
@@ -141,10 +158,10 @@ Raw data
 **Cadeia**
 
 `POST /predict`
--> função [`start_predict_request_for_monitor`](../monitoring/metrics.py)
+-> função [`start_predict_request_for_monitor`](../src/monitoring/metrics.py)
 -> incrementa gauge de requisições em andamento
 -> executa inferência
--> função [`finish_predict_request_for_monitor`](../monitoring/metrics.py)
+-> função [`finish_predict_request_for_monitor`](../src/monitoring/metrics.py)
 -> atualiza:
   - contador de requisições
   - histograma de latência
@@ -153,14 +170,14 @@ Raw data
 **Consulta**
 
 `GET /metrics`
--> função [`register_prometheus_metrics`](../monitoring/metrics.py)
+-> função [`register_prometheus_metrics`](../src/monitoring/metrics.py)
 -> expõe métricas para scrape
 
 **Arquivos envolvidos**
 
-- [`src/serving/app.py`](../serving/app.py)
-- [`src/serving/routes.py`](../serving/routes.py)
-- [`src/monitoring/metrics.py`](../monitoring/metrics.py)
+- [`src/serving/app.py`](../src/serving/app.py)
+- [`src/serving/routes.py`](../src/serving/routes.py)
+- [`src/monitoring/metrics.py`](../src/monitoring/metrics.py)
 
 **Observações**
 
@@ -175,16 +192,16 @@ Raw data
 **Cadeia**
 
 `POST /predict`
--> rota [`predict_churn`](../serving/routes.py)
--> função [`log_prediction_for_monitoring`](../monitoring/inference_log.py)
+-> rota [`predict_churn`](../src/serving/routes.py)
+-> função [`log_prediction_for_monitoring`](../src/monitoring/inference_log.py)
 -> monta registro com features usadas + probabilidade + classe + metadados de origem
 -> append em `artifacts/monitoring/inference_logs/predictions.jsonl`
 
 **Arquivos envolvidos**
 
-- [`src/serving/routes.py`](../serving/routes.py)
-- [`src/monitoring/inference_log.py`](../monitoring/inference_log.py)
-- [`configs/monitoring_config.yaml`](../../configs/monitoring_config.yaml)
+- [`src/serving/routes.py`](../src/serving/routes.py)
+- [`src/monitoring/inference_log.py`](../src/monitoring/inference_log.py)
+- [`configs/monitoring_config.yaml`](../configs/monitoring_config.yaml)
 
 **Observações**
 
@@ -202,8 +219,8 @@ Raw data
 **Cadeia**
 
 `feature_engineering`
--> [`load_raw_data`](../common/data_loader.py)
--> valida schema raw em [`validate_raw_dataset_schema`](../features/schema_validation.py)
+-> [`load_raw_data`](../src/common/data_loader.py)
+-> valida schema raw em [`validate_raw_dataset_schema`](../src/features/schema_validation.py)
 -> remove identificadores diretos
 -> limpa duplicados e ausências
 -> salva `data/interim/cleaned.parquet`
@@ -219,14 +236,14 @@ Raw data
 
 **Função principal**
 
-- [`main`](../features/feature_engineering.py)
+- [`main`](../src/features/feature_engineering.py)
 
 **Arquivos envolvidos**
 
-- [`src/features/feature_engineering.py`](../features/feature_engineering.py)
-- [`src/features/pipeline_components.py`](../features/pipeline_components.py)
-- [`src/features/schema_validation.py`](../features/schema_validation.py)
-- [`configs/pipeline_global_config.yaml`](../../configs/pipeline_global_config.yaml)
+- [`src/features/feature_engineering.py`](../src/features/feature_engineering.py)
+- [`src/features/pipeline_components.py`](../src/features/pipeline_components.py)
+- [`src/features/schema_validation.py`](../src/features/schema_validation.py)
+- [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
 
 ### 2.2 Engenharia de features via DVC
 
@@ -236,7 +253,7 @@ Raw data
 **Cadeia**
 
 `dvc repro featurize`
--> stage `featurize` em [`dvc.yaml`](../../dvc.yaml)
+-> stage `featurize` em [`dvc.yaml`](../dvc.yaml)
 -> executa `python -m src.features.feature_engineering`
 
 **Observação**
@@ -254,11 +271,11 @@ Raw data
 **Cadeia**
 
 `train`
--> carrega config do experimento em [`load_experiment_training_config`](../models/train.py)
+-> carrega config do experimento em [`load_experiment_training_config`](../src/models/train.py)
 -> lê:
   - `data/processed/train.parquet`
   - `data/processed/test.parquet`
--> instancia algoritmo via [`build_model`](../models/catalog.py)
+-> instancia algoritmo via [`build_model`](../src/models/catalog.py)
 -> treina modelo
 -> calcula métricas
 -> registra run no MLflow
@@ -268,13 +285,13 @@ Raw data
 
 **Função principal**
 
-- [`run_training`](../models/train.py)
+- [`run_training`](../src/models/train.py)
 
 **Arquivos envolvidos**
 
-- [`src/models/train.py`](../models/train.py)
-- [`src/models/catalog.py`](../models/catalog.py)
-- [`configs/training/model_current.yaml`](../../configs/training/model_current.yaml)
+- [`src/models/train.py`](../src/models/train.py)
+- [`src/models/catalog.py`](../src/models/catalog.py)
+- [`configs/training/model_current.yaml`](../configs/training/model_current.yaml)
 
 ### 3.2 Treino via DVC
 
@@ -284,7 +301,7 @@ Raw data
 **Cadeia**
 
 `dvc repro train`
--> stage `train` em [`dvc.yaml`](../../dvc.yaml)
+-> stage `train` em [`dvc.yaml`](../dvc.yaml)
 -> executa `python -m src.models.train`
 
 ### 3.3 Treino múltiplo de experimentos
@@ -301,7 +318,7 @@ Raw data
 
 **Arquivo envolvido**
 
-- [`pyproject.toml`](../../pyproject.toml)
+- [`pyproject.toml`](../pyproject.toml)
 
 ## 4. Gatilhos de Monitoramento
 
@@ -313,7 +330,7 @@ Raw data
 **Cadeia**
 
 `drift`
--> lê config em [`configs/monitoring_config.yaml`](../../configs/monitoring_config.yaml)
+-> lê config em [`configs/monitoring_config.yaml`](../configs/monitoring_config.yaml)
 -> carrega dataset de referência:
   - `data/processed/train.parquet`
 -> carrega dataset current:
@@ -338,12 +355,12 @@ Raw data
 
 **Função principal**
 
-- [`run_drift_monitoring`](../monitoring/drift.py)
+- [`run_drift_monitoring`](../src/monitoring/drift.py)
 
 **Arquivos envolvidos**
 
-- [`src/monitoring/drift.py`](../monitoring/drift.py)
-- [`configs/monitoring_config.yaml`](../../configs/monitoring_config.yaml)
+- [`src/monitoring/drift.py`](../src/monitoring/drift.py)
+- [`configs/monitoring_config.yaml`](../configs/monitoring_config.yaml)
 
 ### 4.2 Drift demo
 
@@ -369,11 +386,11 @@ Raw data
 **Cadeia**
 
 `python -m src.monitoring.drift`
--> função [`run_drift_monitoring`](../monitoring/drift.py)
--> função [`maybe_trigger_retraining`](../monitoring/drift.py)
+-> função [`run_drift_monitoring`](../src/monitoring/drift.py)
+-> função [`maybe_trigger_retraining`](../src/monitoring/drift.py)
 -> cria `artifacts/monitoring/retraining/retrain_request.json`
 -> como `trigger_mode` atual é `auto_train_manual_promote`
--> chama [`run_retraining_request`](../models/retraining.py)
+-> chama [`run_retraining_request`](../src/models/retraining.py)
 -> treina challenger
 -> avalia promoção champion-challenger
 -> salva:
@@ -395,20 +412,20 @@ Raw data
 `models.retraining`
 -> lê `retrain_request.json`
 -> cria config temporária de challenger
--> chama [`run_training`](../models/train.py)
+-> chama [`run_training`](../src/models/train.py)
 -> salva challenger em `artifacts/models/challengers/`
 -> compara champion vs challenger
 -> grava decisão de promoção
 
 **Função principal**
 
-- [`run_retraining_request`](../models/retraining.py)
+- [`run_retraining_request`](../src/models/retraining.py)
 
 **Arquivos envolvidos**
 
-- [`src/models/retraining.py`](../models/retraining.py)
-- [`src/models/promotion.py`](../models/promotion.py)
-- [`src/models/train.py`](../models/train.py)
+- [`src/models/retraining.py`](../src/models/retraining.py)
+- [`src/models/promotion.py`](../src/models/promotion.py)
+- [`src/models/train.py`](../src/models/train.py)
 
 ## 6. Gatilhos da Feature Store
 
@@ -430,13 +447,13 @@ Raw data
 
 **Função principal**
 
-- [`export_features_for_feast`](../feast_ops/export.py)
+- [`export_features_for_feast`](../src/feast_ops/export.py)
 
 **Arquivos envolvidos**
 
-- [`src/feast_ops/export.py`](../feast_ops/export.py)
-- [`src/feast_ops/config.py`](../feast_ops/config.py)
-- [`docs/FEATURE_STORE.md`](../../docs/FEATURE_STORE.md)
+- [`src/feast_ops/export.py`](../src/feast_ops/export.py)
+- [`src/feast_ops/config.py`](../src/feast_ops/config.py)
+- [`docs/FEATURE_STORE.md`](FEATURE_STORE.md)
 
 ### 6.2 Export via DVC
 
@@ -446,7 +463,7 @@ Raw data
 **Cadeia**
 
 `dvc repro export_feature_store`
--> stage `export_feature_store` em [`dvc.yaml`](../../dvc.yaml)
+-> stage `export_feature_store` em [`dvc.yaml`](../dvc.yaml)
 -> executa `python -m src.feast_ops.export`
 
 **Observação importante**
@@ -464,8 +481,8 @@ Raw data
 **Cadeia**
 
 `feast -c feature_store apply`
--> lê [`feature_store/feature_store.yaml`](../../feature_store/feature_store.yaml)
--> carrega definições em [`feature_store/repo.py`](../../feature_store/repo.py)
+-> lê [`feature_store/feature_store.yaml`](../feature_store/feature_store.yaml)
+-> carrega definições em [`feature_store/repo.py`](../feature_store/repo.py)
 -> registra `Entity`, `FeatureView` e `FeatureServices`
 -> atualiza o registry local do Feast
 
@@ -523,8 +540,8 @@ Raw data
 
 **Arquivos envolvidos**
 
-- [`src/scenario_analysis/inference_cases.py`](../scenario_analysis/inference_cases.py)
-- [`configs/scenario_analysis/inference_cases.yaml`](../../configs/scenario_analysis/inference_cases.yaml)
+- [`src/scenario_analysis/inference_cases.py`](../src/scenario_analysis/inference_cases.py)
+- [`configs/scenario_analysis/inference_cases.yaml`](../configs/scenario_analysis/inference_cases.yaml)
 
 ### 7.2 Drift sintético
 
@@ -542,8 +559,8 @@ Raw data
 
 **Arquivos envolvidos**
 
-- [`src/scenario_analysis/synthetic_drifts.py`](../scenario_analysis/synthetic_drifts.py)
-- [`docs/SYNTHETIC_PREDICTIONS_GENERATOR.md`](../../docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
+- [`src/scenario_analysis/synthetic_drifts.py`](../src/scenario_analysis/synthetic_drifts.py)
+- [`docs/SYNTHETIC_PREDICTIONS_GENERATOR.md`](SYNTHETIC_PREDICTIONS_GENERATOR.md)
 
 ## 8. Gatilhos de Infraestrutura Local
 
@@ -564,8 +581,8 @@ Raw data
 
 **Arquivos envolvidos**
 
-- [`docker-compose.yml`](../../docker-compose.yml)
-- [`pyproject.toml`](../../pyproject.toml)
+- [`docker-compose.yml`](../docker-compose.yml)
+- [`pyproject.toml`](../pyproject.toml)
 
 ### 8.2 MLflow local
 
@@ -587,9 +604,9 @@ Raw data
 **Cadeia**
 
 `evaluation.ab_test_prompts`
--> carrega [`configs/evaluation/golden_set.yaml`](../../configs/evaluation/golden_set.yaml)
+-> carrega [`configs/evaluation/golden_set.yaml`](../configs/evaluation/golden_set.yaml)
 -> para cada pergunta:
--> usa [`retrieve_contexts`](../agent/rag_pipeline.py)
+-> usa [`retrieve_contexts`](../src/agent/rag_pipeline.py)
 -> executa 3 variantes de prompt com o mesmo `llm_provider`
 -> calcula `keyword_coverage` contra a resposta de referência
 -> opcionalmente roda `judge_one` com `--with-judge`
@@ -598,10 +615,10 @@ Raw data
 
 **Arquivos envolvidos**
 
-- [`evaluation/ab_test_prompts.py`](../../evaluation/ab_test_prompts.py)
-- [`configs/evaluation/golden_set.yaml`](../../configs/evaluation/golden_set.yaml)
-- [`src/agent/rag_pipeline.py`](../agent/rag_pipeline.py)
-- [`evaluation/llm_judge.py`](../../evaluation/llm_judge.py)
+- [`evaluation/ab_test_prompts.py`](../evaluation/ab_test_prompts.py)
+- [`configs/evaluation/golden_set.yaml`](../configs/evaluation/golden_set.yaml)
+- [`src/agent/rag_pipeline.py`](../src/agent/rag_pipeline.py)
+- [`evaluation/llm_judge.py`](../evaluation/llm_judge.py)
 
 **Observações**
 

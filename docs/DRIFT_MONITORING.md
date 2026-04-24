@@ -1,5 +1,25 @@
 # Monitoramento de Drift e Gatilho de Retreino
 
+## Índice
+
+- [Objetivo](#objetivo)
+- [Estratégia Atual](#estratégia-atual)
+- [Como Pensar no Passo 1](#como-pensar-no-passo-1)
+- [Passo a Passo Operacional](#passo-a-passo-operacional)
+- [O Que Acontece em Cada Passo](#o-que-acontece-em-cada-passo)
+- [PSI em Termos Intuitivos](#psi-em-termos-intuitivos)
+- [Tipos de Drift Monitorados Hoje](#tipos-de-drift-monitorados-hoje)
+- [O Que Ainda Nao Esta Sendo Tratado](#o-que-ainda-nao-esta-sendo-tratado)
+- [Base de Referencia e Base Corrente](#base-de-referencia-e-base-corrente)
+- [Metricas e Ferramentas](#metricas-e-ferramentas)
+- [Consolidacao do Status](#consolidacao-do-status)
+- [Gatilho de Retreino](#gatilho-de-retreino)
+- [Estrategia Atual de Automacao](#estrategia-atual-de-automacao)
+- [Estrutura da Solicitacao de Retreino](#estrutura-da-solicitacao-de-retreino)
+- [Estrutura do Resultado do Retreino](#estrutura-do-resultado-do-retreino)
+- [Comparacao Champion vs Challenger](#comparacao-champion-vs-challenger)
+- [Leitura Atual do Core](#leitura-atual-do-core)
+
 ## Objetivo
 
 Este documento descreve a estratégia atual de monitoramento de drift do projeto,
@@ -516,7 +536,7 @@ Arquivos envolvidos:
 
 - [src/models/retraining.py](../src/models/retraining.py)
 - [src/models/promotion.py](../src/models/promotion.py)
-- [artifacts/models/model_current_metadata.json](../artifacts/models/model_current_metadata.json)
+- `artifacts/models/model_current_metadata.json`
 
 O resultado dessa etapa vai para:
 

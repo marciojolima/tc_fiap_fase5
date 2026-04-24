@@ -1,5 +1,15 @@
 # Model Versioning e Governança
 
+## Índice
+
+- [Onde isso acontece](#onde-isso-acontece)
+- [Metadados registrados no MLflow](#metadados-registrados-no-mlflow)
+- [Origem de cada campo](#origem-de-cada-campo)
+- [Como interpretar](#como-interpretar)
+- [Objetivo desta abordagem](#objetivo-desta-abordagem)
+- [Conexao com o que ja foi implementado](#conexao-com-o-que-ja-foi-implementado)
+- [Limite atual da implementacao](#limite-atual-da-implementacao)
+
 Este projeto registra metadados minimos de governanca no fluxo de treino
 para atender ao requisito de rastreabilidade esperado no Datathon.
 

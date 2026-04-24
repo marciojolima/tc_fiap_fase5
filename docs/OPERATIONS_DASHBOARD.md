@@ -1,5 +1,13 @@
 # Dashboard Operacional
 
+## Índice
+
+- [Como interpretar o dashboard](#como-interpretar-o-dashboard)
+- [Como validar rapidamente sem depender do Grafana](#como-validar-rapidamente-sem-depender-do-grafana)
+- [Como subir localmente](#como-subir-localmente)
+- [Acessos](#acessos)
+- [Observação](#observação)
+
 O projeto expõe métricas Prometheus no serving por meio do endpoint `GET /metrics`.
 
 As métricas operacionais iniciais são:

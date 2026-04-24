@@ -1,5 +1,16 @@
 # Gerador de Predições Sintéticas
 
+## Índice
+
+- [Objetivo](#objetivo)
+- [Módulo](#módulo)
+- [Como executar](#como-executar)
+- [Parâmetros](#parâmetros)
+- [Modos de geração](#modos-de-geração)
+- [Preciso analisar a camada raw?](#preciso-analisar-a-camada-raw)
+- [Exemplo de integração com o monitoramento](#exemplo-de-integração-com-o-monitoramento)
+- [Relação com o serving via Feast](#relação-com-o-serving-via-feast)
+
 ## Objetivo
 
 Este módulo gera arquivos JSONL compatíveis com o contrato usado pelo
