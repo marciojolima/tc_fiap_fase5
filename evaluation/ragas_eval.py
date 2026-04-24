@@ -151,7 +151,6 @@ def _instructor_llm_from_provider(
             model,
             provider="anthropic",
             client=client,
-            temperature=0,
             max_tokens=max_tokens,
         )
 
