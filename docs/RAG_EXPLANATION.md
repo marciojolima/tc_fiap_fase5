@@ -1,5 +1,20 @@
 # RAG Explanation
 
+## Indice
+
+- [Objetivo](#objetivo)
+- [Fontes de Contexto](#fontes-de-contexto)
+- [Pipeline de Inicializacao](#pipeline-de-inicializacao)
+- [Embeddings e Busca Vetorial](#embeddings-e-busca-vetorial)
+- [Cache Persistido](#cache-persistido)
+- [Uso de Memoria](#uso-de-memoria)
+- [Dashboard](#dashboard)
+- [Endpoint `/llm/chat`](#endpoint-llmchat)
+- [Perguntas Recomendadas para Smoke Test](#perguntas-recomendadas-para-smoke-test)
+- [Exemplos por Tool](#exemplos-por-tool)
+- [Resumo de Respostas Esperadas](#resumo-de-respostas-esperadas)
+- [Dicas de Operacao](#dicas-de-operacao)
+
 ## Objetivo
 
 Este documento descreve como a trilha de RAG do projeto funciona hoje, como o
@@ -15,16 +30,17 @@ de:
 
 As referencias principais de requisito continuam sendo:
 
-- `REQUISITOS_DATATHON.md`
-- `REQUISITOS_DATATHON_LIVE_EXPLANATION.md`
+- [README.md](../README.md)
+- [STATUS_ATUAL_PROJETO.md](../STATUS_ATUAL_PROJETO.md)
+- [STATUS_CHECK_LIST.md](../STATUS_CHECK_LIST.md)
 
 ## Fontes de Contexto
 
 O corpus do RAG e montado automaticamente no startup do serving com estas
 fontes:
 
-- `README.md`
-- todos os arquivos `docs/**/*.md`
+- [README.md](../README.md)
+- todos os arquivos [`docs/**/*.md`](./)
 - um conjunto pequeno de JSON relevantes definidos em codigo
 
 Os JSON continuam hardcoded por design para manter governanca e evitar que
@@ -43,6 +59,14 @@ Hoje os JSON mais importantes indexados sao:
 - `artifacts/monitoring/retraining/promotion_decision.json`
 
 Arquivos vazios sao ignorados automaticamente no processo de descoberta.
+
+Arquivos de implementacao relacionados:
+
+- [src/agent/rag_pipeline.py](../src/agent/rag_pipeline.py)
+- [src/agent/tools.py](../src/agent/tools.py)
+- [src/agent/react_agent.py](../src/agent/react_agent.py)
+- [src/serving/app.py](../src/serving/app.py)
+- [src/serving/llm_routes.py](../src/serving/llm_routes.py)
 
 ## Pipeline de Inicializacao
 
@@ -71,7 +95,8 @@ Os chunks sao mantidos com:
 ## Embeddings e Busca Vetorial
 
 O runtime do RAG usa embeddings locais com `sentence-transformers`. O modelo
-padrao atual e configurado em `configs/pipeline_global_config.yaml`.
+padrao atual e configurado em
+[configs/pipeline_global_config.yaml](../configs/pipeline_global_config.yaml).
 
 O fluxo de consulta faz:
 
@@ -141,6 +166,10 @@ Foi adicionado um dashboard dedicado no Grafana:
 
 - `RAG Operational Dashboard`
 
+Arquivo relacionado:
+
+- [configs/observability/grafana/dashboards/rag_operational_dashboard.json](../configs/observability/grafana/dashboards/rag_operational_dashboard.json)
+
 Ele mostra:
 
 - ultima inicializacao com cache ou sem cache
@@ -171,30 +200,54 @@ Payload minimo:
 }
 ```
 
-### O que esperar na resposta
+O que esperar na resposta:
 
 - `answer`: resposta final do agente
 - `used_tools`: lista de tools usadas
 - `trace`: trilha ReAct quando `include_trace=true`
 
-### Perguntas recomendadas para smoke test
+Rotas e schemas relacionados:
 
-1. `Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?`
-   Resposta esperada:
-   mencao a `/llm/health`, `/llm/status` e `/llm/chat`
+- [src/serving/llm_routes.py](../src/serving/llm_routes.py)
+- [src/serving/schemas.py](../src/serving/schemas.py)
 
-2. `Cite pelo menos tres tools do agente ReAct deste projeto.`
-   Resposta esperada:
-   `rag_search`, `predict_churn`, `drift_status`, `scenario_prediction`
+## Perguntas Recomendadas para Smoke Test
 
-3. `Em linhas gerais, como o RAG do projeto obtem contexto para uma pergunta?`
+1. Pergunta:
+```text
+Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?
+```
    Resposta esperada:
-   descoberta sobre `README.md`, `docs/**/*.md`, JSON relevantes, embeddings,
-   busca vetorial em memoria e retorno com fonte
+```text
+mencao a /llm/health, /llm/status e /llm/chat
+```
 
-4. `O que o monitoramento de drift busca identificar neste repositorio?`
+2. Pergunta:
+```text
+Cite pelo menos tres tools do agente ReAct deste projeto.
+```
    Resposta esperada:
-   mencao a drift, PSI, artefatos de monitoramento e apoio a retreino
+```text
+rag_search, predict_churn, drift_status, scenario_prediction
+```
+
+3. Pergunta:
+```text
+Em linhas gerais, como o RAG do projeto obtem contexto para uma pergunta?
+```
+   Resposta esperada:
+```text
+descoberta sobre README.md, docs/**/*.md, JSON relevantes, embeddings, busca vetorial em memoria e retorno com fonte
+```
+
+4. Pergunta:
+```text
+O que o monitoramento de drift busca identificar neste repositorio?
+```
+   Resposta esperada:
+```text
+mencao a drift, PSI, artefatos de monitoramento e apoio a retreino
+```
 
 ## Exemplos por Tool
 
@@ -207,27 +260,40 @@ Use estas perguntas quando quiser validar se o agente esta encontrando contexto
 documental no repositorio e respondendo com base nas fontes indexadas.
 
 1. Pergunta:
-   `Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?`
+```text
+Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?
+```
    Resposta esperada:
-   o agente deve mencionar `/llm/health`, `/llm/status` e `/llm/chat`
+```text
+o agente deve mencionar /llm/health, /llm/status e /llm/chat
+```
 
 2. Pergunta:
-   `Como o RAG do projeto obtem contexto para responder perguntas sobre o repositorio?`
+```text
+Como o RAG do projeto obtem contexto para responder perguntas sobre o repositorio?
+```
    Resposta esperada:
-   o agente deve mencionar `README.md`, `docs/**/*.md`, JSON relevantes,
-   embeddings, busca vetorial em memoria e retorno com fonte
+```text
+o agente deve mencionar README.md, docs/**/*.md, JSON relevantes, embeddings, busca vetorial em memoria e retorno com fonte
+```
 
 3. Pergunta:
-   `O que o monitoramento de drift busca identificar neste repositorio?`
+```text
+O que o monitoramento de drift busca identificar neste repositorio?
+```
    Resposta esperada:
-   o agente deve mencionar data drift, prediction drift, PSI, artefatos de
-   monitoramento e apoio a retreino
+```text
+o agente deve mencionar data drift, prediction drift, PSI, artefatos de monitoramento e apoio a retreino
+```
 
 4. Pergunta:
-   `Quais artefatos de retreino e promocao entram no corpus do RAG?`
+```text
+Quais artefatos de retreino e promocao entram no corpus do RAG?
+```
    Resposta esperada:
-   o agente deve citar arquivos como `retrain_request.json`,
-   `retrain_run.json` e `promotion_decision.json`
+```text
+o agente deve citar arquivos como retrain_request.json, retrain_run.json e promotion_decision.json
+```
 
 ### Tool `predict_churn`
 
@@ -235,48 +301,66 @@ Use estas perguntas para testar se o agente consegue acionar a predicao de
 churn com base em dados de cliente.
 
 1. Pergunta:
-   `Considere um cliente de 42 anos, da Alemanha, com saldo alto, dois produtos, inativo e com 650 de credit score. Qual seria a previsao de churn?`
+```text
+Considere um cliente de 42 anos, da Alemanha, com saldo alto, dois produtos, inativo e com 650 de credit score. Qual seria a previsao de churn?
+```
    Resposta esperada:
-   o agente deve acionar `predict_churn` e responder com probabilidade de churn
-   e classe prevista, deixando claro que a resposta depende do payload enviado
+```text
+o agente deve acionar predict_churn e responder com probabilidade de churn e classe prevista, deixando claro que a resposta depende do payload enviado
+```
 
 2. Pergunta:
-   `Com base neste perfil de cliente bancario, o modelo indicaria maior risco de evasao?`
+```text
+Com base neste perfil de cliente bancario, o modelo indicaria maior risco de evasao?
+```
    Resposta esperada:
-   o agente deve usar `predict_churn` e devolver uma conclusao objetiva sobre
-   risco baixo ou alto, acompanhada da probabilidade prevista
+```text
+o agente deve usar predict_churn e devolver uma conclusao objetiva sobre risco baixo ou alto, acompanhada da probabilidade prevista
+```
 
 ### Tool `scenario_prediction`
 
 Use estas perguntas para testar simulacoes e comparar cenarios de negocio.
 
 1. Pergunta:
-   `Se o mesmo cliente passar a ser ativo e aumentar o numero de produtos, como muda a previsao de churn?`
+```text
+Se o mesmo cliente passar a ser ativo e aumentar o numero de produtos, como muda a previsao de churn?
+```
    Resposta esperada:
-   o agente deve usar `scenario_prediction` para comparar cenarios e explicar
-   se o risco cai ou sobe entre o estado atual e o estado ajustado
+```text
+o agente deve usar scenario_prediction para comparar cenarios e explicar se o risco cai ou sobe entre o estado atual e o estado ajustado
+```
 
 2. Pergunta:
-   `Simule dois cenarios para este cliente: um com saldo maior e inatividade, outro com mais produtos e atividade. Qual deles parece melhor para retencao?`
+```text
+Simule dois cenarios para este cliente: um com saldo maior e inatividade, outro com mais produtos e atividade. Qual deles parece melhor para retencao?
+```
    Resposta esperada:
-   o agente deve comparar os cenarios, mostrar as probabilidades previstas e
-   concluir qual combinacao parece mais favoravel para reduzir churn
+```text
+o agente deve comparar os cenarios, mostrar as probabilidades previstas e concluir qual combinacao parece mais favoravel para reduzir churn
+```
 
 ### Tool `drift_status`
 
 Use estas perguntas para explorar a saude operacional do modelo em producao.
 
 1. Pergunta:
-   `Como esta a saude atual do modelo em relacao a drift?`
+```text
+Como esta a saude atual do modelo em relacao a drift?
+```
    Resposta esperada:
-   o agente deve usar `drift_status` e resumir o estado atual com mencao a
-   status, PSI, possiveis alertas e impacto operacional
+```text
+o agente deve usar drift_status e resumir o estado atual com mencao a status, PSI, possiveis alertas e impacto operacional
+```
 
 2. Pergunta:
-   `O monitoramento sugere necessidade de retreino neste momento?`
+```text
+O monitoramento sugere necessidade de retreino neste momento?
+```
    Resposta esperada:
-   o agente deve usar `drift_status` e responder se ha sinal de retreino,
-   mencionando o status atual e o racional associado ao drift observado
+```text
+o agente deve usar drift_status e responder se ha sinal de retreino, mencionando o status atual e o racional associado ao drift observado
+```
 
 ## Resumo de Respostas Esperadas
 
