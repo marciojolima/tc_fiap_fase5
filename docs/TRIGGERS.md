@@ -43,7 +43,7 @@ Este documento resume os principais pontos de entrada do projeto, mostrando:
 | Feast materialize | Infra manual | `feast materialize-incremental` | Materializa features no Redis |
 | Cenários de inferência | Batch manual | `python -m src.scenario_analysis.inference_cases` | Valida casos de negócio |
 | Drift sintético | Batch manual | `python -m src.scenario_analysis.synthetic_drifts --all` | Gera lotes e artefatos de teste |
-| Prompt A/B | Batch manual | `python -m evaluation.ab_test_prompts` | Compara 3 variantes de prompt no golden set |
+| Prompt A/B | Batch manual | `task eval_ab_test_prompts` | Compara 3 variantes de prompt no golden set |
 | Stack local | Infra manual | `docker compose up` | Sobe Redis, serving, MLflow, Prometheus e Grafana |
 
 ## Visão Geral
@@ -599,7 +599,7 @@ Raw data
 ### 9.1 Prompt A/B offline
 
 **Tipo:** batch manual  
-**Start:** `python -m evaluation.ab_test_prompts` ou `task ab_test_prompts`
+**Start:** `python -m evaluation.ab_test_prompts` ou `task eval_ab_test_prompts`
 
 **Cadeia**
 
@@ -611,7 +611,8 @@ Raw data
 -> calcula `keyword_coverage` contra a resposta de referência
 -> opcionalmente roda `judge_one` com `--with-judge`
 -> agrega ranking das variantes
--> salva `evaluation/results/prompt_ab_results.json`
+-> salva `artifacts/evaluation/results/prompt_ab_results.json`
+-> registra histórico em `artifacts/evaluation/runs/prompt_ab_runs.jsonl`
 
 **Arquivos envolvidos**
 
@@ -646,6 +647,7 @@ Raw data
 - `python -m src.scenario_analysis.inference_cases`
 - `python -m src.scenario_analysis.synthetic_drifts --all`
 - `python -m evaluation.ab_test_prompts`
+- `task eval_ab_test_prompts`
 
 ### Batch manual com DVC
 

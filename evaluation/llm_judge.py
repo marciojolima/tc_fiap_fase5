@@ -27,12 +27,21 @@ from typing import Any
 import yaml
 
 from agent.rag_pipeline import retrieve_contexts
+from evaluation.artifacts import (
+    RESULTS_DIR,
+    RUNS_DIR,
+    append_jsonl,
+    build_run_metadata,
+    persist_result_with_history,
+    write_json,
+)
 from llm.factory import build_llm_client
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_GOLDEN = "configs/evaluation/golden_set.yaml"
-DEFAULT_OUT = "evaluation/results/llm_judge_scores.json"
+DEFAULT_OUT = str(RESULTS_DIR / "llm_judge_scores.json")
+DEFAULT_HISTORY_OUT = str(RUNS_DIR / "llm_judge_runs.jsonl")
 DEFAULT_TIMEOUT_SEC = 300
 
 
@@ -241,6 +250,11 @@ def main() -> None:
     )
     parser.add_argument("-o", "--output", default=DEFAULT_OUT, help="JSON de saída")
     parser.add_argument(
+        "--history-output",
+        default=DEFAULT_HISTORY_OUT,
+        help="JSONL append-only com resumo das execuções",
+    )
+    parser.add_argument(
         "--timeout",
         type=int,
         default=None,
@@ -257,19 +271,57 @@ def main() -> None:
         )
     except Exception:
         logger.exception("Falha no LLM-as-judge")
+        failure_metadata = build_run_metadata()
+        write_json(
+            args.output,
+            {
+                "schema": "llm_judge_scores_v1",
+                **failure_metadata,
+                "status": "failed",
+                "golden": str(Path(args.golden).resolve()),
+                "top_k": args.top_k,
+            },
+        )
+        append_jsonl(
+            args.history_output,
+            {
+                "schema": "llm_judge_run_history_v1",
+                **failure_metadata,
+                "type": "llm_judge",
+                "status": "failed",
+                "output_path": str(Path(args.output)),
+            },
+        )
         raise SystemExit(1) from None
 
-    out_path = Path(args.output)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False),
-        encoding="utf-8",
+    metadata = build_run_metadata()
+    payload = {
+        **payload,
+        "schema": "llm_judge_scores_v1",
+        **metadata,
+        "status": "completed",
+    }
+    persist_result_with_history(
+        output_path=args.output,
+        history_path=args.history_output,
+        result_payload=payload,
+        history_payload={
+            "schema": "llm_judge_run_history_v1",
+            **metadata,
+            "type": "llm_judge",
+            "status": "completed",
+            "output_path": str(Path(args.output)),
+            "golden": str(Path(args.golden)),
+            "top_k": args.top_k,
+            "overall_mean": payload["overall_mean"],
+            **payload["aggregate_mean_per_criterion"],
+        },
     )
     logger.info("Médias por critério: %s", payload["aggregate_mean_per_criterion"])
     logger.info(
         "Média global: %s | Salvo em %s",
         payload["overall_mean"],
-        out_path.resolve(),
+        Path(args.output).resolve(),
     )
 
 

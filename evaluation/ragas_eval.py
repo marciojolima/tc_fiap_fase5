@@ -24,7 +24,6 @@ modelos 3B.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 from dataclasses import dataclass
@@ -61,12 +60,21 @@ from common.config_loader import (
     resolve_llm_model_name,
     resolve_llm_provider,
 )
+from evaluation.artifacts import (
+    RESULTS_DIR,
+    RUNS_DIR,
+    append_jsonl,
+    build_run_metadata,
+    persist_result_with_history,
+    write_json,
+)
 from llm.factory import build_llm_client
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_GOLDEN = "configs/evaluation/golden_set.yaml"
-DEFAULT_OUT = "evaluation/results/ragas_scores.json"
+DEFAULT_OUT = str(RESULTS_DIR / "ragas_scores.json")
+DEFAULT_HISTORY_OUT = str(RUNS_DIR / "ragas_runs.jsonl")
 DEFAULT_EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 # Ollama local (CPU) e RAGAS (várias chamadas por métrica) costumam estourar 120–180s.
 DEFAULT_TIMEOUT_SEC = 300
@@ -354,11 +362,6 @@ def _log_faithfulness_diagnostics(df: pd.DataFrame) -> None:
         )
 
 
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-
-
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(
@@ -381,6 +384,11 @@ def main() -> None:
         "-o",
         default=DEFAULT_OUT,
         help="JSON de saída com médias das métricas",
+    )
+    parser.add_argument(
+        "--history-output",
+        default=DEFAULT_HISTORY_OUT,
+        help="JSONL append-only com resumo das execuções",
     )
     parser.add_argument(
         "--embed-model",
@@ -409,21 +417,65 @@ def main() -> None:
         )
     except Exception:
         logger.exception("Falha na avaliação RAGAS")
+        failure_metadata = build_run_metadata()
+        write_json(
+            args.output,
+            {
+                "schema": "ragas_scores_v1",
+                **failure_metadata,
+                "status": "failed",
+                "golden": str(Path(args.golden).resolve()),
+                "top_k": args.top_k,
+                "embed_model": args.embed_model,
+                "timeout_sec": _timeout_seconds(args.timeout),
+            },
+        )
+        append_jsonl(
+            args.history_output,
+            {
+                "schema": "ragas_run_history_v1",
+                **failure_metadata,
+                "type": "ragas",
+                "status": "failed",
+                "output_path": str(Path(args.output)),
+            },
+        )
         raise SystemExit(1) from None
 
-    out_path = Path(args.output)
+    metadata = build_run_metadata()
+    item_count = args.max_rows or len(load_golden_items(args.golden))
     payload = {
+        "schema": "ragas_scores_v1",
+        **metadata,
+        "status": "completed",
         "metrics_mean": scores,
         "golden": str(Path(args.golden).resolve()),
         "top_k": args.top_k,
+        "n_items": item_count,
         "embed_model": args.embed_model,
         "timeout_sec": _timeout_seconds(args.timeout),
         "llm_provider": resolve_llm_provider(),
         "llm_model": resolve_llm_model_name(resolve_llm_provider()),
     }
-    _write_json(out_path, payload)
+    history_payload = {
+        "schema": "ragas_run_history_v1",
+        **metadata,
+        "type": "ragas",
+        "status": "completed",
+        "output_path": str(Path(args.output)),
+        "golden": str(Path(args.golden)),
+        "top_k": args.top_k,
+        "n_items": item_count,
+        **scores,
+    }
+    persist_result_with_history(
+        output_path=args.output,
+        history_path=args.history_output,
+        result_payload=payload,
+        history_payload=history_payload,
+    )
     logger.info("Métricas: %s", scores)
-    logger.info("Salvo em %s", out_path.resolve())
+    logger.info("Salvo em %s", Path(args.output).resolve())
 
 
 if __name__ == "__main__":

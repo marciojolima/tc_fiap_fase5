@@ -126,10 +126,10 @@ Observações:
   dashboard dedicado ao RAG, cobrindo corpus, chunks, bytes, memoria estimada,
   delta de RSS, tempo por etapa de startup, cache hit e latencia da busca.
 - `evaluation/ragas_eval.py`, `evaluation/llm_judge.py` e
-  `evaluation/ab_test_prompts.py` existem e têm testes de suporte, mas a pasta
-  `evaluation/results/` ainda não existe. Portanto, a entrega de avaliação LLM
-  deve ser tratada como implementada em código, mas pendente em execução e
-  reporte formal.
+  `evaluation/ab_test_prompts.py` existem e têm testes de suporte. As saídas
+  foram padronizadas para `artifacts/evaluation/results/`, com histórico em
+  `artifacts/evaluation/runs/`, mas ainda precisam ser executadas e reportadas
+  formalmente.
 
 ### Etapa 4: Segurança e governança
 
@@ -263,6 +263,8 @@ mais segura hoje parece ser:
 - `artifacts/models/challengers/`
 - `artifacts/rag/cache/manifest.json`
 - `artifacts/rag/index_build_history.jsonl`
+- `artifacts/evaluation/results/`
+- `artifacts/evaluation/runs/`
 - `configs/evaluation/golden_set.yaml`
 - `evaluation/ragas_eval.py`
 - `evaluation/llm_judge.py`

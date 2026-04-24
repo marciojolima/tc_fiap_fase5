@@ -187,7 +187,8 @@ mesmo `retrieve_contexts()` e o mesmo `llm_provider` configurado, para responder
 
 O fluxo gera:
 
-- `evaluation/results/prompt_ab_results.json`
+- `artifacts/evaluation/results/prompt_ab_results.json`
+- `artifacts/evaluation/runs/prompt_ab_runs.jsonl`
 
 Métricas usadas hoje:
 

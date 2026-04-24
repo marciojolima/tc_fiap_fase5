@@ -9,3 +9,11 @@
 !monitoring/.gitkeep
 !scenario_analysis/
 !scenario_analysis/.gitkeep
+!evaluation/
+!evaluation/.gitkeep
+!evaluation/results/
+!evaluation/results/.gitkeep
+!evaluation/results/*.json
+!evaluation/runs/
+!evaluation/runs/.gitkeep
+!evaluation/runs/*.jsonl

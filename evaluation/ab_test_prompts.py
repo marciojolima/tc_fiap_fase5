@@ -12,7 +12,6 @@ qualidade/benchmark para decidir qual prompt vale a pena promover.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import re
@@ -21,6 +20,14 @@ from pathlib import Path
 from typing import Any
 
 from agent.rag_pipeline import retrieve_contexts
+from evaluation.artifacts import (
+    RESULTS_DIR,
+    RUNS_DIR,
+    append_jsonl,
+    build_run_metadata,
+    write_json,
+)
+from evaluation.artifacts import persist_result_with_history as persist_result
 from evaluation.llm_judge import judge_one, provider_chat
 from evaluation.ragas_eval import load_golden_items
 from llm.factory import build_llm_client
@@ -28,7 +35,8 @@ from llm.factory import build_llm_client
 logger = logging.getLogger(__name__)
 
 DEFAULT_GOLDEN = "configs/evaluation/golden_set.yaml"
-DEFAULT_OUT = "evaluation/results/prompt_ab_results.json"
+DEFAULT_OUT = str(RESULTS_DIR / "prompt_ab_results.json")
+DEFAULT_HISTORY_OUT = str(RUNS_DIR / "prompt_ab_runs.jsonl")
 DEFAULT_TIMEOUT_SEC = 300
 DEFAULT_TOP_K = 3
 MIN_TERM_LENGTH = 2
@@ -308,27 +316,82 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Também roda LLM-as-judge sobre cada variante.",
     )
     parser.add_argument("--out", default=DEFAULT_OUT, help="Arquivo JSON de saída.")
+    parser.add_argument(
+        "--history-output",
+        default=DEFAULT_HISTORY_OUT,
+        help="JSONL append-only com resumo das execuções",
+    )
     return parser
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _build_parser().parse_args()
-    result = run_prompt_ab_test(
-        golden_path=args.golden,
-        top_k=args.top_k,
-        max_rows=args.max_rows,
-        timeout_sec=args.timeout_sec,
-        include_judge=args.with_judge,
-    )
+    try:
+        result = run_prompt_ab_test(
+            golden_path=args.golden,
+            top_k=args.top_k,
+            max_rows=args.max_rows,
+            timeout_sec=args.timeout_sec,
+            include_judge=args.with_judge,
+        )
+    except Exception:
+        logger.exception("Falha no benchmark A/B de prompts")
+        failure_metadata = build_run_metadata()
+        write_json(
+            args.out,
+            {
+                "schema": "prompt_ab_v1",
+                **failure_metadata,
+                "status": "failed",
+                "golden": str(Path(args.golden).resolve()),
+                "top_k": args.top_k,
+                "include_judge": args.with_judge,
+            },
+        )
+        append_jsonl(
+            args.history_output,
+            {
+                "schema": "prompt_ab_run_history_v1",
+                **failure_metadata,
+                "type": "prompt_ab",
+                "status": "failed",
+                "output_path": str(Path(args.out)),
+            },
+        )
+        raise SystemExit(1) from None
 
-    out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps(result, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+    metadata = build_run_metadata()
+    result = {
+        **result,
+        **metadata,
+        "status": "completed",
+    }
+    winner = (
+        result["aggregate"]["variants"][0]
+        if result["aggregate"]["variants"]
+        else {}
     )
-    logger.info("Resultado do prompt A/B salvo em %s", out_path)
+    persist_result(
+        output_path=args.out,
+        history_path=args.history_output,
+        result_payload=result,
+        history_payload={
+            "schema": "prompt_ab_run_history_v1",
+            **metadata,
+            "type": "prompt_ab",
+            "status": "completed",
+            "output_path": str(Path(args.out)),
+            "golden": str(Path(args.golden)),
+            "top_k": args.top_k,
+            "n_items": result["aggregate"]["n_items"],
+            "include_judge": args.with_judge,
+            "winner": winner.get("variant"),
+            "winner_mean_keyword_coverage": winner.get("mean_keyword_coverage"),
+            "winner_mean_judge_score": winner.get("mean_judge_score"),
+        },
+    )
+    logger.info("Resultado do prompt A/B salvo em %s", Path(args.out))
 
 
 if __name__ == "__main__":
