@@ -113,13 +113,6 @@ test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
 mlflow = 'mlflow server --backend-store-uri file:./mlruns --default-artifact-root ./mlruns --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
-# Sobe a stack base para providers externos; para Ollama local use observability_ollama.
-observability = 'docker compose up -d redis serving mlflow prometheus grafana'
-# Reconstrói a imagem da app e sobe a stack base; para Ollama local use observability_ollama_rebuild.
-observability_rebuild = 'docker compose up -d --build redis serving mlflow prometheus grafana'
-observability_ollama = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d ollama ollama-pull redis serving mlflow prometheus grafana'
-observability_ollama_rebuild = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --build ollama ollama-pull redis serving mlflow prometheus grafana'
-observability_down = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml down'
 # Lista modelos disponiveis no ambiente Ollama configurado no YAML.
 ollama_list = 'python scripts/list_ollama_models.py'
 # RAGAS (4 métricas) sobre o golden set — requer provider LLM configurado e, na 1a vez, download do modelo de embeddings.
@@ -128,8 +121,11 @@ ragas_eval = 'python -m evaluation.ragas_eval'
 llm_judge = 'python -m evaluation.llm_judge'
 # Benchmark offline com 3 variantes de prompt; use --with-judge para enriquecer.
 ab_test_prompts = 'python -m evaluation.ab_test_prompts'
-appstack = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d redis serving mlflow prometheus grafana'
-appstack_down = 'docker compose down'
+appstack = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml up -d'
+appstack_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml up -d --build'
+appstack_ollama = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d'
+appstack_ollama_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --build'
+appstack_down = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml down'
 
 mlrunexperiments = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml'
 mlrunall = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
