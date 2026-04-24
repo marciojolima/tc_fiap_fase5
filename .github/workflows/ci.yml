@@ -20,7 +20,7 @@ jobs:
         run: pip install poetry
 
       - name: Install dependencies
-        run: poetry install --with dev
+        run: poetry install --with dev -E serving -E training -E monitoring -E evaluation
 
       - name: Lint
         run: poetry run ruff check src tests
