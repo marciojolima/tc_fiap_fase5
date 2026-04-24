@@ -196,6 +196,100 @@ Payload minimo:
    Resposta esperada:
    mencao a drift, PSI, artefatos de monitoramento e apoio a retreino
 
+## Exemplos por Tool
+
+Os exemplos abaixo ajudam a explorar o agente manualmente no Swagger ou em
+chamadas diretas para `POST /llm/chat`.
+
+### Tool `rag_search`
+
+Use estas perguntas quando quiser validar se o agente esta encontrando contexto
+documental no repositorio e respondendo com base nas fontes indexadas.
+
+1. Pergunta:
+   `Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?`
+   Resposta esperada:
+   o agente deve mencionar `/llm/health`, `/llm/status` e `/llm/chat`
+
+2. Pergunta:
+   `Como o RAG do projeto obtem contexto para responder perguntas sobre o repositorio?`
+   Resposta esperada:
+   o agente deve mencionar `README.md`, `docs/**/*.md`, JSON relevantes,
+   embeddings, busca vetorial em memoria e retorno com fonte
+
+3. Pergunta:
+   `O que o monitoramento de drift busca identificar neste repositorio?`
+   Resposta esperada:
+   o agente deve mencionar data drift, prediction drift, PSI, artefatos de
+   monitoramento e apoio a retreino
+
+4. Pergunta:
+   `Quais artefatos de retreino e promocao entram no corpus do RAG?`
+   Resposta esperada:
+   o agente deve citar arquivos como `retrain_request.json`,
+   `retrain_run.json` e `promotion_decision.json`
+
+### Tool `predict_churn`
+
+Use estas perguntas para testar se o agente consegue acionar a predicao de
+churn com base em dados de cliente.
+
+1. Pergunta:
+   `Considere um cliente de 42 anos, da Alemanha, com saldo alto, dois produtos, inativo e com 650 de credit score. Qual seria a previsao de churn?`
+   Resposta esperada:
+   o agente deve acionar `predict_churn` e responder com probabilidade de churn
+   e classe prevista, deixando claro que a resposta depende do payload enviado
+
+2. Pergunta:
+   `Com base neste perfil de cliente bancario, o modelo indicaria maior risco de evasao?`
+   Resposta esperada:
+   o agente deve usar `predict_churn` e devolver uma conclusao objetiva sobre
+   risco baixo ou alto, acompanhada da probabilidade prevista
+
+### Tool `scenario_prediction`
+
+Use estas perguntas para testar simulacoes e comparar cenarios de negocio.
+
+1. Pergunta:
+   `Se o mesmo cliente passar a ser ativo e aumentar o numero de produtos, como muda a previsao de churn?`
+   Resposta esperada:
+   o agente deve usar `scenario_prediction` para comparar cenarios e explicar
+   se o risco cai ou sobe entre o estado atual e o estado ajustado
+
+2. Pergunta:
+   `Simule dois cenarios para este cliente: um com saldo maior e inatividade, outro com mais produtos e atividade. Qual deles parece melhor para retencao?`
+   Resposta esperada:
+   o agente deve comparar os cenarios, mostrar as probabilidades previstas e
+   concluir qual combinacao parece mais favoravel para reduzir churn
+
+### Tool `drift_status`
+
+Use estas perguntas para explorar a saude operacional do modelo em producao.
+
+1. Pergunta:
+   `Como esta a saude atual do modelo em relacao a drift?`
+   Resposta esperada:
+   o agente deve usar `drift_status` e resumir o estado atual com mencao a
+   status, PSI, possiveis alertas e impacto operacional
+
+2. Pergunta:
+   `O monitoramento sugere necessidade de retreino neste momento?`
+   Resposta esperada:
+   o agente deve usar `drift_status` e responder se ha sinal de retreino,
+   mencionando o status atual e o racional associado ao drift observado
+
+## Resumo de Respostas Esperadas
+
+Se o agente estiver funcionando como esperado, o comportamento geral deve ser:
+
+- perguntas documentais acionam `rag_search` e trazem respostas ancoradas em
+  arquivos do repositorio
+- perguntas de predicao acionam `predict_churn` e retornam probabilidade e
+  classe prevista
+- perguntas de simulacao acionam `scenario_prediction` e comparam cenarios
+- perguntas de saude operacional acionam `drift_status` e resumem drift e
+  possivel necessidade de retreino
+
 ## Dicas de Operacao
 
 - Se o startup ficar mais lento na primeira execucao, isso e esperado por causa
