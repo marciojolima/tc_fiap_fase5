@@ -1,5 +1,7 @@
 from common.config_loader import (
+    load_env_value,
     load_global_config,
+    resolve_llm_api_key,
     resolve_llm_base_url,
     resolve_llm_model_name,
     resolve_llm_provider,
@@ -39,3 +41,39 @@ def test_resolve_llm_base_url_allows_environment_override(monkeypatch) -> None:
     monkeypatch.setenv("LLM_BASE_URL", "http://ollama:11434")
 
     assert resolve_llm_base_url("ollama") == "http://ollama:11434"
+
+
+def test_load_env_value_reads_local_dotenv_without_overriding_env(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("ANTHROPIC_API_KEY=from-file\n", encoding="utf-8")
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert load_env_value("ANTHROPIC_API_KEY", env_path=env_path) == "from-file"
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
+    assert load_env_value("ANTHROPIC_API_KEY", env_path=env_path) == "from-env"
+
+
+def test_resolve_llm_api_key_reads_project_dotenv(monkeypatch, tmp_path) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("ANTHROPIC_API_KEY=from-file\n", encoding="utf-8")
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("common.config_loader.ROOT_DIR", tmp_path)
+
+    config = {
+        "llm": {
+            "active_provider": "claude",
+            "providers": {
+                "claude": {
+                    "model_name": "fake-model",
+                    "api_key_env_var": "ANTHROPIC_API_KEY",
+                }
+            },
+        }
+    }
+
+    assert resolve_llm_api_key("claude", config) == "from-file"

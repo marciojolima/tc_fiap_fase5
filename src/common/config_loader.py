@@ -18,6 +18,32 @@ OPENAI_API_KEY_ENV_VAR = "OPENAI_API_KEY"
 ANTHROPIC_API_KEY_ENV_VAR = "ANTHROPIC_API_KEY"
 
 
+def load_env_value(env_var: str, env_path: str | Path = ".env") -> str | None:
+    """Carrega uma variável simples do `.env` local sem sobrescrever o ambiente."""
+
+    if os.getenv(env_var):
+        return os.getenv(env_var)
+
+    full_path = ROOT_DIR / env_path
+    if not full_path.exists():
+        return None
+
+    with open(full_path, encoding="utf-8") as file_obj:
+        for raw_line in file_obj:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            if key.strip() != env_var:
+                continue
+
+            cleaned_value = value.strip().strip('"').strip("'")
+            return cleaned_value or None
+
+    return None
+
+
 def load_config(config_path: str = DEFAULT_GLOBAL_CONFIG_PATH) -> dict[str, Any]:
     full_path = ROOT_DIR / config_path
     with open(full_path, "r", encoding="utf-8") as f:
@@ -171,7 +197,7 @@ def resolve_llm_api_key(
             "variável de ambiente configurada."
         )
 
-    api_key = os.getenv(env_var, "").strip()
+    api_key = (load_env_value(env_var) or "").strip()
     if api_key:
         return api_key
 

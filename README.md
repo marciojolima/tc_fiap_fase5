@@ -129,6 +129,8 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
 - **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. Se o modelo de embeddings já estiver baixado no cache local, `poetry run task eval_all_offline` força reuso local (`HF_HUB_OFFLINE=1` e `TRANSFORMERS_OFFLINE=1`) e evita novas chamadas ao Hugging Face.
 
+  As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
+
   Se `artifacts/rag/` tiver sido criado por um container antigo com outro usuário, corrija a posse uma vez antes da execução local:
 
   ```bash
