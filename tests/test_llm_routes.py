@@ -8,15 +8,17 @@ from prometheus_client import generate_latest
 
 from agent.react_agent import AgentRunResult
 from agent.tools import AgentTool
+from llm.providers.base import ProviderChatConfig
+from llm.providers.ollama import OllamaProvider
 from serving.app import create_app
-from serving.llm_routes import OllamaClient, OllamaConfig, chat_with_react_agent
+from serving.llm_routes import chat_with_react_agent
 from serving.schemas import LLMChatRequest
 
 CANONICAL_CASES = (
     {
         "question": (
             "Quais rotas HTTP o projeto expõe especificamente para o "
-            "assistente LLM e diagnóstico do Ollama?"
+            "assistente LLM e diagnóstico do provider LLM?"
         ),
         "evidence": (
             "Rotas do prefixo /llm disponíveis no projeto: /llm/health, "
@@ -178,6 +180,10 @@ def _canonical_tools() -> list[AgentTool]:
     ]
 
 
+def _stub_llm_client() -> object:
+    return object()
+
+
 def test_app_registers_llm_routes() -> None:
     app = create_app()
     paths = {getattr(route, "path", "") for route in app.routes}
@@ -187,6 +193,10 @@ def test_app_registers_llm_routes() -> None:
 
 
 def test_chat_with_react_agent_returns_structured_response(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "serving.llm_routes.build_llm_client",
+        _stub_llm_client,
+    )
     monkeypatch.setattr(
         "serving.llm_routes.run_react_agent",
         lambda *_args, **_kwargs: AgentRunResult(
@@ -204,6 +214,10 @@ def test_chat_with_react_agent_returns_structured_response(monkeypatch) -> None:
 
 
 def test_chat_with_react_agent_updates_llm_metrics(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "serving.llm_routes.build_llm_client",
+        _stub_llm_client,
+    )
     monkeypatch.setattr(
         "serving.llm_routes.run_react_agent",
         lambda *_args, **_kwargs: AgentRunResult(
@@ -225,15 +239,16 @@ def test_chat_with_react_agent_updates_llm_metrics(monkeypatch) -> None:
     )
 
 
-def test_ollama_client_translates_timeout_to_runtime_error(monkeypatch) -> None:
+def test_ollama_provider_translates_timeout_to_runtime_error(monkeypatch) -> None:
     def fake_urlopen(*_args: object, **_kwargs: object) -> object:
         raise TimeoutError("timed out")
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    client = OllamaClient(
-        OllamaConfig(
+    client = OllamaProvider(
+        ProviderChatConfig(
+            provider="ollama",
             base_url="http://ollama:11434",
-            model="qwen2.5:3b",
+            model_name="qwen2.5:3b",
             timeout_seconds=45,
         )
     )
@@ -248,7 +263,7 @@ def test_chat_with_react_agent_answers_canonical_precision_questions(
     case: dict[str, object],
 ) -> None:
     monkeypatch.setattr(
-        "serving.llm_routes._build_ollama_client",
+        "serving.llm_routes.build_llm_client",
         lambda: CanonicalQuestionLLMClient(CANONICAL_CASES),
     )
     monkeypatch.setattr("agent.react_agent.build_default_tools", _canonical_tools)

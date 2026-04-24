@@ -86,8 +86,8 @@ items:
 
   - id: gs-016
     category: rag_llm
-    query: Quais rotas HTTP o projeto expõe especificamente para o assistente LLM e diagnóstico do Ollama?
-    expected_answer: "Prefixo /llm: health, status (diagnóstico de URL e modelo) e chat (agente ReAct com tools), integrado a Ollama via variáveis de ambiente e config global."
+    query: Quais rotas HTTP o projeto expõe especificamente para o assistente LLM e diagnóstico do provider LLM?
+    expected_answer: "Prefixo /llm: health, status (diagnóstico do llm_provider ativo, modelo esperado e RAG) e chat (agente ReAct com tools), integrado ao provider LLM definido na config global."
 
   - id: gs-017
     category: rag_llm
@@ -122,7 +122,7 @@ items:
   - id: gs-023
     category: integracao
     query: O que a task observability do pyproject inicia com o docker-compose do projeto (componentes de alto nível)?
-    expected_answer: "Sobe, entre outros, o serving FastAPI, o stack de MLflow, Prometheus, Grafana, o serviço Ollama e o job de pull do modelo, conforme versão atual do repositório e o arquivo .env do desenvolvedor."
+    expected_answer: "Sobe, entre outros, o serving FastAPI, Redis, MLflow, Prometheus e Grafana na stack base. Quando o llm_provider for Ollama local, a task específica com override também adiciona o serviço Ollama e o job de pull do modelo."
 
   - id: gs-024
     category: seguranca

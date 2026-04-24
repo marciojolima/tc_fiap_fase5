@@ -1,15 +1,17 @@
-"""LLM-as-judge sobre o golden set (Datathon): ≥3 critérios, incluindo negócio.
+"""LLM-as-judge sobre o golden set (Datathon): >=3 criterios, incluindo negocio.
 
-Fluxo mínimo: para cada item, gera resposta com o mesmo RAG que o RAGAS,
-depois um juiz (Ollama) pontua 1–5 em três dimensões e devolve JSON agregado.
+Fluxo minimo: para cada item, gera resposta com o mesmo RAG que o RAGAS,
+depois um juiz (provider LLM ativo) pontua 1-5 em tres dimensoes e devolve JSON
+agregado.
 
 Critérios (fixos, escala 1–5):
-  - adequacao_negocio: alinhamento ao domínio churn bancário / MLOps / dados do projeto
-  - correcao_conteudo: consistência com a resposta de referência e
+  - adequacao_negocio: alinhamento ao dominio churn bancario / MLOps / dados do projeto
+  - correcao_conteudo: consistencia com a resposta de referencia e
     plausibilidade factual
   - clareza_utilidade: clareza, objetividade e utilidade para o time
 
-Requer Ollama (LLM_BASE_URL / OLLAMA_MODEL), mesmo padrão do ragas_eval.
+Requer um provider LLM ativo na configuracao global e, para providers externos,
+api_key correspondente no .env.
 """
 
 from __future__ import annotations
@@ -19,15 +21,13 @@ import json
 import logging
 import os
 import re
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from agent.rag_pipeline import retrieve_contexts
-from common.config_loader import resolve_ollama_model
+from llm.factory import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -55,50 +55,19 @@ def load_golden_items(path: str | Path) -> list[dict[str, Any]]:
     return items
 
 
-def ollama_chat(
-    base_url: str,
-    model: str,
-    system: str,
-    user: str,
-    timeout: int = 120,
-) -> str:
-    payload = json.dumps(
-        {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "stream": False,
-            "options": {"temperature": 0},
-        }
-    ).encode("utf-8")
-    req = urllib.request.Request(
-        url=f"{base_url.rstrip('/')}/api/chat",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
+def provider_chat(system: str, user: str) -> str:
+    client = build_llm_client()
+    return client.chat(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
     )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            parsed = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"Ollama HTTP {exc.code}: {exc.reason}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Ollama indisponível: {exc}") from exc
-    content = (parsed.get("message") or {}).get("content", "")
-    if not content:
-        raise RuntimeError("Ollama retornou resposta vazia.")
-    return content.strip()
 
 
 def generate_rag_answer(
     question: str,
     contexts: list[str],
-    *,
-    base_url: str,
-    model: str,
-    timeout_sec: int,
 ) -> str:
     system = (
         "Você é um assistente técnico do projeto de churn/MLOps. "
@@ -108,7 +77,7 @@ def generate_rag_answer(
     empty_ctx = "(nenhum contexto recuperado)"
     ctx_block = "\n\n---\n\n".join(contexts) if contexts else empty_ctx
     user = f"Contextos:\n{ctx_block}\n\nPergunta: {question}"
-    return ollama_chat(base_url, model, system, user, timeout=timeout_sec)
+    return provider_chat(system, user)
 
 
 CRITERIA_KEYS = (
@@ -158,8 +127,6 @@ def _clamp_score(v: Any) -> int:
 
 def judge_one(  # noqa: PLR0913
     *,
-    base_url: str,
-    model: str,
     query: str,
     reference: str,
     candidate: str,
@@ -172,7 +139,8 @@ def judge_one(  # noqa: PLR0913
         f"RESPOSTA_REFERÊNCIA (ground truth resumida):\n{reference}\n\n"
         f"RESPOSTA_CANDIDATA (avaliar):\n{candidate}\n"
     )
-    raw = ollama_chat(base_url, model, JUDGE_SYSTEM, user, timeout=timeout_sec)
+    _ = timeout_sec
+    raw = provider_chat(JUDGE_SYSTEM, user)
     data = _extract_json_object(raw)
     out: dict[str, Any] = {}
     for k in CRITERIA_KEYS:
@@ -191,8 +159,7 @@ def run_llm_judge(  # noqa: PLR0914
     """Gera respostas RAG + pontuações do juiz por item."""
 
     t = _timeout_seconds(timeout_sec)
-    base = (os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434").rstrip("/")
-    model = resolve_ollama_model()
+    metadata = build_llm_client().metadata()
 
     items = load_golden_items(golden_path)
     limit = max_rows if max_rows is not None else len(items)
@@ -205,12 +172,8 @@ def run_llm_judge(  # noqa: PLR0914
         q = str(item["query"]).strip()
         reference = str(item["expected_answer"]).strip()
         retrieved = retrieve_contexts(q, top_k=top_k)
-        candidate = generate_rag_answer(
-            q, retrieved, base_url=base, model=model, timeout_sec=t
-        )
+        candidate = generate_rag_answer(q, retrieved)
         scores = judge_one(
-            base_url=base,
-            model=model,
             query=q,
             reference=reference,
             candidate=candidate,
@@ -251,8 +214,8 @@ def run_llm_judge(  # noqa: PLR0914
             "clareza_utilidade": "Clareza e utilidade",
         },
         "golden": str(Path(golden_path).resolve()),
-        "ollama_base": base,
-        "ollama_model": model,
+        "llm_provider": metadata.get("provider"),
+        "llm_model": metadata.get("model_name"),
         "top_k": top_k,
         "items": rows_out,
         "aggregate_mean_per_criterion": agg,

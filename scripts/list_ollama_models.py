@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Lista modelos instalados no Ollama: tenta o container Docker, senao o host
-(127.0.0.1:11434)."""
+"""Diagnostico especifico para ambientes que usam o provider Ollama."""
 
 from __future__ import annotations
 
@@ -10,10 +9,9 @@ import sys
 import urllib.error
 import urllib.request
 
-from common.config_loader import resolve_ollama_model
+from common.config_loader import resolve_llm_base_url, resolve_llm_model_name
 
 OLLAMA_CONTAINER = "tc-fiap-ollama"
-HOST_TAGS_URL = "http://127.0.0.1:11434/api/tags"
 
 
 def _from_docker() -> tuple[bool, str]:
@@ -35,8 +33,12 @@ def _from_docker() -> tuple[bool, str]:
 
 
 def _from_host_tags() -> tuple[bool, str]:
+    host_tags_url = (
+        f"{(resolve_llm_base_url('ollama') or 'http://127.0.0.1:11434').rstrip('/')}"
+        "/api/tags"
+    )
     try:
-        with urllib.request.urlopen(HOST_TAGS_URL, timeout=10) as resp:
+        with urllib.request.urlopen(host_tags_url, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.URLError as exc:
         return False, str(exc)
@@ -53,7 +55,11 @@ def _from_host_tags() -> tuple[bool, str]:
 
 
 def main() -> int:
-    model = resolve_ollama_model()
+    model = resolve_llm_model_name("ollama")
+    host_tags_url = (
+        f"{(resolve_llm_base_url('ollama') or 'http://127.0.0.1:11434').rstrip('/')}"
+        "/api/tags"
+    )
     print(f"1) Tentando `docker exec {OLLAMA_CONTAINER} ollama list`...\n")
     ok, out = _from_docker()
     if ok:
@@ -65,7 +71,7 @@ def main() -> int:
         return 0
 
     print(f"   Falhou: {out}\n")
-    print(f"2) Tentando GET {HOST_TAGS_URL} (Ollama no host Windows)...\n")
+    print(f"2) Tentando GET {host_tags_url}...\n")
     ok2, out2 = _from_host_tags()
     if ok2:
         print(out2)

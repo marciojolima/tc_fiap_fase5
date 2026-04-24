@@ -49,9 +49,10 @@ LLM_CHAT_REQUEST_LATENCY_SECONDS = Histogram(
     "Latencia das requisicoes do endpoint /llm/chat em segundos.",
     buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 45.0),
 )
-LLM_CHAT_OLLAMA_LATENCY_SECONDS = Histogram(
-    "churn_serving_llm_chat_ollama_latency_seconds",
-    "Latencia da chamada HTTP ao Ollama durante /llm/chat em segundos.",
+LLM_CHAT_PROVIDER_LATENCY_SECONDS = Histogram(
+    "churn_serving_llm_chat_provider_latency_seconds",
+    "Latencia da chamada ao provider LLM durante /llm/chat em segundos.",
+    labelnames=("provider",),
     buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 45.0),
 )
 LLM_CHAT_REQUESTS_IN_PROGRESS = Gauge(
@@ -195,10 +196,16 @@ def finish_llm_chat_request_for_monitor(
     LLM_CHAT_REQUESTS_IN_PROGRESS.dec()
 
 
-def finish_llm_chat_ollama_call_for_monitor(start_time: float) -> None:
-    """Registra a latencia da chamada ao Ollama durante /llm/chat."""
+def finish_llm_chat_provider_call_for_monitor(
+    start_time: float,
+    *,
+    provider: str,
+) -> None:
+    """Registra a latencia da chamada ao provider LLM durante /llm/chat."""
 
-    LLM_CHAT_OLLAMA_LATENCY_SECONDS.observe(perf_counter() - start_time)
+    LLM_CHAT_PROVIDER_LATENCY_SECONDS.labels(provider=provider).observe(
+        perf_counter() - start_time
+    )
 
 
 def report_rag_index_stats(stats: dict[str, object]) -> None:

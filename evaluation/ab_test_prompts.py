@@ -21,9 +21,9 @@ from pathlib import Path
 from typing import Any
 
 from agent.rag_pipeline import retrieve_contexts
-from common.config_loader import resolve_ollama_model
-from evaluation.llm_judge import judge_one, ollama_chat
+from evaluation.llm_judge import judge_one, provider_chat
 from evaluation.ragas_eval import load_golden_items
+from llm.factory import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -158,19 +158,12 @@ def generate_prompt_answer(
     question: str,
     contexts: list[str],
     variant: PromptVariant,
-    connection: tuple[str, str, int],
 ) -> str:
     empty_ctx = "(nenhum contexto recuperado)"
     ctx_block = "\n\n---\n\n".join(contexts) if contexts else empty_ctx
     user = f"Contextos:\n{ctx_block}\n\nPergunta: {question}"
-    base_url, model, timeout_sec = connection
-    return ollama_chat(
-        base_url,
-        model,
-        variant.system_prompt,
-        user,
-        timeout=timeout_sec,
-    )
+    _ = question
+    return provider_chat(variant.system_prompt, user)
 
 
 def run_prompt_ab_test(  # noqa: PLR0914
@@ -184,9 +177,7 @@ def run_prompt_ab_test(  # noqa: PLR0914
     """Executa benchmark A/B com 3 variantes de prompt sobre o golden set."""
 
     t = _timeout_seconds(timeout_sec)
-    base = (os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434").rstrip("/")
-    model = resolve_ollama_model()
-    connection = (base, model, t)
+    metadata = build_llm_client().metadata()
 
     items = load_golden_items(golden_path)
     limit = max_rows if max_rows is not None else len(items)
@@ -205,7 +196,6 @@ def run_prompt_ab_test(  # noqa: PLR0914
                 question,
                 contexts,
                 variant,
-                connection,
             )
             lexical = compute_keyword_coverage(answer, reference)
             per_variant_coverages[variant.name].append(lexical["keyword_coverage"])
@@ -213,8 +203,6 @@ def run_prompt_ab_test(  # noqa: PLR0914
             judge_scores: dict[str, Any] | None = None
             if include_judge:
                 judge_scores = judge_one(
-                    base_url=base,
-                    model=model,
                     query=question,
                     reference=reference,
                     candidate=answer,
@@ -283,8 +271,9 @@ def run_prompt_ab_test(  # noqa: PLR0914
         "schema": "prompt_ab_v1",
         "goal": "benchmark offline de prompts para LLM/RAG",
         "golden": str(Path(golden_path).resolve()),
-        "ollama_base": base,
-        "ollama_model": model,
+        "llm_provider": metadata.get("provider"),
+        "llm_model": metadata.get("model_name"),
+        "timeout_seconds": t,
         "top_k": top_k,
         "prompt_variants": [
             {

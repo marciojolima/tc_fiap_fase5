@@ -8,8 +8,13 @@ from agent import rag_pipeline
 
 
 class FakeSentenceTransformer:
-    def __init__(self, _model_name: str):
+    def __init__(
+        self,
+        _model_name: str,
+        cache_folder: str | None = None,
+    ):
         self.model_name = _model_name
+        self.cache_folder = cache_folder
 
     def encode(
         self,
@@ -56,6 +61,7 @@ def _patch_rag_environment(monkeypatch, tmp_path: Path) -> None:
                 "chunk_size": 120,
                 "chunk_overlap": 20,
                 "embedding_model_name": "fake-model",
+                "embedding_cache_dir": "artifacts/rag/embedding_model_cache",
                 "cache_dir": "artifacts/rag/cache",
                 "history_path": "artifacts/rag/index_build_history.jsonl",
                 "lexical_rerank_weight": 0.20,
@@ -129,3 +135,7 @@ def test_initialize_rag_index_uses_cache_and_answers_queries(
     contexts = rag_pipeline.retrieve_contexts("Como o projeto monitora drift?", top_k=1)
     assert contexts
     assert "drift" in contexts[0].lower()
+    assert (
+        rag_pipeline.get_rag_runtime_summary()["embedding_cache_path"]
+        == "artifacts/rag/embedding_model_cache"
+    )

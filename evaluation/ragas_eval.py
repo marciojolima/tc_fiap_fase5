@@ -1,18 +1,17 @@
-"""Avaliação do pipeline RAG com RAGAS — 4 métricas obrigatórias.
+"""Avaliacao do pipeline RAG com RAGAS - 4 metricas obrigatorias.
 
 Referência: Es et al. (2024) — RAGAS: Automated Evaluation of Retrieval
             Augmented Generation. https://arxiv.org/abs/2309.15217
 
-Requer Ollama acessível (LLM para métricas e geração de respostas) e,
+Requer um provider LLM ativo (para metricas e geracao de respostas) e,
 para embeddings usados pelo RAGAS, o pacote sentence-transformers
-(modelo multilingual configurável abaixo).
+(modelo multilingual configuravel abaixo).
 
 RAGAS 0.4 — métricas ``collections.*`` (Faithfulness instanciada etc.) herdam de
 ``SimpleBaseMetric``, mas ``evaluate()`` só aceita instâncias de
 ``ragas.metrics.base.Metric``. Por isso usamos os singletons legados
 (``faithfulness``, ``answer_relevancy``, …), que são ``Metric`` e funcionam com
-``InstructorLLM``. O LLM para métricas vem do SDK ``openai`` apontando para a API
-compatível do Ollama (``{LLM_BASE_URL}/v1``) — sem custo de API externa.
+``InstructorLLM``. O LLM para metricas usa o SDK adequado ao provider ativo.
 
 Embeddings: métricas legadas exigem interface LangChain; usamos
 ``LangchainEmbeddingsWrapper(HuggingFaceEmbeddings)``. Variáveis opcionais:
@@ -28,9 +27,8 @@ import argparse
 import json
 import logging
 import os
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +54,14 @@ from ragas.run_config import RunConfig
 
 # Imports do projeto (pacote instalado com poetry install -e .)
 from agent.rag_pipeline import retrieve_contexts
-from common.config_loader import resolve_ollama_model
+from common.config_loader import (
+    resolve_llm_api_key,
+    resolve_llm_base_url,
+    resolve_llm_max_tokens,
+    resolve_llm_model_name,
+    resolve_llm_provider,
+)
+from llm.factory import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -76,29 +81,71 @@ def _timeout_seconds(override: int | None = None) -> int:
     return DEFAULT_TIMEOUT_SEC
 
 
-def _instructor_llm_from_ollama(
-    ollama_base_url: str,
+def _instructor_llm_from_provider(
+    provider: str,
     model: str,
     timeout_sec: int,
 ) -> InstructorBaseRagasLLM:
-    """InstructorLLM via API OpenAI-compatible do Ollama (sem custo de API externa)."""
+    """Constroi o LLM do RAGAS a partir do provider configurado."""
 
-    base = ollama_base_url.rstrip("/")
-    client = OpenAI(
-        base_url=f"{base}/v1",
-        api_key="ollama",
-        timeout=float(timeout_sec),
+    max_tokens = resolve_llm_max_tokens(provider) or int(
+        os.environ.get("RAGAS_LLM_MAX_TOKENS", "4096")
     )
-    # JSON estruturado (faithfulness/NLI) com modelo pequeno: default 1024 do instructor
-    # costuma ser curto.
-    max_tokens = int(os.environ.get("RAGAS_LLM_MAX_TOKENS", "4096"))
-    return llm_factory(
-        model,
-        provider="openai",
-        client=client,
-        temperature=0,
-        max_tokens=max_tokens,
-    )
+
+    if provider == "ollama":
+        base = (resolve_llm_base_url(provider) or "http://127.0.0.1:11434").rstrip("/")
+        client = OpenAI(
+            base_url=f"{base}/v1",
+            api_key="ollama",
+            timeout=float(timeout_sec),
+        )
+        return llm_factory(
+            model,
+            provider="openai",
+            client=client,
+            temperature=0,
+            max_tokens=max_tokens,
+        )
+
+    if provider == "openai":
+        client_kwargs: dict[str, object] = {
+            "api_key": resolve_llm_api_key(provider),
+            "timeout": float(timeout_sec),
+        }
+        base_url = resolve_llm_base_url(provider)
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = OpenAI(**client_kwargs)
+        return llm_factory(
+            model,
+            provider="openai",
+            client=client,
+            temperature=0,
+            max_tokens=max_tokens,
+        )
+
+    if provider == "claude":
+        try:
+            anthropic_module = import_module("anthropic")
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "Dependencia 'anthropic' nao instalada para usar ragas_eval com Claude."
+            ) from exc
+        anthropic_client_cls = getattr(anthropic_module, "Anthropic")
+        client_kwargs: dict[str, object] = {"api_key": resolve_llm_api_key(provider)}
+        base_url = resolve_llm_base_url(provider)
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = anthropic_client_cls(**client_kwargs)
+        return llm_factory(
+            model,
+            provider="anthropic",
+            client=client,
+            temperature=0,
+            max_tokens=max_tokens,
+        )
+
+    raise ValueError(f"Provider '{provider}' nao suportado pelo ragas_eval.")
 
 
 def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper:
@@ -154,53 +201,9 @@ def load_golden_items(path: str | Path) -> list[dict[str, Any]]:
     return items
 
 
-def ollama_chat(
-    base_url: str,
-    model: str,
-    system: str,
-    user: str,
-    timeout: int = 120,
-) -> str:
-    """POST /api/chat no Ollama (mesmo contrato que serving/llm)."""
-
-    payload = json.dumps(
-        {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "stream": False,
-            "options": {"temperature": 0},
-        }
-    ).encode("utf-8")
-    req = urllib.request.Request(
-        url=f"{base_url.rstrip('/')}/api/chat",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            parsed = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"Ollama HTTP {exc.code}: {exc.reason}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Ollama indisponível: {exc}") from exc
-
-    content = (parsed.get("message") or {}).get("content", "")
-    if not content:
-        raise RuntimeError("Ollama retornou resposta vazia.")
-    return content.strip()
-
-
 def generate_rag_answer(
     question: str,
     contexts: list[str],
-    *,
-    base_url: str,
-    model: str,
-    timeout_sec: int,
 ) -> str:
     """Gera resposta condicionada aos contextos recuperados (avaliação RAG)."""
 
@@ -212,17 +215,20 @@ def generate_rag_answer(
     empty_ctx = "(nenhum contexto recuperado)"
     ctx_block = "\n\n---\n\n".join(contexts) if contexts else empty_ctx
     user = f"Contextos:\n{ctx_block}\n\nPergunta: {question}"
-    return ollama_chat(base_url, model, system, user, timeout=timeout_sec)
+    client = build_llm_client()
+    return client.chat(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+    )
 
 
 def build_dataset(  # noqa: PLR0913
     items: list[dict[str, Any]],
     *,
     top_k: int,
-    ollama_base: str,
-    ollama_model: str,
     max_rows: int | None,
-    timeout_sec: int,
 ) -> Dataset:
     """Monta o Dataset HuggingFace com colunas exigidas pelo RAGAS."""
 
@@ -232,13 +238,7 @@ def build_dataset(  # noqa: PLR0913
         q = str(item["query"]).strip()
         reference = str(item["expected_answer"]).strip()
         retrieved = retrieve_contexts(q, top_k=top_k)
-        response = generate_rag_answer(
-            q,
-            retrieved,
-            base_url=ollama_base,
-            model=ollama_model,
-            timeout_sec=timeout_sec,
-        )
+        response = generate_rag_answer(q, retrieved)
         rows.append(
             {
                 "user_input": q,
@@ -255,8 +255,6 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     *,
     top_k: int = 3,
     max_rows: int | None = None,
-    ollama_base: str | None = None,
-    ollama_model: str | None = None,
     embed_model: str = DEFAULT_EMBED_MODEL,
     timeout_sec: int | None = None,
 ) -> dict[str, float]:
@@ -264,23 +262,17 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     context_recall."""
 
     t = _timeout_seconds(timeout_sec)
-    base = (ollama_base or os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434").rstrip(
-        "/"
-    )
-    env_model = (ollama_model or "").strip()
-    model = env_model or resolve_ollama_model()
+    provider = resolve_llm_provider()
+    model = resolve_llm_model_name(provider)
 
     items = load_golden_items(golden_path)
     dataset = build_dataset(
         items,
         top_k=top_k,
-        ollama_base=base,
-        ollama_model=model,
         max_rows=max_rows,
-        timeout_sec=t,
     )
 
-    llm = _instructor_llm_from_ollama(base, model, t)
+    llm = _instructor_llm_from_provider(provider, model, t)
     embeddings = _legacy_compatible_embeddings(embed_model)
 
     nli_bs = max(1, int(os.environ.get("RAGAS_FAITHFULNESS_NLI_BATCH_SIZE", "2")))
@@ -298,9 +290,11 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     run_config = RunConfig(timeout=float(t), max_retries=3)
 
     logger.info(
-        "RAGAS: %d linhas | Ollama %s | embed %s | timeout=%ss | NLI batch=%d",
+        "RAGAS: %d linhas | provider=%s | model=%s | embed=%s | timeout=%ss | "
+        "NLI batch=%d",
         len(dataset),
-        base,
+        provider,
+        model,
         embed_model,
         t,
         nli_bs,
@@ -354,7 +348,8 @@ def _log_faithfulness_diagnostics(df: pd.DataFrame) -> None:
         logger.info(
             "faithfulness média 0 sem erro: o NLI considerou 0%% das afirmações da "
             "resposta como sustentadas pelo contexto (verdict só 0). Comum em modelos "
-            "pequenos/conservadores; teste outro OLLAMA_MODEL ou reveja se as "
+            "pequenos/conservadores; teste outro "
+            "llm.providers.<provider>.model_name ou reveja se as "
             "respostas do RAG citam bem o contexto."
         )
 
@@ -398,7 +393,7 @@ def main() -> None:
         default=None,
         metavar="SEC",
         help=(
-            "Timeout em segundos para HTTP Ollama (dataset), cliente OpenAI→Ollama e "
+            "Timeout em segundos para geracao do dataset, cliente do provider e "
             f"RunConfig (default: env RAGAS_TIMEOUT_SEC ou {DEFAULT_TIMEOUT_SEC})"
         ),
     )
@@ -423,6 +418,8 @@ def main() -> None:
         "top_k": args.top_k,
         "embed_model": args.embed_model,
         "timeout_sec": _timeout_seconds(args.timeout),
+        "llm_provider": resolve_llm_provider(),
+        "llm_model": resolve_llm_model_name(resolve_llm_provider()),
     }
     _write_json(out_path, payload)
     logger.info("Métricas: %s", scores)

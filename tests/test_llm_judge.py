@@ -24,10 +24,8 @@ def test_judge_one_parses_scores() -> None:
             '"comentario": "teste"}'
         )
 
-    with patch("evaluation.llm_judge.ollama_chat", fake_chat):
+    with patch("evaluation.llm_judge.provider_chat", fake_chat):
         out = judge_one(
-            base_url="http://x",
-            model="m",
             query="q?",
             reference="ref",
             candidate="cand",

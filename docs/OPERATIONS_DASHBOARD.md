@@ -8,7 +8,7 @@ As métricas operacionais iniciais são:
 - `churn_serving_predict_requests_total`: total de requisições por método e status HTTP
 - `churn_serving_predict_requests_in_progress`: requisições de predição em andamento
 - `churn_serving_llm_chat_latency_seconds`: latência do endpoint `POST /llm/chat`
-- `churn_serving_llm_chat_ollama_latency_seconds`: latência da chamada HTTP ao Ollama dentro do fluxo `/llm/chat`
+- `churn_serving_llm_chat_provider_latency_seconds`: latencia da chamada ao `llm_provider` dentro do fluxo `/llm/chat` (com label `provider`)
 - `churn_serving_llm_chat_requests_total`: total de requisições por método e status HTTP do chat
 - `churn_serving_llm_chat_requests_in_progress`: requisições de chat em andamento
 

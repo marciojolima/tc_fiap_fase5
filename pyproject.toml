@@ -9,8 +9,10 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13,<4"
 dependencies = [
+    "anthropic>=0.69.0",
     "joblib>=1.4.2",
     "numpy>=1.26.0",
+    "openai>=1.109.1",
     "pandas>=2.2.0",
     "pyyaml>=6.0.1",
     "rich>=13.9.0,<14",
@@ -70,6 +72,7 @@ packages = [
     { include = "scenario_analysis", from = "src" },
     { include = "security", from = "src" },
     { include = "serving", from = "src" },
+    { include = "llm", from = "src" },
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -110,16 +113,18 @@ test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
 mlflow = 'mlflow server --backend-store-uri file:./mlruns --default-artifact-root ./mlruns --host 127.0.0.1 --port 5000'
 serving = 'fastapi dev src/serving/app.py'
-# Sobe containers com as imagens ja existentes (rapido). Apos mudar codigo em src/ ou Dockerfile, rode task observability_rebuild.
-observability = 'docker compose up -d ollama ollama-pull serving mlflow prometheus grafana'
-# Reconstrói a imagem da app (COPY src) e sobe a stack — use quando a API estiver desatualizada no container.
-observability_rebuild = 'docker compose up -d --build ollama ollama-pull serving mlflow prometheus grafana'
-observability_down = 'docker compose down'
-# Lista modelos no Ollama (container tc-fiap-ollama ou, se falhar, host 127.0.0.1:11434).
+# Sobe a stack base para providers externos; para Ollama local use observability_ollama.
+observability = 'docker compose up -d redis serving mlflow prometheus grafana'
+# Reconstrói a imagem da app e sobe a stack base; para Ollama local use observability_ollama_rebuild.
+observability_rebuild = 'docker compose up -d --build redis serving mlflow prometheus grafana'
+observability_ollama = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d ollama ollama-pull redis serving mlflow prometheus grafana'
+observability_ollama_rebuild = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --build ollama ollama-pull redis serving mlflow prometheus grafana'
+observability_down = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml down'
+# Lista modelos disponiveis no ambiente Ollama configurado no YAML.
 ollama_list = 'python scripts/list_ollama_models.py'
-# RAGAS (4 métricas) sobre o golden set — requer Ollama e download do modelo de embeddings (1ª vez).
+# RAGAS (4 métricas) sobre o golden set — requer provider LLM configurado e, na 1a vez, download do modelo de embeddings.
 ragas_eval = 'python -m evaluation.ragas_eval'
-# LLM-as-judge (≥3 critérios, incl. negócio) — mesmo Ollama/golden que RAGAS
+# LLM-as-judge (>=3 criterios, incl. negocio) — usa o mesmo provider LLM configurado.
 llm_judge = 'python -m evaluation.llm_judge'
 # Benchmark offline com 3 variantes de prompt; use --with-judge para enriquecer.
 ab_test_prompts = 'python -m evaluation.ab_test_prompts'

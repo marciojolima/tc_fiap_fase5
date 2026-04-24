@@ -172,8 +172,8 @@ O benchmark A/B de prompts acontece em:
 
 - [evaluation/ab_test_prompts.py](../evaluation/ab_test_prompts.py)
 
-Ele compara três variantes de prompt sobre o mesmo golden set, sempre com o
-mesmo `retrieve_contexts()` e o mesmo modelo Ollama configurado, para responder:
+Ele compara tres variantes de prompt sobre o mesmo golden set, sempre com o
+mesmo `retrieve_contexts()` e o mesmo `llm_provider` configurado, para responder:
 
 - qual prompt cobre melhor os termos esperados da referência?
 - qual variante se sai melhor quando enriquecida com `LLM-as-judge`?

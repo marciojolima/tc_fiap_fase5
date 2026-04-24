@@ -53,15 +53,22 @@ def test_run_prompt_ab_test_returns_three_variants(monkeypatch) -> None:
         ],
     )
     monkeypatch.setattr(
-        "evaluation.ab_test_prompts.resolve_ollama_model",
-        lambda *_args, **_kwargs: "modelo-teste",
+        "evaluation.ab_test_prompts.build_llm_client",
+        lambda *_args, **_kwargs: type(
+            "StubProvider",
+            (),
+            {
+                "metadata": staticmethod(
+                    lambda: {"provider": "stub", "model_name": "modelo-teste"}
+                )
+            },
+        )(),
     )
 
     def fake_generate_answer(
         _question: str,
         _contexts: list[str],
         variant: object,
-        _connection: tuple[str, str, int],
     ) -> str:
         assert variant in PROMPT_VARIANTS
         return (

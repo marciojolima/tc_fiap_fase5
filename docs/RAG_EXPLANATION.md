@@ -166,7 +166,7 @@ Payload minimo:
 
 ```json
 {
-  "message": "Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do Ollama?",
+  "message": "Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?",
   "include_trace": true
 }
 ```
@@ -179,7 +179,7 @@ Payload minimo:
 
 ### Perguntas recomendadas para smoke test
 
-1. `Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do Ollama?`
+1. `Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?`
    Resposta esperada:
    mencao a `/llm/health`, `/llm/status` e `/llm/chat`
 
@@ -205,4 +205,4 @@ Payload minimo:
 - Se a resposta do agente ficar generica, use `include_trace=true` para confirmar
   se `rag_search` foi realmente acionada.
 - O endpoint `GET /llm/status` agora tambem ajuda no diagnostico do estado do
-  RAG, alem do estado do Ollama.
+  RAG, alem do estado do `llm_provider` ativo.

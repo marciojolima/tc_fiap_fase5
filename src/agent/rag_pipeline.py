@@ -23,6 +23,7 @@ logger = get_logger("agent.rag_pipeline")
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_CACHE_DIR = "artifacts/rag/cache"
+DEFAULT_EMBEDDING_CACHE_DIR = "artifacts/rag/embedding_model_cache"
 DEFAULT_HISTORY_PATH = "artifacts/rag/index_build_history.jsonl"
 DEFAULT_CHUNK_SIZE = 900
 DEFAULT_CHUNK_OVERLAP = 150
@@ -112,6 +113,9 @@ def _rag_config() -> dict[str, Any]:
             config.get("embedding_model_name", DEFAULT_EMBEDDING_MODEL)
         ),
         "cache_dir": str(config.get("cache_dir", DEFAULT_CACHE_DIR)),
+        "embedding_cache_dir": str(
+            config.get("embedding_cache_dir", DEFAULT_EMBEDDING_CACHE_DIR)
+        ),
         "history_path": str(config.get("history_path", DEFAULT_HISTORY_PATH)),
         "lexical_rerank_weight": float(
             config.get("lexical_rerank_weight", DEFAULT_LEXICAL_RERANK_WEIGHT)
@@ -127,6 +131,10 @@ def _rag_config() -> dict[str, Any]:
 
 def _cache_dir() -> Path:
     return ROOT_DIR / _rag_config()["cache_dir"]
+
+
+def _embedding_cache_dir() -> Path:
+    return ROOT_DIR / _rag_config()["embedding_cache_dir"]
 
 
 def _history_path() -> Path:
@@ -344,8 +352,17 @@ def _load_encoder(model_name: str) -> SentenceTransformer:
     if state.encoder is not None and state.embedding_model_name == model_name:
         return state.encoder
 
-    logger.info("Carregando modelo de embeddings do RAG | model=%s", model_name)
-    encoder = SentenceTransformer(model_name)
+    embedding_cache_dir = _embedding_cache_dir()
+    embedding_cache_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(
+        "Carregando modelo de embeddings do RAG | model=%s | cache_dir=%s",
+        model_name,
+        embedding_cache_dir,
+    )
+    encoder = SentenceTransformer(
+        model_name,
+        cache_folder=str(embedding_cache_dir),
+    )
     _replace_runtime_state(
         RAGRuntimeState(
             index=state.index,
@@ -742,6 +759,9 @@ def get_rag_runtime_summary() -> dict[str, Any]:
             "ready": False,
             "embedding_model_name": state.embedding_model_name,
             "cache_path": str(_cache_index_path().relative_to(ROOT_DIR)),
+            "embedding_cache_path": str(
+                _embedding_cache_dir().relative_to(ROOT_DIR)
+            ),
         }
 
     summary = dict(state.index.stats)
@@ -749,6 +769,9 @@ def get_rag_runtime_summary() -> dict[str, Any]:
         {
             "ready": True,
             "cache_path": str(_cache_index_path().relative_to(ROOT_DIR)),
+            "embedding_cache_path": str(
+                _embedding_cache_dir().relative_to(ROOT_DIR)
+            ),
             "history_path": str(_history_path().relative_to(ROOT_DIR)),
         }
     )

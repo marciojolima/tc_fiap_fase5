@@ -7,7 +7,7 @@ from prometheus_client import generate_latest
 
 from monitoring.metrics import (
     finish_feast_lookup_for_monitor,
-    finish_llm_chat_ollama_call_for_monitor,
+    finish_llm_chat_provider_call_for_monitor,
     finish_llm_chat_request_for_monitor,
     finish_model_predict_for_monitor,
     finish_predict_request_for_monitor,
@@ -299,8 +299,11 @@ def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:
 def test_metrics_endpoint_exposes_llm_chat_operational_metrics() -> None:
     app = create_app()
     start_time = start_llm_chat_request_for_monitor()
-    ollama_start_time = start_step_timer_for_monitor()
-    finish_llm_chat_ollama_call_for_monitor(ollama_start_time)
+    provider_start_time = start_step_timer_for_monitor()
+    finish_llm_chat_provider_call_for_monitor(
+        provider_start_time,
+        provider="ollama",
+    )
     finish_llm_chat_request_for_monitor(
         start_time,
         method="POST",
@@ -311,5 +314,5 @@ def test_metrics_endpoint_exposes_llm_chat_operational_metrics() -> None:
     assert any(getattr(route, "path", None) == "/metrics" for route in app.routes)
     assert "churn_serving_llm_chat_latency_seconds" in metrics_payload
     assert "churn_serving_llm_chat_requests_total" in metrics_payload
-    assert "churn_serving_llm_chat_ollama_latency_seconds" in metrics_payload
+    assert "churn_serving_llm_chat_provider_latency_seconds" in metrics_payload
     assert "churn_serving_llm_chat_requests_in_progress" in metrics_payload

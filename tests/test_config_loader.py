@@ -1,4 +1,9 @@
-from common.config_loader import load_global_config
+from common.config_loader import (
+    load_global_config,
+    resolve_llm_base_url,
+    resolve_llm_model_name,
+    resolve_llm_provider,
+)
 
 
 def test_load_global_config_allows_mlflow_tracking_uri_override(
@@ -19,3 +24,18 @@ def test_load_global_config_keeps_default_tracking_uri_without_override(
     config = load_global_config()
 
     assert config["mlflow"]["tracking_uri"] == "file:./mlruns"
+
+
+def test_resolve_llm_provider_and_model_name_from_global_config() -> None:
+    config = load_global_config()
+    expected_provider = config["llm"]["active_provider"]
+    expected_model = config["llm"]["providers"][expected_provider]["model_name"]
+
+    assert resolve_llm_provider(config) == expected_provider
+    assert resolve_llm_model_name(expected_provider, config) == expected_model
+
+
+def test_resolve_llm_base_url_allows_environment_override(monkeypatch) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", "http://ollama:11434")
+
+    assert resolve_llm_base_url("ollama") == "http://ollama:11434"

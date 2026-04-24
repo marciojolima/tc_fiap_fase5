@@ -590,7 +590,7 @@ Raw data
 -> carrega [`configs/evaluation/golden_set.yaml`](../../configs/evaluation/golden_set.yaml)
 -> para cada pergunta:
 -> usa [`retrieve_contexts`](../agent/rag_pipeline.py)
--> executa 3 variantes de prompt com o mesmo Ollama
+-> executa 3 variantes de prompt com o mesmo `llm_provider`
 -> calcula `keyword_coverage` contra a resposta de referência
 -> opcionalmente roda `judge_one` com `--with-judge`
 -> agrega ranking das variantes
