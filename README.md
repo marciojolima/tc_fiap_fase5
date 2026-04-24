@@ -22,7 +22,7 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 - [Arquitetura da Solução](#arquitetura-da-solução)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-- [Como Executar](#como-executar)
+- [Instalação e Execução](#instalação-e-execução)
 - [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
 - [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
@@ -205,7 +205,7 @@ tc_fiap_fase5/
 └── STATUS_ATUAL_PROJETO.md
 ```
 
-## Como Executar
+## Instalação e Execução
 
 ### Pré-requisitos
 
@@ -214,7 +214,22 @@ tc_fiap_fase5/
 - Docker e Docker Compose, para Redis, serving, MLflow, Prometheus, Grafana e, opcionalmente, Ollama
 - acesso ao remote DVC no Google Drive, caso vá baixar os dados versionados em vez de reconstruir a partir de arquivos locais
 
-### 1. Instalação completa do ambiente
+### 1. Clone do repositório
+
+Comece clonando o projeto e entrando na raiz do repositório:
+
+```bash
+git clone https://github.com/marciojolima/tc_fiap_fase5.git
+cd tc_fiap_fase5
+```
+
+Se estiver validando uma branch específica, troque para ela antes da instalação:
+
+```bash
+git checkout <nome-da-branch>
+```
+
+### 2. Instalação completa do ambiente
 
 Entre na raiz do repositório e instale as dependências do projeto. Para gerar todos os artefatos documentados neste README, use os extras opcionais de treino, serving, monitoramento, avaliação e operações:
 
@@ -228,10 +243,29 @@ Se a intenção for apenas trabalhar no núcleo Python sem DVC, Feast, MLflow, E
 poetry install
 ```
 
+Se o Poetry informar que o `pyproject.toml` mudou significativamente desde a última geração do `poetry.lock`, a branch clonada está com o lock file desatualizado. Nesse caso, regenere o lock e repita a instalação:
+
+```bash
+poetry lock
+poetry install --all-extras
+```
+
 Depois da instalação, valide se as tasks do projeto estão disponíveis:
 
 ```bash
 poetry run task --list
+```
+
+Os comandos deste README usam `poetry run`, então não é obrigatório ativar o ambiente virtual manualmente. Se preferir trabalhar com o ambiente ativado no shell atual, use:
+
+```bash
+eval "$(poetry env activate)"
+```
+
+Em ambientes com o plugin `poetry-plugin-shell` instalado, a alternativa equivalente é:
+
+```bash
+poetry shell
 ```
 
 Crie também o arquivo `.env` local usado pelo Docker Compose e pelos providers externos de LLM:
@@ -247,7 +281,22 @@ OPENAI_API_KEY=<sua-chave>
 ANTHROPIC_API_KEY=<sua-chave>
 ```
 
-### 2. Sincronização de dados versionados
+#### Poetry ainda é necessário se eu usar Docker?
+
+Para subir apenas a stack já construída com `docker compose`, o Docker executa a API e os serviços de apoio em containers. Mesmo assim, o fluxo completo do projeto ainda usa Poetry no host para os comandos batch e de produção de artefatos, como:
+
+- `poetry run dvc pull`
+- `poetry run dvc repro featurize`
+- `poetry run dvc repro train`
+- `poetry run dvc repro export_feature_store`
+- `poetry run task feastapply`
+- `poetry run task feastmaterialize`
+- `poetry run task mldrift`
+- `poetry run task eval_all`
+
+Na prática: Docker cobre serving, Redis, MLflow, Prometheus, Grafana e Ollama. Poetry cobre a orquestração local dos pipelines, DVC, geração de datasets, treino, avaliação e manutenção dos artefatos que a stack monta por volume.
+
+### 3. Sincronização de dados versionados
 
 O projeto utiliza DVC para dados e artefatos versionados. No repositório atual, o remote padrão já está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
 
@@ -345,11 +394,11 @@ dvc pull
 - se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
 - `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 
-### 3. Produção dos artefatos principais
+### 4. Produção dos artefatos principais
 
 Esta é a sequência recomendada para sair de um clone novo do repositório e produzir os artefatos necessários para treino, serving, Feature Store e monitoramento.
 
-#### 3.1 Preparar dados, features e modelo champion
+#### 4.1 Preparar dados, features e modelo champion
 
 Execute os stages do DVC na ordem de dependência:
 
@@ -370,7 +419,7 @@ Observações importantes:
 - `dvc repro export_feature_store` depende do artefato `artifacts/models/feature_pipeline.joblib`, gerado no stage `featurize`
 - a API de predição completa também depende de `artifacts/models/model_current.pkl`, gerado no stage `train`
 
-#### 3.2 Registrar e materializar a Feature Store
+#### 4.2 Registrar e materializar a Feature Store
 
 A materialização online depende do Redis. Para subir apenas o Redis:
 
@@ -397,7 +446,7 @@ Validação opcional:
 poetry run task feastdemo
 ```
 
-#### 3.3 Produzir experimentos, cenários e trilha MLflow
+#### 4.3 Produzir experimentos, cenários e trilha MLflow
 
 Para executar o champion, os challengers configurados e a suíte de cenários de negócio em uma única sequência:
 
@@ -415,7 +464,7 @@ poetry run task mlrunexperiments
 poetry run task mlscenarios
 ```
 
-#### 3.4 Produzir artefatos de monitoramento e drift
+#### 4.4 Produzir artefatos de monitoramento e drift
 
 Com o modelo e os dados processados disponíveis, gere uma execução demonstrável de drift usando a base de teste como base corrente:
 
@@ -439,7 +488,7 @@ Os principais artefatos gerados ficam em:
 - `artifacts/monitoring/drift/drift_runs.jsonl`
 - `artifacts/monitoring/retraining/`, quando o gatilho de retreino é acionado
 
-#### 3.5 Produzir artefatos de avaliação LLM
+#### 4.5 Produzir artefatos de avaliação LLM
 
 As avaliações LLM usam o provider configurado em `configs/pipeline_global_config.yaml`. Com o provider pronto, rode:
 
@@ -468,7 +517,7 @@ Saídas esperadas:
 - `artifacts/evaluation/results/prompt_ab_results.json`
 - `artifacts/evaluation/runs/*.jsonl`
 
-#### 3.6 Sequência curta para reproduzir os artefatos essenciais
+#### 4.6 Sequência curta para reproduzir os artefatos essenciais
 
 Para uma execução local completa e objetiva:
 
@@ -491,7 +540,7 @@ Se quiser validar também serving, dashboards e MLflow:
 poetry run task appstack
 ```
 
-### 4. Stack local com Docker Compose
+### 5. Stack local com Docker Compose
 
 O arquivo `.env.example` é apenas um modelo versionado com valores de referência.
 O arquivo efetivamente lido pelo `docker compose` é o `.env`, que você cria a partir dele.
@@ -526,7 +575,7 @@ Para encerrar os serviços:
 poetry run task appstack_down
 ```
 
-### 5. Execução manual isolada
+### 6. Execução manual isolada
 
 Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
 
@@ -570,7 +619,7 @@ MLflow:
 poetry run task mlflow
 ```
 
-### 6. Monitoramento e demonstração de drift
+### 7. Monitoramento e demonstração de drift
 
 Monitoramento batch:
 
@@ -590,7 +639,7 @@ Geração de cenários sintéticos:
 poetry run task mlsyntheticdrift
 ```
 
-### 7. Testes
+### 8. Testes
 
 ```bash
 poetry run task test
