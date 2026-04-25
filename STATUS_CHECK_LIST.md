@@ -59,7 +59,7 @@ Observações:
 - O benchmark formal comparando varias configuracoes de LLM/RAG ainda nao foi
   consolidado como artefato de apresentacao. O script existe em
   `evaluation/ab_test_prompts.py`, com saída padronizada em
-  `artifacts/evaluation/results/`; ainda falta executar e reportar o resultado.
+  `artifacts/evaluation/llm_agent/results/`; ainda falta executar e reportar o resultado.
 
 ### Etapa 3 — Avaliação + Observabilidade
 
@@ -83,7 +83,7 @@ Observações:
   latencia da busca vetorial em dashboard dedicado.
 - A parte de avaliação automatizada com RAGAS e LLM-as-judge ja possui scripts
   (`evaluation/ragas_eval.py` e `evaluation/llm_judge.py`), mas ainda precisa ser
-  executada e reportada formalmente em `artifacts/evaluation/results/`.
+  executada e reportada formalmente em `artifacts/evaluation/llm_agent/results/`.
 
 ### Etapa 4 — Segurança + Governança
 

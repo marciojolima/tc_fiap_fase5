@@ -52,11 +52,11 @@ Hoje os JSON mais importantes indexados sao:
 - `data/processed/feature_columns.json`
 - `data/processed/schema_report.json`
 - `data/feature_store/export_metadata.json`
-- `artifacts/monitoring/drift/drift_status.json`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/retraining/retrain_request.json`
-- `artifacts/monitoring/retraining/retrain_run.json`
-- `artifacts/monitoring/retraining/promotion_decision.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
 
 Arquivos vazios sao ignorados automaticamente no processo de descoberta.
 
@@ -168,7 +168,7 @@ Foi adicionado um dashboard dedicado no Grafana:
 
 Arquivo relacionado:
 
-- [configs/observability/grafana/dashboards/rag_operational_dashboard.json](../configs/observability/grafana/dashboards/rag_operational_dashboard.json)
+- [configs/monitoring/grafana/dashboards/rag_operational_dashboard.json](../configs/monitoring/grafana/dashboards/rag_operational_dashboard.json)
 
 Ele mostra:
 

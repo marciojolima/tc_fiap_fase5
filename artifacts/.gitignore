@@ -6,17 +6,27 @@
 !.gitignore
 !models/
 !models/.gitkeep
-!monitoring/
-!monitoring/.gitkeep
-!scenario_analysis/
-!scenario_analysis/.gitkeep
 
 # Evaluation report directories stay versioned, but generated JSON/JSONL outputs
 # are ignored by default. Add a specific final report with `git add -f` only if
 # the team explicitly decides to version it as delivery evidence.
 !evaluation/
 !evaluation/.gitkeep
-!evaluation/results/
-!evaluation/results/.gitkeep
-!evaluation/runs/
-!evaluation/runs/.gitkeep
+!evaluation/llm_agent/
+!evaluation/llm_agent/results/
+!evaluation/llm_agent/results/.gitkeep
+!evaluation/llm_agent/runs/
+!evaluation/llm_agent/runs/.gitkeep
+!evaluation/model/
+!evaluation/model/.gitkeep
+!evaluation/model/drift/
+!evaluation/model/drift/.gitkeep
+!evaluation/model/retraining/
+!evaluation/model/retraining/.gitkeep
+!evaluation/model/scenario_experiments/
+!evaluation/model/scenario_experiments/.gitkeep
+!logs/
+!logs/inference/
+!logs/inference/.gitkeep
+!rag/
+!rag/.gitkeep

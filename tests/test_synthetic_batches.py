@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from scenario_analysis.synthetic_drifts import (
+from src.evaluation.model.drift.synthetic_drifts import (
     INPUT_COLUMNS,
     SyntheticBatchConfig,
     build_high_risk_prediction_drift_batch,
@@ -61,7 +61,7 @@ def build_batch_config(tmp_path: Path) -> SyntheticBatchConfig:
         mlflow_experiment_name="monitoring-drift-test",
         output_dir=tmp_path,
         batch_size=4,
-        experiment_config_path="configs/training/model_current.yaml",
+        experiment_config_path="configs/model_lifecycle/model_current.yaml",
     )
 
 
@@ -124,11 +124,11 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
         return report_output_path
 
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.load_generation_base_dataframe",
+        "src.evaluation.model.drift.synthetic_drifts.load_generation_base_dataframe",
         build_base_dataframe,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.score_batch_predictions",
+        "src.evaluation.model.drift.synthetic_drifts.score_batch_predictions",
         lambda batch_dataframe, experiment_config_path: (
             np.array([0.1, 0.2, 0.7, 0.9]),
             np.array([0, 0, 1, 1]),
@@ -137,15 +137,15 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
         ),
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.build_drift_report_for_scenario",
+        "src.evaluation.model.drift.synthetic_drifts.build_drift_report_for_scenario",
         write_dummy_report,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.set_tracking_uri",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.set_tracking_uri",
         lambda uri: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.set_experiment",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.set_experiment",
         lambda name: None,
     )
 
@@ -157,23 +157,23 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
             return None
 
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.start_run",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.start_run",
         lambda run_name: DummyRun(),
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.log_param",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.log_param",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.log_metric",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.log_metric",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.set_tag",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.set_tag",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.log_artifact",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.log_artifact",
         lambda path, artifact_path: logged_artifacts.append((path, artifact_path)),
     )
 

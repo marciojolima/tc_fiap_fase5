@@ -33,16 +33,16 @@ Este documento resume os principais pontos de entrada do projeto, mostrando:
 | Serving predição legada | Online | `POST /predict/raw` | Retorna probabilidade e classe a partir do payload bruto |
 | Métricas Prometheus | Online | `GET /metrics` | Expõe métricas do serving |
 | Logging de inferência | Online passivo | `POST /predict` | Salva inferência em JSONL |
-| Engenharia de features | Batch manual | `python -m src.features.feature_engineering` | Gera `interim`, `processed` e `feature_pipeline.joblib` |
-| Treino | Batch manual | `python -m src.models.train` | Gera `model_current.pkl` e metadados |
-| Drift monitoring | Batch manual | `python -m src.monitoring.drift` | Gera relatório e status de drift |
+| Engenharia de features | Batch manual | `python -m src.feature_engineering.feature_engineering` | Gera `interim`, `processed` e `feature_pipeline.joblib` |
+| Treino | Batch manual | `python -m src.model_lifecycle.train` | Gera `model_current.pkl` e metadados |
+| Drift monitoring | Batch manual | `python -m src.evaluation.model.drift.drift` | Gera relatório e status de drift |
 | Retreino por drift | Batch automático interno | Drift crítico | Gera challenger e decisão champion-challenger |
-| Retreino manual | Batch manual | `python -m src.models.retraining` | Executa request de retreino |
+| Retreino manual | Batch manual | `python -m src.model_lifecycle.retraining` | Executa request de retreino |
 | Export da Feature Store | Batch manual | `python -m src.feast_ops.export` | Gera parquet offline do Feast |
 | Feast apply | Infra manual | `feast apply` | Registra definições da store |
 | Feast materialize | Infra manual | `feast materialize-incremental` | Materializa features no Redis |
-| Cenários de inferência | Batch manual | `python -m src.scenario_analysis.inference_cases` | Valida casos de negócio |
-| Drift sintético | Batch manual | `python -m src.scenario_analysis.synthetic_drifts --all` | Gera lotes e artefatos de teste |
+| Cenários de inferência | Batch manual | `python -m src.scenario_experiments.inference_cases` | Valida casos de negócio |
+| Drift sintético | Batch manual | `python -m src.scenario_experiments.synthetic_drifts --all` | Gera lotes e artefatos de teste |
 | Prompt A/B | Batch manual | `task eval_ab_test_prompts` | Compara 3 variantes de prompt no golden set |
 | Stack local | Infra manual | `docker compose up` | Sobe Redis, serving, MLflow, Prometheus e Grafana |
 
@@ -99,13 +99,13 @@ Raw data
 -> função [`load_prediction_model`](../src/serving/pipeline.py)
 -> usa `artifacts/models/model_current.pkl`
 -> aplica `predict_proba`
--> threshold definido em [`configs/training/model_current.yaml`](../configs/training/model_current.yaml)
+-> threshold definido em [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
 -> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Entradas**
 
 - payload HTTP contendo `customer_id`
-- [`configs/training/model_current.yaml`](../configs/training/model_current.yaml)
+- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
 - [`feature_store/repo.py`](../feature_store/repo.py)
 - `feature_store/data/registry.db`
 - Redis com features materializadas
@@ -193,15 +193,15 @@ Raw data
 
 `POST /predict`
 -> rota [`predict_churn`](../src/serving/routes.py)
--> função [`log_prediction_for_monitoring`](../src/monitoring/inference_log.py)
+-> função [`log_prediction_for_monitoring`](../src/evaluation/model/drift/prediction_logger.py)
 -> monta registro com features usadas + probabilidade + classe + metadados de origem
--> append em `artifacts/monitoring/inference_logs/predictions.jsonl`
+-> append em `artifacts/logs/inference/predictions.jsonl`
 
 **Arquivos envolvidos**
 
 - [`src/serving/routes.py`](../src/serving/routes.py)
-- [`src/monitoring/inference_log.py`](../src/monitoring/inference_log.py)
-- [`configs/monitoring_config.yaml`](../configs/monitoring_config.yaml)
+- [`src/evaluation/model/drift/prediction_logger.py`](../src/evaluation/model/drift/prediction_logger.py)
+- [`configs/monitoring/global_monitoring.yaml`](../configs/monitoring/global_monitoring.yaml)
 
 **Observações**
 
@@ -214,13 +214,13 @@ Raw data
 ### 2.1 Engenharia de features manual
 
 **Tipo:** batch manual  
-**Start:** `python -m src.features.feature_engineering` ou `task mlfeateng`
+**Start:** `python -m src.feature_engineering.feature_engineering` ou `task mlfeateng`
 
 **Cadeia**
 
 `feature_engineering`
 -> [`load_raw_data`](../src/common/data_loader.py)
--> valida schema raw em [`validate_raw_dataset_schema`](../src/features/schema_validation.py)
+-> valida schema raw em [`validate_raw_dataset_schema`](../src/feature_engineering/schema_validation.py)
 -> remove identificadores diretos
 -> limpa duplicados e ausências
 -> salva `data/interim/cleaned.parquet`
@@ -236,13 +236,13 @@ Raw data
 
 **Função principal**
 
-- [`main`](../src/features/feature_engineering.py)
+- [`main`](../src/feature_engineering/feature_engineering.py)
 
 **Arquivos envolvidos**
 
-- [`src/features/feature_engineering.py`](../src/features/feature_engineering.py)
-- [`src/features/pipeline_components.py`](../src/features/pipeline_components.py)
-- [`src/features/schema_validation.py`](../src/features/schema_validation.py)
+- [`src/feature_engineering/feature_engineering.py`](../src/feature_engineering/feature_engineering.py)
+- [`src/feature_engineering/pipeline_components.py`](../src/feature_engineering/pipeline_components.py)
+- [`src/feature_engineering/schema_validation.py`](../src/feature_engineering/schema_validation.py)
 - [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
 
 ### 2.2 Engenharia de features via DVC
@@ -254,7 +254,7 @@ Raw data
 
 `dvc repro featurize`
 -> stage `featurize` em [`dvc.yaml`](../dvc.yaml)
--> executa `python -m src.features.feature_engineering`
+-> executa `python -m src.feature_engineering.feature_engineering`
 
 **Observação**
 
@@ -266,16 +266,16 @@ Raw data
 ### 3.1 Treino manual
 
 **Tipo:** batch manual  
-**Start:** `python -m src.models.train` ou `task mltrain`
+**Start:** `python -m src.model_lifecycle.train` ou `task mltrain`
 
 **Cadeia**
 
 `train`
--> carrega config do experimento em [`load_experiment_training_config`](../src/models/train.py)
+-> carrega config do experimento em [`load_experiment_training_config`](../src/model_lifecycle/train.py)
 -> lê:
   - `data/processed/train.parquet`
   - `data/processed/test.parquet`
--> instancia algoritmo via [`build_model`](../src/models/catalog.py)
+-> instancia algoritmo via [`build_model`](../src/model_lifecycle/catalog.py)
 -> treina modelo
 -> calcula métricas
 -> registra run no MLflow
@@ -285,13 +285,13 @@ Raw data
 
 **Função principal**
 
-- [`run_training`](../src/models/train.py)
+- [`run_training`](../src/model_lifecycle/train.py)
 
 **Arquivos envolvidos**
 
-- [`src/models/train.py`](../src/models/train.py)
-- [`src/models/catalog.py`](../src/models/catalog.py)
-- [`configs/training/model_current.yaml`](../configs/training/model_current.yaml)
+- [`src/model_lifecycle/train.py`](../src/model_lifecycle/train.py)
+- [`src/model_lifecycle/catalog.py`](../src/model_lifecycle/catalog.py)
+- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
 
 ### 3.2 Treino via DVC
 
@@ -302,7 +302,7 @@ Raw data
 
 `dvc repro train`
 -> stage `train` em [`dvc.yaml`](../dvc.yaml)
--> executa `python -m src.models.train`
+-> executa `python -m src.model_lifecycle.train`
 
 ### 3.3 Treino múltiplo de experimentos
 
@@ -313,7 +313,7 @@ Raw data
 
 `task mlrunall`
 -> executa `task mlfeateng`
--> roda múltiplos `python -m src.models.train --config ...`
+-> roda múltiplos `python -m src.model_lifecycle.train --config ...`
 -> executa cenários de inferência
 
 **Arquivo envolvido**
@@ -325,16 +325,16 @@ Raw data
 ### 4.1 Drift monitoring manual
 
 **Tipo:** batch manual  
-**Start:** `python -m src.monitoring.drift` ou `task mldrift`
+**Start:** `python -m src.evaluation.model.drift.drift` ou `task mldrift`
 
 **Cadeia**
 
 `drift`
--> lê config em [`configs/monitoring_config.yaml`](../configs/monitoring_config.yaml)
+-> lê config em [`configs/monitoring/global_monitoring.yaml`](../configs/monitoring/global_monitoring.yaml)
 -> carrega dataset de referência:
   - `data/processed/train.parquet`
 -> carrega dataset current:
-  - `artifacts/monitoring/inference_logs/predictions.jsonl`
+  - `artifacts/logs/inference/predictions.jsonl`
 -> resolve matriz de features
 -> usa `artifacts/models/feature_pipeline.joblib` quando necessário
 -> calcula PSI por feature
@@ -347,20 +347,20 @@ Raw data
   - `critical`
   - `insufficient_data`
 -> salva:
-  - `artifacts/monitoring/drift/drift_report.html`
-  - `artifacts/monitoring/drift/drift_report_evidently.html`
-  - `artifacts/monitoring/drift/drift_metrics.json`
-  - `artifacts/monitoring/drift/drift_status.json`
-  - `artifacts/monitoring/drift/drift_runs.jsonl`
+  - `artifacts/evaluation/model/drift/drift_report.html`
+  - `artifacts/evaluation/model/drift/drift_report_evidently.html`
+  - `artifacts/evaluation/model/drift/drift_metrics.json`
+  - `artifacts/evaluation/model/drift/drift_status.json`
+  - `artifacts/evaluation/model/drift/drift_runs.jsonl`
 
 **Função principal**
 
-- [`run_drift_monitoring`](../src/monitoring/drift.py)
+- [`run_drift_monitoring`](../src/evaluation/model/drift/drift.py)
 
 **Arquivos envolvidos**
 
-- [`src/monitoring/drift.py`](../src/monitoring/drift.py)
-- [`configs/monitoring_config.yaml`](../configs/monitoring_config.yaml)
+- [`src/evaluation/model/drift/drift.py`](../src/evaluation/model/drift/drift.py)
+- [`configs/monitoring/global_monitoring.yaml`](../configs/monitoring/global_monitoring.yaml)
 
 ### 4.2 Drift demo
 
@@ -370,7 +370,7 @@ Raw data
 **Cadeia**
 
 `task mldriftdemo`
--> executa `python -m src.monitoring.drift --current data/processed/test.parquet`
+-> executa `python -m src.evaluation.model.drift.drift --current data/processed/test.parquet`
 
 **Observação**
 
@@ -385,17 +385,17 @@ Raw data
 
 **Cadeia**
 
-`python -m src.monitoring.drift`
--> função [`run_drift_monitoring`](../src/monitoring/drift.py)
--> função [`maybe_trigger_retraining`](../src/monitoring/drift.py)
--> cria `artifacts/monitoring/retraining/retrain_request.json`
+`python -m src.evaluation.model.drift.drift`
+-> função [`run_drift_monitoring`](../src/evaluation/model/drift/drift.py)
+-> função [`maybe_trigger_retraining`](../src/evaluation/model/drift/drift.py)
+-> cria `artifacts/evaluation/model/retraining/retrain_request.json`
 -> como `trigger_mode` atual é `auto_train_manual_promote`
--> chama [`run_retraining_request`](../src/models/retraining.py)
+-> chama [`run_retraining_request`](../src/model_lifecycle/retraining.py)
 -> treina challenger
 -> avalia promoção champion-challenger
 -> salva:
-  - `artifacts/monitoring/retraining/retrain_run.json`
-  - `artifacts/monitoring/retraining/promotion_decision.json`
+  - `artifacts/evaluation/model/retraining/retrain_run.json`
+  - `artifacts/evaluation/model/retraining/promotion_decision.json`
 
 **Observações**
 
@@ -405,27 +405,27 @@ Raw data
 ### 5.2 Retreino manual
 
 **Tipo:** batch manual  
-**Start:** `python -m src.models.retraining` ou `task mlretrain`
+**Start:** `python -m src.model_lifecycle.retraining` ou `task mlretrain`
 
 **Cadeia**
 
-`models.retraining`
+`model_lifecycle.retraining`
 -> lê `retrain_request.json`
 -> cria config temporária de challenger
--> chama [`run_training`](../src/models/train.py)
+-> chama [`run_training`](../src/model_lifecycle/train.py)
 -> salva challenger em `artifacts/models/challengers/`
 -> compara champion vs challenger
 -> grava decisão de promoção
 
 **Função principal**
 
-- [`run_retraining_request`](../src/models/retraining.py)
+- [`run_retraining_request`](../src/model_lifecycle/retraining.py)
 
 **Arquivos envolvidos**
 
-- [`src/models/retraining.py`](../src/models/retraining.py)
-- [`src/models/promotion.py`](../src/models/promotion.py)
-- [`src/models/train.py`](../src/models/train.py)
+- [`src/model_lifecycle/retraining.py`](../src/model_lifecycle/retraining.py)
+- [`src/model_lifecycle/promotion.py`](../src/model_lifecycle/promotion.py)
+- [`src/model_lifecycle/train.py`](../src/model_lifecycle/train.py)
 
 ## 6. Gatilhos da Feature Store
 
@@ -528,11 +528,11 @@ Raw data
 ### 7.1 Cenários de inferência
 
 **Tipo:** batch manual  
-**Start:** `python -m src.scenario_analysis.inference_cases` ou `task mlscenarios`
+**Start:** `python -m src.scenario_experiments.inference_cases` ou `task mlscenarios`
 
 **Cadeia**
 
-`scenario_analysis.inference_cases`
+`scenario_experiments.inference_cases`
 -> lê suíte YAML de cenários
 -> monta payloads
 -> usa o mesmo pipeline de serving
@@ -540,17 +540,17 @@ Raw data
 
 **Arquivos envolvidos**
 
-- [`src/scenario_analysis/inference_cases.py`](../src/scenario_analysis/inference_cases.py)
-- [`configs/scenario_analysis/inference_cases.yaml`](../configs/scenario_analysis/inference_cases.yaml)
+- [`src/scenario_experiments/inference_cases.py`](../src/scenario_experiments/inference_cases.py)
+- [`configs/scenario_experiments/inference_cases.yaml`](../configs/scenario_experiments/inference_cases.yaml)
 
 ### 7.2 Drift sintético
 
 **Tipo:** batch manual  
-**Start:** `python -m src.scenario_analysis.synthetic_drifts --all` ou `task mlsyntheticdrift`
+**Start:** `python -m src.scenario_experiments.synthetic_drifts --all` ou `task mlsyntheticdrift`
 
 **Cadeia**
 
-`scenario_analysis.synthetic_drifts`
+`src.evaluation.model.drift.synthetic_drifts`
 -> gera lotes sintéticos
 -> carrega pipeline e modelo atuais
 -> calcula previsões do lote
@@ -559,7 +559,7 @@ Raw data
 
 **Arquivos envolvidos**
 
-- [`src/scenario_analysis/synthetic_drifts.py`](../src/scenario_analysis/synthetic_drifts.py)
+- [`src/evaluation/model/drift/synthetic_drifts.py`](../src/evaluation/model/drift/synthetic_drifts.py)
 - [`docs/SYNTHETIC_PREDICTIONS_GENERATOR.md`](SYNTHETIC_PREDICTIONS_GENERATOR.md)
 
 ## 8. Gatilhos de Infraestrutura Local
@@ -599,27 +599,27 @@ Raw data
 ### 9.1 Prompt A/B offline
 
 **Tipo:** batch manual  
-**Start:** `python -m evaluation.ab_test_prompts` ou `task eval_ab_test_prompts`
+**Start:** `python -m src.evaluation.llm_agent.ab_test_prompts` ou `task eval_ab_test_prompts`
 
 **Cadeia**
 
-`evaluation.ab_test_prompts`
--> carrega [`configs/evaluation/golden_set.yaml`](../configs/evaluation/golden_set.yaml)
+`src.evaluation.llm_agent.ab_test_prompts`
+-> carrega [`data/golden-set.json`](../data/golden-set.json)
 -> para cada pergunta:
 -> usa [`retrieve_contexts`](../src/agent/rag_pipeline.py)
 -> executa 3 variantes de prompt com o mesmo `llm_provider`
 -> calcula `keyword_coverage` contra a resposta de referência
 -> opcionalmente roda `judge_one` com `--with-judge`
 -> agrega ranking das variantes
--> salva `artifacts/evaluation/results/prompt_ab_results.json`
--> registra histórico em `artifacts/evaluation/runs/prompt_ab_runs.jsonl`
+-> salva `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`
+-> registra histórico em `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`
 
 **Arquivos envolvidos**
 
-- [`evaluation/ab_test_prompts.py`](../evaluation/ab_test_prompts.py)
-- [`configs/evaluation/golden_set.yaml`](../configs/evaluation/golden_set.yaml)
+- [`evaluation/ab_test_prompts.py`](../src/evaluation/llm_agent/ab_test_prompts.py)
+- [`data/golden-set.json`](../data/golden-set.json)
 - [`src/agent/rag_pipeline.py`](../src/agent/rag_pipeline.py)
-- [`evaluation/llm_judge.py`](../evaluation/llm_judge.py)
+- [`evaluation/llm_judge.py`](../src/evaluation/llm_agent/llm_judge.py)
 
 **Observações**
 
@@ -639,14 +639,14 @@ Raw data
 
 ### Batch manual
 
-- `python -m src.features.feature_engineering`
-- `python -m src.models.train`
-- `python -m src.monitoring.drift`
-- `python -m src.models.retraining`
+- `python -m src.feature_engineering.feature_engineering`
+- `python -m src.model_lifecycle.train`
+- `python -m src.evaluation.model.drift.drift`
+- `python -m src.model_lifecycle.retraining`
 - `python -m src.feast_ops.export`
-- `python -m src.scenario_analysis.inference_cases`
-- `python -m src.scenario_analysis.synthetic_drifts --all`
-- `python -m evaluation.ab_test_prompts`
+- `python -m src.scenario_experiments.inference_cases`
+- `python -m src.scenario_experiments.synthetic_drifts --all`
+- `python -m src.evaluation.llm_agent.ab_test_prompts`
 - `task eval_ab_test_prompts`
 
 ### Batch manual com DVC

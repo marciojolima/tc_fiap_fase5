@@ -329,7 +329,7 @@ def test_predict_churn_tool_returns_structured_output(monkeypatch) -> None:
 
 
 def test_drift_status_tool_returns_structured_output(tmp_path, monkeypatch) -> None:
-    status_dir = tmp_path / "artifacts" / "monitoring" / "drift"
+    status_dir = tmp_path / "artifacts" / "evaluation" / "model" / "drift"
     status_dir.mkdir(parents=True, exist_ok=True)
     (status_dir / "drift_status.json").write_text(
         '{"status": "critical", "message": "PSI acima do limite"}',

@@ -1,0 +1,14 @@
+services:
+  serving:
+    command:
+      - uvicorn
+      - serving.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./src:/app/src

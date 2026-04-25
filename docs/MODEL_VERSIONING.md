@@ -16,10 +16,10 @@ para atender ao requisito de rastreabilidade esperado no Datathon.
 ## Onde isso acontece
 
 O enriquecimento de metadados acontece em
-`src/models/train.py`, durante o logging da run no MLflow.
+`src/model_lifecycle/train.py`, durante o logging da run no MLflow.
 
 Os valores sao definidos a partir de duas fontes:
-- configuracao declarativa do experimento em `configs/training/*.yaml`
+- configuracao declarativa do experimento em `configs/model_lifecycle/*.yaml`
 - metadados tecnicos calculados automaticamente no momento do treino
 
 ## Metadados registrados no MLflow
@@ -48,7 +48,7 @@ Esses campos sao registrados como `params` e/ou `tags`, para facilitar:
 
 ### Declarados no YAML do experimento
 
-Exemplo em `configs/training/model_current.yaml`:
+Exemplo em `configs/model_lifecycle/model_current.yaml`:
 
 ```yaml
 experiment:

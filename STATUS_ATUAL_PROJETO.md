@@ -44,7 +44,7 @@ Os maiores gaps frente ao que a live enfatizou continuam em:
 - [x] Execução de múltiplos experimentos de treino por configuração
 - [ ] Baseline adicional em PyTorch
 - [x] Notebook de EDA incluído no repositório
-- [x] Golden set formal em `configs/evaluation/golden_set.yaml`
+- [x] Golden set formal em `data/golden-set.json`
 - [x] Feature store com Feast introduzida no projeto
 - [x] Redis configurado como online store local via Docker Compose
 - [x] Camada offline da feature store derivada do pipeline atual, sem duplicar regras de features
@@ -98,7 +98,7 @@ Observações:
 ### Etapa 3: Avaliação e observabilidade
 
 - [x] Estrutura de avaliação criada em `evaluation/`
-- [x] Configuração de monitoramento dedicada em `configs/monitoring_config.yaml`
+- [x] Configuração de monitoramento dedicada em `configs/monitoring/global_monitoring.yaml`
 - [x] Módulos base de drift e métricas presentes em `src/monitoring/`
 - [x] Dashboard operacional Prometheus/Grafana
 - [x] Drift detection operacional e automatizado em fluxo local batch
@@ -127,8 +127,8 @@ Observações:
   delta de RSS, tempo por etapa de startup, cache hit e latencia da busca.
 - `evaluation/ragas_eval.py`, `evaluation/llm_judge.py` e
   `evaluation/ab_test_prompts.py` existem e têm testes de suporte. As saídas
-  foram padronizadas para `artifacts/evaluation/results/`, com histórico em
-  `artifacts/evaluation/runs/`, mas ainda precisam ser executadas e reportadas
+  foram padronizadas para `artifacts/evaluation/llm_agent/results/`, com histórico em
+  `artifacts/evaluation/llm_agent/runs/`, mas ainda precisam ser executadas e reportadas
   formalmente.
 
 ### Etapa 4: Segurança e governança
@@ -251,21 +251,21 @@ mais segura hoje parece ser:
 
 ## Evidências-Chave do Repositório
 
-- `artifacts/monitoring/drift/drift_report.html`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/drift/drift_status.json`
-- `artifacts/monitoring/drift/drift_runs.jsonl`
-- `artifacts/monitoring/retraining/retrain_request.json`
-- `artifacts/monitoring/retraining/retrain_run.json`
-- `artifacts/monitoring/retraining/promotion_decision.json`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
 - `artifacts/models/model_current.pkl`
 - `artifacts/models/model_current_metadata.json`
 - `artifacts/models/challengers/`
 - `artifacts/rag/cache/manifest.json`
 - `artifacts/rag/index_build_history.jsonl`
-- `artifacts/evaluation/results/`
-- `artifacts/evaluation/runs/`
-- `configs/evaluation/golden_set.yaml`
+- `artifacts/evaluation/llm_agent/results/`
+- `artifacts/evaluation/llm_agent/runs/`
+- `data/golden-set.json`
 - `evaluation/ragas_eval.py`
 - `evaluation/llm_judge.py`
 - `evaluation/ab_test_prompts.py`

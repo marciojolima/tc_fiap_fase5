@@ -6,7 +6,8 @@ Objetivo:
 - facilitar testes locais do pipeline batch de drift sem depender da API.
 
 Saída padrão:
-- artifacts/monitoring/drift/experiments/predictions/synthetic_predictions_v1.jsonl
+- artifacts/evaluation/model/drift/experiments/predictions/
+  synthetic_predictions_v1.jsonl
 
 Exemplos:
 python -m scripts.generate_synthetic_predictions \
@@ -18,9 +19,9 @@ python -m scripts.generate_synthetic_predictions \
 python -m scripts.generate_synthetic_predictions \
   --num-predictions 120 \
   --drift with_drift \
-  --output artifacts/monitoring/drift/experiments/predictions/\
+  --output artifacts/evaluation/model/drift/experiments/predictions/\
 synthetic_predictions_v1_with_drift_120.jsonl \
-  --metadata-output artifacts/monitoring/drift/experiments/predictions/\
+  --metadata-output artifacts/evaluation/model/drift/experiments/predictions/\
 synthetic_predictions_v1_with_drift_120.metadata.json
 """
 
@@ -38,11 +39,11 @@ import pandas as pd
 from src.common.logger import get_logger
 from src.common.seed import set_global_seed
 from src.common.timezone import now_isoformat
-from src.monitoring.inference_log import (
+from src.evaluation.model.drift.prediction_logger import (
     append_inference_log,
     build_inference_log_record,
 )
-from src.scenario_analysis.synthetic_drifts import (
+from src.evaluation.model.drift.synthetic_drifts import (
     INPUT_COLUMNS,
     build_baseline_like_batch,
     build_mixed_extreme_drift_batch,
@@ -55,10 +56,10 @@ from src.serving.pipeline import (
 
 DEFAULT_INPUT_PATH = Path("data/raw/Customer-Churn-Records.csv")
 DEFAULT_OUTPUT_PATH = Path(
-    "artifacts/monitoring/drift/experiments/predictions/"
+    "artifacts/evaluation/model/drift/experiments/predictions/"
     "synthetic_predictions_v1.jsonl"
 )
-DEFAULT_EXPERIMENT_CONFIG_PATH = "configs/training/model_current.yaml"
+DEFAULT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/model_current.yaml"
 DEFAULT_SEED = 42
 _DRIFT_MODE_NO_DRIFT = "no_drift"
 _DRIFT_MODE_WITH_DRIFT = "with_drift"

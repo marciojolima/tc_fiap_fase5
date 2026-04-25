@@ -6,10 +6,10 @@ import re
 import pytest
 from prometheus_client import generate_latest
 
+from agent.llm_gateway.providers.base import ProviderChatConfig
+from agent.llm_gateway.providers.ollama import OllamaProvider
 from agent.react_agent import AgentRunResult
 from agent.tools import AgentTool
-from llm.providers.base import ProviderChatConfig
-from llm.providers.ollama import OllamaProvider
 from serving.app import create_app
 from serving.llm_routes import chat_with_react_agent
 from serving.schemas import LLMChatRequest

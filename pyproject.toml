@@ -62,17 +62,16 @@ ops = [
 
 [tool.poetry]
 packages = [
-    { include = "evaluation" },
     { include = "agent", from = "src" },
     { include = "common", from = "src" },
+    { include = "evaluation", from = "src" },
     { include = "feast_ops", from = "src" },
-    { include = "features", from = "src" },
-    { include = "models", from = "src" },
+    { include = "feature_engineering", from = "src" },
+    { include = "model_lifecycle", from = "src" },
     { include = "monitoring", from = "src" },
-    { include = "scenario_analysis", from = "src" },
+    { include = "scenario_experiments", from = "src" },
     { include = "security", from = "src" },
     { include = "serving", from = "src" },
-    { include = "llm", from = "src" },
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -96,44 +95,46 @@ addopts = '-p no:warnings'
 [tool.taskipy.tasks]
 appstack = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml up -d'
 appstack_down = 'docker compose -f docker-compose.yml -f docker-compose.ollama.yml down'
+appstack_dev = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d'
+appstack_dev_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build'
 appstack_ollama = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d'
 appstack_ollama_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --build'
 appstack_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml up -d --build'
 # Benchmark offline com 3 variantes de prompt; use --with-judge para enriquecer.
-eval_ab_test_prompts = 'python -m evaluation.ab_test_prompts'
-eval_ab_test_prompts_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ab_test_prompts'
-eval_ab_test_prompts_sample = 'python -m evaluation.ab_test_prompts --max-rows 5'
-eval_ab_test_prompts_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ab_test_prompts --max-rows 5'
-eval_all = 'python -m evaluation.ragas_eval && python -m evaluation.llm_judge && python -m evaluation.ab_test_prompts'
-eval_all_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ragas_eval && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.llm_judge && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ab_test_prompts'
-eval_all_sample = 'python -m evaluation.ragas_eval --max-rows 5 && python -m evaluation.llm_judge --max-rows 5 && python -m evaluation.ab_test_prompts --max-rows 5'
-eval_all_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ragas_eval --max-rows 5 && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.llm_judge --max-rows 5 && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ab_test_prompts --max-rows 5'
+eval_ab_test_prompts = 'python -m src.evaluation.llm_agent.ab_test_prompts'
+eval_ab_test_prompts_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts'
+eval_ab_test_prompts_sample = 'python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
+eval_ab_test_prompts_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
+eval_all = 'python -m src.evaluation.llm_agent.ragas_eval && python -m src.evaluation.llm_agent.llm_judge && python -m src.evaluation.llm_agent.ab_test_prompts'
+eval_all_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts'
+eval_all_sample = 'python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
+eval_all_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
 # LLM-as-judge (>=3 criterios, incl. negocio) — usa o mesmo provider LLM configurado.
-eval_llm_judge = 'python -m evaluation.llm_judge'
-eval_llm_judge_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.llm_judge'
-eval_llm_judge_sample = 'python -m evaluation.llm_judge --max-rows 5'
-eval_llm_judge_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.llm_judge --max-rows 5'
+eval_llm_judge = 'python -m src.evaluation.llm_agent.llm_judge'
+eval_llm_judge_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge'
+eval_llm_judge_sample = 'python -m src.evaluation.llm_agent.llm_judge --max-rows 5'
+eval_llm_judge_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge --max-rows 5'
 # RAGAS (4 métricas) sobre o golden set — requer provider LLM configurado e, na 1a vez, download do modelo de embeddings.
-eval_ragas = 'python -m evaluation.ragas_eval'
-eval_ragas_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ragas_eval'
-eval_ragas_sample = 'python -m evaluation.ragas_eval --max-rows 5'
-eval_ragas_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m evaluation.ragas_eval --max-rows 5'
+eval_ragas = 'python -m src.evaluation.llm_agent.ragas_eval'
+eval_ragas_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval'
+eval_ragas_sample = 'python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
+eval_ragas_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
 feastapply = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store apply'
 feastdemo = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 python -m src.feast_ops.demo --customer-id 15634602'
 feastexport = 'python -m src.feast_ops.export'
 feastmaterialize = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store materialize-incremental $(date -u +"%Y-%m-%dT%H:%M:%S")'
 format = 'ruff format'
 lint = 'ruff check'
-mldrift = 'python -m src.monitoring.drift'
-mldriftdemo = 'python -m src.monitoring.drift --current data/processed/test.parquet'
-mlfeateng = 'python -m src.features.feature_engineering'
+mldrift = 'python -m src.evaluation.model.drift.drift'
+mldriftdemo = 'python -m src.evaluation.model.drift.drift --current data/processed/test.parquet'
+mlfeateng = 'python -m src.feature_engineering.feature_engineering'
 mlflow = 'mlflow server --backend-store-uri file:./mlruns --default-artifact-root ./mlruns --host 127.0.0.1 --port 5000'
-mlretrain = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.retraining'
-mlrunall = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml && python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
-mlrunexperiments = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train && python -m src.models.train --config configs/training/experiments/random_forest_v1.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v2.yaml && python -m src.models.train --config configs/training/experiments/random_forest_v3.yaml && python -m src.models.train --config configs/training/experiments/xgboost_v1.yaml && python -m src.models.train --config configs/training/experiments/gradient_boosting_v1.yaml'
-mlscenarios = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.scenario_analysis.inference_cases --suite-file configs/scenario_analysis/inference_cases.yaml'
-mlsyntheticdrift = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.scenario_analysis.synthetic_drifts --all'
-mltrain = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.models.train'
+mlretrain = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.model_lifecycle.retraining'
+mlrunall = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.model_lifecycle.train && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v1.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v2.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v3.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/xgboost_v1.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v1.yaml && python -m src.scenario_experiments.inference_cases --suite-file configs/scenario_experiments/inference_cases.yaml'
+mlrunexperiments = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.model_lifecycle.train && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v1.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v2.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v3.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/xgboost_v1.yaml && python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v1.yaml'
+mlscenarios = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.scenario_experiments.inference_cases --suite-file configs/scenario_experiments/inference_cases.yaml'
+mlsyntheticdrift = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.evaluation.model.drift.synthetic_drifts --all'
+mltrain = 'export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}; python -m src.model_lifecycle.train'
 # Lista modelos disponiveis no ambiente Ollama configurado no YAML.
 ollama_list = 'python scripts/list_ollama_models.py'
 post_test = 'coverage html'

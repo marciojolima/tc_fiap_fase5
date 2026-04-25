@@ -18,7 +18,7 @@ que já acontecem no projeto. A ideia é evitar ambiguidade entre:
 - avaliação futura para trilhas com LLM
 
 Hoje o projeto já possui avaliação real em várias camadas, mesmo que a pasta
-`evaluation/` ainda esteja reservada principalmente para a trilha futura de IA
+`src/evaluation/llm_agent/` ainda esteja reservada principalmente para a trilha futura de IA
 generativa.
 
 ## Taxonomia de Avaliação do Projeto
@@ -29,7 +29,7 @@ Este é o eixo mais tradicional de avaliação supervisionada do projeto.
 
 Ele acontece durante o treino em:
 
-- [src/models/train.py](../src/models/train.py)
+- [src/model_lifecycle/train.py](../src/model_lifecycle/train.py)
 
 As métricas calculadas hoje incluem:
 
@@ -58,8 +58,8 @@ controlados, que funcionam como testes de sanidade orientados a negócio.
 
 Esse fluxo acontece em:
 
-- [src/scenario_analysis/inference_cases.py](../src/scenario_analysis/inference_cases.py)
-- [configs/scenario_analysis/inference_cases.yaml](../configs/scenario_analysis/inference_cases.yaml)
+- [src/scenario_experiments/inference_cases.py](../src/scenario_experiments/inference_cases.py)
+- [configs/scenario_experiments/inference_cases.yaml](../configs/scenario_experiments/inference_cases.yaml)
 
 Essa avaliação responde perguntas como:
 
@@ -77,8 +77,8 @@ produção simulada ou local.
 
 Esse fluxo acontece em:
 
-- [src/monitoring/drift.py](../src/monitoring/drift.py)
-- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
+- [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
 
 Os principais sinais avaliados hoje são:
 
@@ -90,10 +90,10 @@ Os principais sinais avaliados hoje são:
 
 Os artefatos gerados por esse processo incluem:
 
-- `artifacts/monitoring/drift/drift_report.html`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/drift/drift_status.json`
-- `artifacts/monitoring/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
 
 Essa camada não mede “qualidade supervisionada” no sentido clássico. Ela mede:
 
@@ -107,14 +107,14 @@ substituição de modelo.
 
 Esse fluxo acontece em:
 
-- [src/models/retraining.py](../src/models/retraining.py)
-- [src/models/promotion.py](../src/models/promotion.py)
+- [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
+- [src/model_lifecycle/promotion.py](../src/model_lifecycle/promotion.py)
 
 Os artefatos principais são:
 
-- `artifacts/monitoring/retraining/retrain_request.json`
-- `artifacts/monitoring/retraining/retrain_run.json`
-- `artifacts/monitoring/retraining/promotion_decision.json`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
 
 Aqui a avaliação não é mais apenas “o modelo treinou”. Ela passa a responder:
 
@@ -138,7 +138,7 @@ e teste do comportamento do monitoramento.
 
 Esse fluxo acontece em:
 
-- [src/scenario_analysis/synthetic_drifts.py](../src/scenario_analysis/synthetic_drifts.py)
+- [src/evaluation/model/drift/synthetic_drifts.py](../src/evaluation/model/drift/synthetic_drifts.py)
 
 Ele permite:
 
@@ -151,12 +151,12 @@ depender apenas de tráfego real.
 
 ### 6. Avaliação para trilhas com LLM
 
-A pasta `evaluation/` agora concentra três trilhas complementares de avaliação
+A pasta `src/evaluation/llm_agent/` agora concentra três trilhas complementares de avaliação
 para IA generativa:
 
-- [evaluation/ragas_eval.py](../evaluation/ragas_eval.py)
-- [evaluation/llm_judge.py](../evaluation/llm_judge.py)
-- [evaluation/ab_test_prompts.py](../evaluation/ab_test_prompts.py)
+- [src/evaluation/llm_agent/ragas_eval.py](../src/evaluation/llm_agent/ragas_eval.py)
+- [src/evaluation/llm_agent/llm_judge.py](../src/evaluation/llm_agent/llm_judge.py)
+- [src/evaluation/llm_agent/ab_test_prompts.py](../src/evaluation/llm_agent/ab_test_prompts.py)
 
 Esses módulos não fazem parte do fluxo online do agente. Eles funcionam como
 gatilhos offline de benchmark e controle de qualidade:
@@ -176,7 +176,7 @@ Hoje a leitura correta do projeto é:
 
 O benchmark A/B de prompts acontece em:
 
-- [evaluation/ab_test_prompts.py](../evaluation/ab_test_prompts.py)
+- [src/evaluation/llm_agent/ab_test_prompts.py](../src/evaluation/llm_agent/ab_test_prompts.py)
 
 Ele compara tres variantes de prompt sobre o mesmo golden set, sempre com o
 mesmo `retrieve_contexts()` e o mesmo `llm_provider` configurado, para responder:
@@ -187,8 +187,8 @@ mesmo `retrieve_contexts()` e o mesmo `llm_provider` configurado, para responder
 
 O fluxo gera:
 
-- `artifacts/evaluation/results/prompt_ab_results.json`
-- `artifacts/evaluation/runs/prompt_ab_runs.jsonl`
+- `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`
+- `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`
 
 Métricas usadas hoje:
 
@@ -207,7 +207,7 @@ Hoje o projeto já possui avaliação real em pelo menos quatro frentes:
 3. avaliação operacional via drift
 4. avaliação de promoção via champion-challenger
 
-A pasta `evaluation/` ainda não é o centro de toda avaliação do projeto.
+A pasta `src/evaluation/llm_agent/` ainda não é o centro de toda avaliação do projeto.
 Ela está mais associada à trilha futura de LLM evaluation. Por isso, a taxonomia
 mais correta neste momento é entender “evaluation” no projeto como um conceito
 distribuído por vários módulos, e não como uma única pasta funcional.

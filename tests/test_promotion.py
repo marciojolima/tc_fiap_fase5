@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from models.promotion import (
+from model_lifecycle.promotion import (
     build_promotion_decision_payload,
     evaluate_challenger_promotion,
     resolve_promotion_rule,

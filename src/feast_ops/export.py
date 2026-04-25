@@ -12,7 +12,7 @@ from common.config_loader import load_config
 from common.data_loader import load_raw_data
 from common.logger import get_logger
 from common.timezone import get_project_timezone_name
-from features.feature_engineering import (
+from feature_engineering.feature_engineering import (
     clean_interim_data,
     load_feature_engineering_config,
     remove_direct_identifier_columns,

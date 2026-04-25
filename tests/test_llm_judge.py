@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from evaluation.llm_judge import CRITERIA_KEYS, extract_json_object, judge_one
+from src.evaluation.llm_agent.llm_judge import (
+    CRITERIA_KEYS,
+    extract_json_object,
+    judge_one,
+)
 
 _EXPECTED_ADEQUACAO = 4
 _SCORE_MAX = 5
@@ -24,7 +28,7 @@ def test_judge_one_parses_scores() -> None:
             '"comentario": "teste"}'
         )
 
-    with patch("evaluation.llm_judge.provider_chat", fake_chat):
+    with patch("src.evaluation.llm_agent.llm_judge.provider_chat", fake_chat):
         out = judge_one(
             query="q?",
             reference="ref",

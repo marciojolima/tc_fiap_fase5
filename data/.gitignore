@@ -3,6 +3,7 @@
 # Except these files
 !.gitignore
 !**/.gitkeep
+!golden-set.json
 !raw/
 !raw/.gitignore
 !raw/*.dvc

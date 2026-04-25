@@ -3,7 +3,6 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from common.logger import get_logger
-from monitoring.inference_log import PredictionLogContext, log_prediction_for_monitoring
 from monitoring.metrics import (
     finish_predict_request_for_monitor,
     start_predict_request_for_monitor,
@@ -18,6 +17,10 @@ from serving.schemas import (
     ChurnCustomerLookupRequest,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
+)
+from src.evaluation.model.drift.prediction_logger import (
+    PredictionLogContext,
+    log_prediction_for_monitoring,
 )
 
 router = APIRouter()

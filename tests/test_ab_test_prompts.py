@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from evaluation.ab_test_prompts import (
+from src.evaluation.llm_agent.ab_test_prompts import (
     PROMPT_VARIANTS,
     compute_keyword_coverage,
     extract_reference_terms,
@@ -34,7 +34,7 @@ def test_compute_keyword_coverage_reports_hits_and_missing_terms() -> None:
 
 def test_run_prompt_ab_test_returns_three_variants(monkeypatch) -> None:
     monkeypatch.setattr(
-        "evaluation.ab_test_prompts.load_golden_items",
+        "src.evaluation.llm_agent.ab_test_prompts.load_golden_items",
         lambda _path: [
             {
                 "id": "gs-test",
@@ -47,13 +47,13 @@ def test_run_prompt_ab_test_returns_three_variants(monkeypatch) -> None:
         ],
     )
     monkeypatch.setattr(
-        "evaluation.ab_test_prompts.retrieve_contexts",
+        "src.evaluation.llm_agent.ab_test_prompts.retrieve_contexts",
         lambda *_args, **_kwargs: [
             "README.md\nRotas /llm/health, /llm/status e /llm/chat."
         ],
     )
     monkeypatch.setattr(
-        "evaluation.ab_test_prompts.build_llm_client",
+        "src.evaluation.llm_agent.ab_test_prompts.build_llm_client",
         lambda *_args, **_kwargs: type(
             "StubProvider",
             (),
@@ -78,7 +78,7 @@ def test_run_prompt_ab_test_returns_three_variants(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "evaluation.ab_test_prompts.generate_prompt_answer",
+        "src.evaluation.llm_agent.ab_test_prompts.generate_prompt_answer",
         fake_generate_answer,
     )
 

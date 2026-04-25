@@ -11,7 +11,10 @@ from typing import Any, Callable
 from agent.rag_pipeline import retrieve_contexts
 from common.config_loader import load_global_config
 from common.logger import get_logger
-from scenario_analysis.inference_cases import AnalysisScenario, run_scenario_prediction
+from scenario_experiments.inference_cases import (
+    AnalysisScenario,
+    run_scenario_prediction,
+)
 from serving.pipeline import (
     load_serving_config,
     predict_from_dataframe_with_config,
@@ -242,7 +245,7 @@ def _rag_search_tool(query: str) -> str:
 def _drift_status_tool(_: str) -> str:
     """Return latest drift status if available."""
 
-    status_path = Path("artifacts/monitoring/drift/drift_status.json")
+    status_path = Path("artifacts/evaluation/model/drift/drift_status.json")
     if not status_path.exists():
         return _json_tool_output(
             {

@@ -1,21 +1,21 @@
 # Scenario Analysis
 
-O modulo `src.scenario_analysis.inference_cases` executa cenarios hipoteticos
+O modulo `src.scenario_experiments.inference_cases` executa cenarios hipoteticos
 de churn e registra cada execucao em um experimento separado no MLflow.
 
 ## Executar a suite principal
 
 ```bash
-python -m src.scenario_analysis.inference_cases \
-  --config configs/training/model_current.yaml \
-  --suite-file configs/scenario_analysis/inference_cases.yaml
+python -m src.scenario_experiments.inference_cases \
+  --config configs/model_lifecycle/model_current.yaml \
+  --suite-file configs/scenario_experiments/inference_cases.yaml
 ```
 
 ## Executar um cenario unico
 
 ```bash
-python -m src.scenario_analysis.inference_cases \
-  --config configs/training/model_current.yaml \
+python -m src.scenario_experiments.inference_cases \
+  --config configs/model_lifecycle/model_current.yaml \
   --scenario-name high_churn_manual \
   --payload-json '{"Age": 92, "Balance": 0, "Card Type": "SILVER", "CreditScore": 350, "EstimatedSalary": 11.58, "Gender": "Female", "Geography": "Germany", "HasCrCard": 0, "IsActiveMember": 0, "NumOfProducts": 4, "Point Earned": 119, "Tenure": 0}'
 ```

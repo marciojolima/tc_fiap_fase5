@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import json
 
-from evaluation.ab_test_prompts import DEFAULT_HISTORY_OUT as PROMPT_HISTORY_OUT
-from evaluation.ab_test_prompts import DEFAULT_OUT as PROMPT_OUT
-from evaluation.artifacts import (
+from src.evaluation.llm_agent.ab_test_prompts import (
+    DEFAULT_HISTORY_OUT as PROMPT_HISTORY_OUT,
+)
+from src.evaluation.llm_agent.ab_test_prompts import DEFAULT_OUT as PROMPT_OUT
+from src.evaluation.llm_agent.artifacts import (
     append_jsonl,
     persist_result_with_history,
     relative_path,
     write_json,
 )
-from evaluation.llm_judge import DEFAULT_HISTORY_OUT as JUDGE_HISTORY_OUT
-from evaluation.llm_judge import DEFAULT_OUT as JUDGE_OUT
-from evaluation.ragas_eval import DEFAULT_HISTORY_OUT as RAGAS_HISTORY_OUT
-from evaluation.ragas_eval import DEFAULT_OUT as RAGAS_OUT
+from src.evaluation.llm_agent.llm_judge import DEFAULT_HISTORY_OUT as JUDGE_HISTORY_OUT
+from src.evaluation.llm_agent.llm_judge import DEFAULT_OUT as JUDGE_OUT
+from src.evaluation.llm_agent.ragas_eval import DEFAULT_HISTORY_OUT as RAGAS_HISTORY_OUT
+from src.evaluation.llm_agent.ragas_eval import DEFAULT_OUT as RAGAS_OUT
 
 
 def test_evaluation_defaults_point_to_artifacts() -> None:
@@ -67,7 +69,4 @@ def test_persist_result_with_history_writes_both_outputs(tmp_path) -> None:
 
 
 def test_relative_path_keeps_project_paths_portable() -> None:
-    assert (
-        relative_path("configs/evaluation/golden_set.yaml")
-        == "configs/evaluation/golden_set.yaml"
-    )
+    assert relative_path("data/golden-set.json") == "data/golden-set.json"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from agent.llm_gateway.factory import build_llm_client
 from agent.rag_pipeline import get_rag_runtime_summary
 from agent.react_agent import run_react_agent
 from common.config_loader import (
@@ -10,7 +11,6 @@ from common.config_loader import (
     resolve_llm_provider,
 )
 from common.logger import get_logger
-from llm.factory import build_llm_client
 from monitoring.metrics import (
     finish_llm_chat_request_for_monitor,
     start_llm_chat_request_for_monitor,

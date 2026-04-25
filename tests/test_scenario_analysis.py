@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import yaml
 
-from scenario_analysis.inference_cases import (
+from scenario_experiments.inference_cases import (
     ScenarioAnalysisConfig,
     ScenarioAnalysisResult,
     build_scenario,
@@ -131,21 +131,21 @@ def test_run_scenario_prediction_returns_standardized_output(monkeypatch) -> Non
     )
 
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.build_serving_config",
+        "scenario_experiments.inference_cases.build_serving_config",
         return_serving_config,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.predict_from_dataframe_with_config",
+        "scenario_experiments.inference_cases.predict_from_dataframe_with_config",
         return_prediction,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.prepare_inference_dataframe",
+        "scenario_experiments.inference_cases.prepare_inference_dataframe",
         return_transformed_features,
     )
 
     result = run_scenario_prediction(
         scenario,
-        "configs/training/experiments/random_forest_v2.yaml",
+        "configs/model_lifecycle/experiments/random_forest_v2.yaml",
     )
 
     assert isinstance(result, ScenarioAnalysisResult)
@@ -238,7 +238,7 @@ def test_run_scenario_analysis_suite_executes_all_scenarios(
     )
 
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.run_scenario_analysis",
+        "scenario_experiments.inference_cases.run_scenario_analysis",
         return_suite_result,
     )
 
@@ -277,7 +277,7 @@ def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
     cfg = ScenarioAnalysisConfig(
         tracking_uri="file:./mlruns",
         mlflow_experiment_name="datathon-churn-scenario-analysis",
-        experiment_config_path="configs/training/model_current.yaml",
+        experiment_config_path="configs/model_lifecycle/model_current.yaml",
     )
 
     _PARAM_LOG.clear()
@@ -286,31 +286,31 @@ def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
     _ARTIFACT_LOG.clear()
 
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.mlflow.set_tracking_uri",
+        "scenario_experiments.inference_cases.mlflow.set_tracking_uri",
         ignore_tracking_uri,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.mlflow.set_experiment",
+        "scenario_experiments.inference_cases.mlflow.set_experiment",
         ignore_experiment_name,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.mlflow.start_run",
+        "scenario_experiments.inference_cases.mlflow.start_run",
         return_dummy_run,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.mlflow.log_param",
+        "scenario_experiments.inference_cases.mlflow.log_param",
         return_logged_param,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.mlflow.log_metric",
+        "scenario_experiments.inference_cases.mlflow.log_metric",
         return_logged_metric,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases.mlflow.set_tag",
+        "scenario_experiments.inference_cases.mlflow.set_tag",
         return_logged_tag,
     )
     monkeypatch.setattr(
-        "scenario_analysis.inference_cases._log_json_artifact",
+        "scenario_experiments.inference_cases._log_json_artifact",
         return_json_artifact,
     )
 

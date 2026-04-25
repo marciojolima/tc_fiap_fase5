@@ -205,8 +205,8 @@ poetry run dvc repro export_feature_store
 Se preferir executar os módulos diretamente durante desenvolvimento:
 
 ```bash
-poetry run python -m src.features.feature_engineering
-poetry run python -m src.models.train
+poetry run python -m src.feature_engineering.feature_engineering
+poetry run python -m src.model_lifecycle.train
 poetry run python -m src.feast_ops.export
 ```
 
