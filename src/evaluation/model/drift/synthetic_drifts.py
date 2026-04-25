@@ -33,6 +33,7 @@ from src.evaluation.model.drift.drift import (
     load_monitoring_config,
     prepare_feature_matrix,
 )
+from src.evaluation.model.drift.prediction_logger import build_inference_log_record
 
 DEFAULT_OUTPUT_DIR = Path("artifacts/evaluation/model/scenario_experiments/drift")
 DEFAULT_BATCH_SIZE = 60
@@ -84,6 +85,18 @@ class SyntheticBatchResult:
     mean_probability: float
     positive_rate: float
     report_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class ScoredSyntheticBatch:
+    """Matriz transformada e predições geradas para um lote sintético."""
+
+    transformed_features: pd.DataFrame
+    probabilities: np.ndarray
+    predictions: np.ndarray
+    model_name: str
+    model_version: str
+    threshold: float
 
 
 def load_synthetic_batch_config(
@@ -328,7 +341,7 @@ def generate_synthetic_batch(
 def score_batch_predictions(
     batch_dataframe: pd.DataFrame,
     experiment_config_path: str,
-) -> tuple[np.ndarray, np.ndarray, str, float]:
+) -> ScoredSyntheticBatch:
     """Gera probabilidades e classes previstas com o modelo atual."""
 
     serving_config = build_serving_config(experiment_config_path)
@@ -338,40 +351,38 @@ def score_batch_predictions(
     transformed_features = feature_pipeline.transform(batch_dataframe)
     probabilities = model.predict_proba(transformed_features)[:, 1]
     predictions = (probabilities >= serving_config.threshold).astype(int)
-    return (
-        probabilities,
-        predictions,
-        serving_config.model_name,
-        serving_config.threshold,
+    return ScoredSyntheticBatch(
+        transformed_features=transformed_features,
+        probabilities=probabilities,
+        predictions=predictions,
+        model_name=serving_config.model_name,
+        model_version=serving_config.model_version,
+        threshold=serving_config.threshold,
     )
 
 
 def build_prediction_records(
-    batch_dataframe: pd.DataFrame,
-    probabilities: np.ndarray,
-    predictions: np.ndarray,
-    model_name: str,
-    threshold: float,
+    scored_batch: ScoredSyntheticBatch,
 ) -> list[dict[str, Any]]:
     """Converte o lote em registros compatíveis com o monitoramento current."""
 
-    created_at = now_isoformat()
     records: list[dict[str, Any]] = []
     for row, probability, prediction in zip(
-        batch_dataframe.to_dict(orient="records"),
-        probabilities,
-        predictions,
+        scored_batch.transformed_features.to_dict(orient="records"),
+        scored_batch.probabilities,
+        scored_batch.predictions,
         strict=True,
     ):
         records.append(
-            {
-                "timestamp": created_at,
-                "model_name": model_name,
-                "threshold": threshold,
-                "churn_probability": float(probability),
-                "churn_prediction": int(prediction),
-                **row,
-            }
+            build_inference_log_record(
+                feature_payload=row,
+                probability=float(probability),
+                prediction=int(prediction),
+                model_name=scored_batch.model_name,
+                model_version=scored_batch.model_version,
+                threshold=scored_batch.threshold,
+                request_metadata={"feature_source": "synthetic_batch"},
+            )
         )
 
     return records
@@ -495,17 +506,11 @@ def generate_and_log_synthetic_batch(
         batch_size=cfg.batch_size,
         seed=scenario_seed,
     )
-    probabilities, predictions, model_name, threshold = score_batch_predictions(
+    scored_batch = score_batch_predictions(
         batch_dataframe=batch_dataframe,
         experiment_config_path=cfg.experiment_config_path,
     )
-    records = build_prediction_records(
-        batch_dataframe=batch_dataframe,
-        probabilities=probabilities,
-        predictions=predictions,
-        model_name=model_name,
-        threshold=threshold,
-    )
+    records = build_prediction_records(scored_batch=scored_batch)
     output_path = cfg.output_dir / f"{scenario_name}.jsonl"
     save_jsonl_records(records, output_path)
     report_path = build_drift_report_for_scenario(
@@ -516,16 +521,16 @@ def generate_and_log_synthetic_batch(
     manifest_path = write_batch_manifest(
         scenario_name=scenario_name,
         output_path=output_path,
-        probabilities=probabilities,
-        predictions=predictions,
+        probabilities=scored_batch.probabilities,
+        predictions=scored_batch.predictions,
         report_path=report_path,
     )
     result = SyntheticBatchResult(
         scenario_name=scenario_name,
         output_path=output_path,
         row_count=len(records),
-        mean_probability=float(probabilities.mean()),
-        positive_rate=float(predictions.mean()),
+        mean_probability=float(scored_batch.probabilities.mean()),
+        positive_rate=float(scored_batch.predictions.mean()),
         report_path=report_path,
     )
     log_batch_generation_run(
