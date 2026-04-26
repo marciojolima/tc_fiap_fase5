@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Projeto de Datathon - FIAP 2026"
 authors = [
     {name = "Márcio Lima",email = "marciocad@gmail.com"},
-    {name = "Luca Poit",email = "lucapoit@gmail.com"}
+    {name = "Luca Poit",email = "lucapoit@gmail.com"},
+    {name = "Luca Poit",email = "gabriel.jordan.aa@gmail.com"},
+    {name = "Luciana Ferreira",email = "Luannabyll@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13,<4"
