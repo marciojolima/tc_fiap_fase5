@@ -823,7 +823,7 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 
 **Turma 6MLET - FIAP**
 
-- Luca Poiti - RM365678
+- Luca Poit - RM365678
 - Gabriel Jordan - RM365606
 - Luciana Ferreira - RM366171
 - Marcio Lima - RM365919
