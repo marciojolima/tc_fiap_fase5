@@ -850,7 +850,7 @@ variantes `sample`
 
 `docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval`
 -> usa a imagem `tc-fiap-evaluation`
--> mantém `sentence-transformers` e `torch` fora da imagem do serving
+-> usa FastEmbed para embeddings, sem `sentence-transformers` nem `torch`
 -> carrega [`data/golden-set.json`](../data/golden-set.json)
 -> recupera contextos via [`retrieve_contexts`](../src/agent/rag_pipeline.py)
 -> calcula métricas RAGAS

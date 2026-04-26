@@ -3,9 +3,8 @@
 Referência: Es et al. (2024) — RAGAS: Automated Evaluation of Retrieval
             Augmented Generation. https://arxiv.org/abs/2309.15217
 
-Requer um provider LLM ativo (para metricas e geracao de respostas) e,
-para embeddings usados pelo RAGAS, o pacote sentence-transformers
-(modelo multilingual configuravel abaixo).
+Requer um provider LLM ativo (para metricas e geracao de respostas) e usa
+FastEmbed para embeddings locais, alinhado ao runtime do RAG no serving.
 
 RAGAS 0.4 — métricas ``collections.*`` (Faithfulness instanciada etc.) herdam de
 ``SimpleBaseMetric``, mas ``evaluate()`` só aceita instâncias de
@@ -13,8 +12,8 @@ RAGAS 0.4 — métricas ``collections.*`` (Faithfulness instanciada etc.) herdam
 (``faithfulness``, ``answer_relevancy``, …), que são ``Metric`` e funcionam com
 ``InstructorLLM``. O LLM para metricas usa o SDK adequado ao provider ativo.
 
-Embeddings: métricas legadas exigem interface LangChain; usamos
-``LangchainEmbeddingsWrapper(HuggingFaceEmbeddings)``. Variáveis opcionais:
+Embeddings: métricas legadas exigem interface LangChain; usamos um adaptador
+leve sobre ``fastembed.TextEmbedding``. Variáveis opcionais:
 ``RAGAS_LLM_MAX_TOKENS`` (default 4096, JSON estruturado),
 ``RAGAS_ANSWER_RELEVANCY_STRICTNESS`` (default 1 para modelos pequenos).
 ``RAGAS_FAITHFULNESS_NLI_BATCH_SIZE`` (default 2): NLI em lotes para JSON estável em
@@ -32,11 +31,11 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from datasets import Dataset
-from langchain_community.embeddings import (
-    HuggingFaceEmbeddings as LangChainHuggingFaceEmbeddings,
-)
+from fastembed import TextEmbedding
+from langchain_core.embeddings import Embeddings
 from openai import OpenAI
 from ragas import evaluate
 from ragas.embeddings.base import LangchainEmbeddingsWrapper
@@ -164,39 +163,54 @@ def _instructor_llm_from_provider(
     raise ValueError(f"Provider '{provider}' nao suportado pelo ragas_eval.")
 
 
-def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper:
-    """Métricas legadas (ex.: answer_relevancy) usam embed_query/embed_documents
-    (LangChain).
+class FastEmbedLangChainEmbeddings(Embeddings):
+    """Adaptador mínimo FastEmbed -> LangChain para métricas legadas do RAGAS."""
 
-    ``ragas.embeddings.HuggingFaceEmbeddings`` é outra API (embed_text) e quebra no
-    evaluate().
-    """
+    def __init__(self, model_name: str, cache_dir: str) -> None:
+        self.model_name = model_name
+        self.cache_dir = cache_dir
+        self._encoder = TextEmbedding(model_name=model_name, cache_dir=cache_dir)
+
+    @staticmethod
+    def _normalize(matrix: list[Any]) -> list[list[float]]:
+        array = np.asarray(matrix, dtype=np.float32)
+        if array.ndim == 1:
+            array = array.reshape(1, -1)
+        norms = np.linalg.norm(array, axis=1, keepdims=True)
+        norms = np.where(norms == 0, 1e-12, norms)
+        return (array / norms).astype(float).tolist()
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        if hasattr(self._encoder, "passage_embed"):
+            embeddings = list(self._encoder.passage_embed(texts))
+        else:
+            embeddings = list(self._encoder.embed(texts))
+        return self._normalize(embeddings)
+
+    def embed_query(self, text: str) -> list[float]:
+        if hasattr(self._encoder, "query_embed"):
+            embeddings = list(self._encoder.query_embed([text]))
+        else:
+            embeddings = list(self._encoder.embed([text]))
+        return self._normalize(embeddings)[0]
+
+
+def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper:
+    """Métricas legadas (ex.: answer_relevancy) usam embed_query/embed_documents."""
 
     rag_cfg = load_global_config().get("rag", {})
     embedding_cache_path = Path(
         str(
             rag_cfg.get(
-                "ragas_embedding_cache_dir",
-                "artifacts/rag/ragas_embedding_model_cache",
+                "embedding_cache_dir",
+                "artifacts/rag/fastembed_model_cache",
             )
         )
     )
     embedding_cache_dir = str(embedding_cache_path)
-    local_files_only = os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    } or os.environ.get("TRANSFORMERS_OFFLINE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    embedder = LangChainHuggingFaceEmbeddings(
+    embedder = FastEmbedLangChainEmbeddings(
         model_name=model_name,
-        cache_folder=embedding_cache_dir,
-        model_kwargs={"local_files_only": local_files_only},
+        cache_dir=embedding_cache_dir,
     )
     return LangchainEmbeddingsWrapper(embedder)
 
@@ -447,7 +461,7 @@ def main() -> None:
     parser.add_argument(
         "--embed-model",
         default=os.environ.get("RAGAS_EMBED_MODEL", DEFAULT_EMBED_MODEL),
-        help="Modelo sentence-transformers para embeddings do RAGAS",
+        help="Modelo FastEmbed para embeddings do RAGAS",
     )
     parser.add_argument(
         "--timeout",

@@ -49,12 +49,10 @@ monitoring = [
 ]
 evaluation = [
     "datasets>=2.14.0",
+    "fastembed>=0.7.0,<0.9.0",
     "langchain-community>=0.3.0",
     "langchain-core>=0.3.0",
     "ragas>=0.4.0,<0.5",
-    "sentence-transformers>=2.2.0",
-    # sentence-transformers puxa torch; 2.1.x não tem wheel cp313 (Win/Linux). 2.5+ suporta Python 3.13.
-    "torch>=2.5.0",
 ]
 ops = [
     "dvc[gdrive]>=3.67.1,<4.0.0",
@@ -103,27 +101,19 @@ appstack_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker
 
 # Benchmark offline com 3 variantes de prompt; use --with-judge para enriquecer.
 eval_ab_test_prompts = 'python -m src.evaluation.llm_agent.ab_test_prompts'
-eval_ab_test_prompts_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts'
 eval_ab_test_prompts_sample = 'python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
-eval_ab_test_prompts_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
 eval_all = 'python -m src.evaluation.llm_agent.ragas_eval && python -m src.evaluation.llm_agent.llm_judge && python -m src.evaluation.llm_agent.ab_test_prompts'
 eval_all_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation sh -lc "python -m src.evaluation.llm_agent.ragas_eval && python -m src.evaluation.llm_agent.llm_judge && python -m src.evaluation.llm_agent.ab_test_prompts"'
-eval_all_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts'
 eval_all_sample = 'python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
 eval_all_sample_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation sh -lc "python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5"'
-eval_all_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
 # LLM-as-judge (>=3 criterios, incl. negocio) — usa o mesmo provider LLM configurado.
 eval_llm_judge = 'python -m src.evaluation.llm_agent.llm_judge'
-eval_llm_judge_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge'
 eval_llm_judge_sample = 'python -m src.evaluation.llm_agent.llm_judge --max-rows 5'
-eval_llm_judge_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.llm_judge --max-rows 5'
-# RAGAS (4 métricas) sobre o golden set — requer provider LLM configurado e, na 1a vez, download do modelo de embeddings.
+# RAGAS (4 métricas) sobre o golden set — requer provider LLM configurado.
 eval_ragas = 'python -m src.evaluation.llm_agent.ragas_eval'
 eval_ragas_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval'
-eval_ragas_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval'
 eval_ragas_sample = 'python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
 eval_ragas_sample_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
-eval_ragas_sample_offline = 'HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
 
 feastapply = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store apply'
 feastdemo = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 python -m src.feast_ops.demo --customer-id 15634602'
