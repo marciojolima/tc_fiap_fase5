@@ -296,3 +296,23 @@ irreversíveis. O uso mais maduro continua sendo:
 - combinar score do modelo com contexto de negócio
 - monitorar drift e degradação
 - reavaliar o champion quando houver mudança relevante nos dados
+
+## Complemento — Fairness e Explicabilidade
+
+Para fechar os requisitos de governança da fase, este projeto adota uma
+abordagem documental mínima e explícita:
+
+- **Fairness documentado:** atributos sensíveis de atenção (`Gender` e
+  `Geography`) estão identificados e tratados como risco de viés a monitorar.
+- **Estado atual:** `fairness_checked` ainda está `false`, portanto não há gate
+  automatizado de fairness no pipeline de treino/promoção.
+- **Explicabilidade documentada:** a explicação disponível é global
+  (importância de features e interpretação de domínio), sem explicação local por
+  instância (por exemplo, SHAP/LIME) nesta fase.
+
+Documentos relacionados:
+
+- `docs/SYSTEM_CARD.md`
+- `docs/LGPD_PLAN.md`
+- `docs/OWASP_MAPPING.md`
+- `docs/RED_TEAM_REPORT.md`
