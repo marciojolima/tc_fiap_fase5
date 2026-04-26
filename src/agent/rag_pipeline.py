@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import resource
 import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -14,6 +13,11 @@ from typing import Any
 
 import joblib
 import numpy as np
+
+try:
+    import resource
+except ModuleNotFoundError:
+    resource = None  # type: ignore[assignment]
 
 try:
     from fastembed import TextEmbedding
@@ -353,6 +357,9 @@ def _estimate_chunks_memory_bytes(chunks: list[RAGChunk]) -> int:
 
 
 def _get_process_rss_bytes() -> int:
+    if resource is None:
+        # Windows não expõe o módulo stdlib `resource`.
+        return 0
     try:
         rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     except (OSError, ValueError):
