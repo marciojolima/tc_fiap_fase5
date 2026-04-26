@@ -103,17 +103,17 @@ appstack_rebuild = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker
 eval_ab_test_prompts = 'python -m src.evaluation.llm_agent.ab_test_prompts'
 eval_ab_test_prompts_sample = 'python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
 eval_all = 'python -m src.evaluation.llm_agent.ragas_eval && python -m src.evaluation.llm_agent.llm_judge && python -m src.evaluation.llm_agent.ab_test_prompts'
-eval_all_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation sh -lc "python -m src.evaluation.llm_agent.ragas_eval && python -m src.evaluation.llm_agent.llm_judge && python -m src.evaluation.llm_agent.ab_test_prompts"'
+eval_all_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm -e RAGAS_SERVING_BASE_URL=http://serving:8000 evaluation sh -lc "python -m src.evaluation.llm_agent.ragas_eval && python -m src.evaluation.llm_agent.llm_judge && python -m src.evaluation.llm_agent.ab_test_prompts"'
 eval_all_sample = 'python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5'
-eval_all_sample_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation sh -lc "python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5"'
+eval_all_sample_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm -e RAGAS_SERVING_BASE_URL=http://serving:8000 evaluation sh -lc "python -m src.evaluation.llm_agent.ragas_eval --max-rows 5 && python -m src.evaluation.llm_agent.llm_judge --max-rows 5 && python -m src.evaluation.llm_agent.ab_test_prompts --max-rows 5"'
 # LLM-as-judge (>=3 criterios, incl. negocio) — usa o mesmo provider LLM configurado.
 eval_llm_judge = 'python -m src.evaluation.llm_agent.llm_judge'
 eval_llm_judge_sample = 'python -m src.evaluation.llm_agent.llm_judge --max-rows 5'
-# RAGAS (4 métricas) sobre o golden set — requer provider LLM configurado.
+# RAGAS (4 métricas) sobre o golden set — requer serving em execução.
 eval_ragas = 'python -m src.evaluation.llm_agent.ragas_eval'
-eval_ragas_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval'
+eval_ragas_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm -e RAGAS_SERVING_BASE_URL=http://serving:8000 evaluation python -m src.evaluation.llm_agent.ragas_eval'
 eval_ragas_sample = 'python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
-eval_ragas_sample_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
+eval_ragas_sample_docker = 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose --profile evaluation run --rm -e RAGAS_SERVING_BASE_URL=http://serving:8000 evaluation python -m src.evaluation.llm_agent.ragas_eval --max-rows 5'
 
 feastapply = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store apply'
 feastdemo = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 python -m src.feast_ops.demo --customer-id 15634602'

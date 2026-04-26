@@ -121,13 +121,13 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
 - **Golden set (RAG / judge):** [data/golden-set.json](data/golden-set.json) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
 
-- **RAGAS (4 métricas):** [src/evaluation/llm_agent/ragas_eval.py](src/evaluation/llm_agent/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set usando o `llm_provider` ativo + contextos do `rag_pipeline`; embeddings multilingues via FastEmbed, sem `sentence-transformers` nem `torch`. Execução local: `poetry run task eval_ragas` (requer provider LLM configurado). Saída típica: `artifacts/evaluation/llm_agent/results/ragas_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/ragas_runs.jsonl`.
+- **RAGAS (4 métricas):** [src/evaluation/llm_agent/ragas_eval.py](src/evaluation/llm_agent/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set chamando o endpoint real `POST /llm/chat`; os contextos vêm da trace de `rag_search`. Embeddings multilingues via FastEmbed, sem `sentence-transformers` nem `torch`. Execução local: `poetry run task eval_ragas` (requer serving e provider LLM configurados). Saída típica: `artifacts/evaluation/llm_agent/results/ragas_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/ragas_runs.jsonl`.
 
 - **LLM-as-judge (3 critérios):** [src/evaluation/llm_agent/llm_judge.py](src/evaluation/llm_agent/llm_judge.py) — avalia respostas do RAG nos critérios `adequacao_negocio`, `correcao_conteudo` e `clareza_utilidade`. Execução local: `poetry run task eval_llm_judge`. Saída típica: `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/llm_judge_runs.jsonl`.
 
 - **Prompt A/B (3 variantes):** [src/evaluation/llm_agent/ab_test_prompts.py](src/evaluation/llm_agent/ab_test_prompts.py) — benchmark offline com três variantes de prompt sobre o golden set, comparando cobertura lexical mínima da resposta e, opcionalmente, notas do `llm_judge`. Execução local: `poetry run task eval_ab_test_prompts` ou `poetry run python -m src.evaluation.llm_agent.ab_test_prompts --with-judge`. Saída típica: `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`, com histórico em `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`.
 
-- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. O RAGAS reutiliza o cache local do FastEmbed configurado para o RAG.
+- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. O RAGAS reutiliza o cache local do FastEmbed configurado para o RAG e, por padrão, chama `http://127.0.0.1:8000/llm/chat` (`RAGAS_SERVING_BASE_URL` permite sobrescrever).
 
   As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
 
@@ -490,7 +490,9 @@ Os principais artefatos gerados ficam em:
 
 #### 4.5 Produzir artefatos de avaliação LLM
 
-As avaliações LLM usam o provider configurado em `configs/pipeline_global_config.yaml`. Com o provider pronto, rode:
+As avaliações LLM usam o provider configurado em `configs/pipeline_global_config.yaml`.
+Para RAGAS, suba o serving antes, porque a avaliação chama `POST /llm/chat`.
+Com o provider pronto, rode:
 
 ```bash
 poetry run task eval_ragas

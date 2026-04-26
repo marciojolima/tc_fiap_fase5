@@ -347,6 +347,7 @@ def test_rag_search_tool_returns_structured_evidence(monkeypatch) -> None:
     assert payload["status"] == "ok"
     assert payload["sources"] == ["README.md"]
     assert payload["evidence"]
+    assert payload["retrieved_contexts"]
 
 
 def test_predict_churn_tool_returns_structured_output(monkeypatch) -> None:
