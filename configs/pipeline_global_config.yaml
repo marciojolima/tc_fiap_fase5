@@ -46,8 +46,8 @@ mlflow:
   dataset_name: bank-customer-churn
 
 llm:
-  active_provider: claude
-  timeout_seconds: 45
+  active_provider: ollama
+  timeout_seconds: 120
   providers:
     ollama:
       base_url: http://127.0.0.1:11434

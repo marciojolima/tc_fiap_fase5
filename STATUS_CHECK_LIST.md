@@ -87,23 +87,30 @@ Observações:
 
 ### Etapa 4 — Segurança + Governança
 
-- [ ] OWASP mapping com ≥ 5 ameaças e mitigações
-- [ ] Guardrails de input e output funcionais
-- [ ] ≥ 5 cenários adversariais testados e documentados
-- [ ] Plano LGPD aplicado ao caso real
-- [ ] Explicabilidade e fairness documentados
-- [ ] System Card completo
+- [x] OWASP mapping com ≥ 5 ameaças e mitigações
+- [x] Guardrails de input e output funcionais
+- [x] ≥ 5 cenários adversariais testados e documentados
+- [x] Plano LGPD aplicado ao caso real
+- [x] Explicabilidade e fairness documentados
+- [x] System Card completo
 
 Observações:
 
 - Existe documentação inicial de LGPD, Model Card e governança, mas a trilha de
   segurança aplicada ainda não está suficientemente madura para marcar como concluída.
-- Existem guardrails básicos de input/output e mascaramento simples de PII, mas
-  ainda não há evidência de cobertura robusta contra ameaças OWASP, red team e
-  cenários adversariais documentados.
-- `fairness_checked` continua `false` no metadata atual do champion.
-- `System Card`, `OWASP Mapping` e `Red Team Report` ainda precisam ser
-  aprofundados para sustentar banca como entrega efetiva.
+- Foi consolidado mapeamento OWASP mínimo em `docs/OWASP_MAPPING.md` com 5
+  ameaças, mitigação e evidências no código/testes.
+- Guardrails de input/output seguem simples, porém funcionais para banca:
+  bloqueio por padrões suspeitos e tamanho, além de mascaramento de PII.
+- Os cenários adversariais mínimos foram automatizados em
+  `tests/test_guardrails_adversarial.py` e documentados em
+  `docs/RED_TEAM_REPORT.md`.
+- O plano LGPD foi consolidado em `docs/LGPD_PLAN.md` com evidências aplicadas
+  no código.
+- A parte de fairness e explicabilidade foi formalizada no `docs/MODEL_CARD.md`
+  (com escopo e limitações explícitas da fase).
+- `fairness_checked` continua `false` no metadata atual do champion; portanto a
+  trilha de fairness permanece documental nesta entrega.
 
 ### Demo Day
 

@@ -13,6 +13,8 @@ class InputGuardrail:
     INJECTION_PATTERNS = [
         r"ignore\s+(all\s+)?previous\s+instructions",
         r"you\s+are\s+now\s+a",
+        r"developer:\s*",
+        r"assistant:\s*",
         r"system:\s*",
         r"<\|im_start\|>",
         r"\[INST\]",
@@ -26,10 +28,11 @@ class InputGuardrail:
         ]
 
     def validate(self, user_input: str) -> tuple[bool, str]:
+        sanitized_input = "".join(ch for ch in user_input if ch.isprintable()).strip()
         for pattern in self._compiled_patterns:
-            if pattern.search(user_input):
+            if pattern.search(sanitized_input):
                 return False, "Input bloqueado: padrão suspeito detectado."
-        if len(user_input) > self.max_input_chars:
+        if len(sanitized_input) > self.max_input_chars:
             return False, (
                 "Input bloqueado: excede tamanho máximo "
                 f"({self.max_input_chars} chars)."
