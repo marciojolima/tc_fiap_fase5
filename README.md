@@ -801,7 +801,7 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `configs/scenario_experiments/inference_cases.yaml` | Suíte versionada de cenários de inferência usada para validar comportamento do modelo em casos de negócio. |
 | `artifacts/evaluation/model/scenario_experiments/drift/*.jsonl` | Lotes sintéticos construídos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
 | `artifacts/evaluation/model/scenario_experiments/drift/*_report.html` | Relatórios HTML dos cenários sintéticos, usados para demonstração e validação do processo de drift. |
-| [docs/EVALUATION.md](docs/EVALUATION.md) | Visão consolidada das avaliações do projeto: modelo tabular, cenários, drift, retreino e trilha futura de LLM. |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Índice principal das avaliações do projeto: modelo tabular, cenários, drift, retreino e RAG/LLM. |
 
 ## Documentação Complementar
 
@@ -811,7 +811,8 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 - [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
 - [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
-- [docs/EVALUATION_METRICS.md](docs/EVALUATION_METRICS.md)
+- [docs/EVALUATION_MODEL_METRICS.md](docs/EVALUATION_MODEL_METRICS.md)
+- [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md)
 - [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
 - [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
 

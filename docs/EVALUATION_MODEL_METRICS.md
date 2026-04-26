@@ -1,4 +1,4 @@
-# Importância das Métricas de ML — Churn Bancário
+# Metricas do Modelo de Churn Bancario
 
 ## Índice
 
