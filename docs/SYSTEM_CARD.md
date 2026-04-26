@@ -1,86 +1,85 @@
-# System Card
+# System Card — Datathon Fase 05
 
-## 1. Objetivo do Sistema
+## Visão Geral do Sistema
 
-O sistema apoia duas trilhas do projeto de churn bancário:
+| Campo | Valor |
+|---|---|
+| **Nome** | Datathon Churn Analysis Platform |
+| **Versão** | 0.1.0 |
+| **Finalidade** | Predição de churn + análise assistida por agente LLM |
+| **Autores** | Grupo FIAP Pós-Tech MLET |
 
-- predição tabular de churn (`/predict` e `/predict/raw`);
-- assistente LLM com agente ReAct e RAG (`/llm/chat`).
+## Componentes
 
-O foco é suporte à decisão e operação técnica, não automação de decisão
-irreversível sem supervisão humana.
+### 1. Pipeline de Dados (Etapa 1)
+- **Fonte**: Bank Customer Churn dataset (CSV local versionado)
+- **Versionamento**: DVC
+- **Features**: variáveis financeiras, cadastrais e derivadas para churn
+- **Validação**: Pandera schema contracts
 
-## 2. Escopo Funcional
+### 2. Modelo Tabular (Etapa 1)
+- **Arquitetura**: modelos sklearn (champion/challenger)
+- **Tracking**: MLflow com metadados padronizados
+- **Métricas**: AUC, F1, Precision, Recall, Accuracy
+- Ver: [MODEL_CARD.md](MODEL_CARD.md)
 
-### Componentes principais
+### 3. LLM (Etapa 2)
+- **Modelo**: configurável por provider (`ollama`, `openai`, `claude`)
+- **Provider local padrão na stack**: Ollama
+- **Serving**: FastAPI endpoint `/llm/chat`
+- **Configuração**: `configs/pipeline_global_config.yaml` + `.env`
 
-- API FastAPI de serving (`src/serving/`).
-- Pipeline tabular de inferência com modelo champion.
-- Agente ReAct com tools de domínio.
-- RAG com indexação de documentação e artefatos do projeto.
-- Observabilidade com métricas Prometheus e dashboards.
+### 4. Agente ReAct (Etapa 2)
+- **Framework**: implementação própria em `src/agent/react_agent.py`
+- **Tools de domínio**: `rag_search`, `predict_churn`, `drift_status`, `scenario_prediction`
+- **RAG**: índice vetorial local com FastEmbed + cache em `artifacts/rag/`
 
-### Principais endpoints
+### 5. Avaliação (Etapa 3)
+- **RAGAS**: 4 métricas (faithfulness, answer_relevancy, context_precision, context_recall)
+- **LLM-as-judge**: 3 critérios (incluindo adequação ao negócio)
+- **Golden Set**: pares em `configs/evaluation/golden_set.yaml`
 
-- `GET /health`
-- `POST /predict`
-- `POST /predict/raw`
-- `GET /llm/health`
-- `GET /llm/status`
-- `POST /llm/chat`
+### 6. Observabilidade (Etapa 3)
+- **Métricas**: Prometheus (latência, throughput, erros, métricas do RAG)
+- **Dashboard**: Grafana
+- **Drift**: Evidently + PSI em trilha tabular
+- **Telemetria LLM/RAG**: status e métricas expostas pela API
 
-## 3. Entradas e Saídas
+### 7. Segurança (Etapa 4)
+- **Guardrails**: Input (prompt injection/tamanho) + Output (PII)
+- **PII**: regex masking para CPF, telefone BR e email
+- **OWASP**: 5+ ameaças mapeadas — ver [OWASP_MAPPING.md](OWASP_MAPPING.md)
+- **Red Team**: 5+ cenários — ver [RED_TEAM_REPORT.md](RED_TEAM_REPORT.md)
 
-### Entradas
+## Fluxo de Dados
 
-- Payload de cliente para inferência de churn.
-- Prompt em linguagem natural para o endpoint LLM.
+```text
+Dataset CSV -> DVC -> Feature Engineering -> Treino Tabular (MLflow)
+                                              |
+User Query -> InputGuardrail -> Agente (ReAct + Provider LLM)
+                                  |                    |
+                                  |               Tools de domínio
+                                  |
+                               RAG local
+                                  |
+                         OutputGuardrail -> Response
+                                  |
+                    Prometheus/Grafana + Drift (Evidently)
+```
 
-### Saídas
+## Requisitos Não-Funcionais
 
-- Probabilidade e classe de churn.
-- Resposta textual do agente LLM, com sanitização de PII no output.
-- Metadados operacionais e traço opcional do agente (`include_trace`).
+| Requisito | Alvo |
+|---|---|
+| Latência de inferência tabular | baixa latência operacional |
+| Latência de geração LLM | adequada para suporte interativo |
+| Disponibilidade | ambiente local com stack docker |
+| Qualidade de código | lint + testes automatizados |
+| Segurança mínima LLM | guardrails + OWASP mapping + red team básico |
 
-## 4. Dependências Externas
+## Conformidade
 
-- Ollama/OpenAI/Claude como providers LLM (configuração via
-  `configs/pipeline_global_config.yaml` e `.env`).
-- Redis para online store da feature store.
-- MLflow para rastreabilidade de treino/experimentação.
-- Prometheus e Grafana para observabilidade.
-
-## 5. Segurança, Riscos e Mitigações
-
-### Controles implementados
-
-- Guardrail de input com padrões de prompt injection e limite de tamanho.
-- Guardrail de output com redaction de PII (email, telefone, CPF).
-- Mapeamento OWASP e cenários adversariais documentados.
-
-### Documentos relacionados
-
-- `docs/OWASP_MAPPING.md`
-- `docs/RED_TEAM_REPORT.md`
-- `docs/LGPD_PLAN.md`
-
-## 6. Limitações Conhecidas
-
-- Detecção de prompt injection baseada em regex (heurística simples).
-- Sem classificador semântico avançado de jailbreak/toxicidade.
-- Fairness documentado, mas sem gate automatizado obrigatório no pipeline.
-- Explicabilidade local por predição ainda não implementada.
-
-## 7. Uso Responsável
-
-- O score de churn deve ser usado como apoio à priorização de retenção.
-- O resultado do agente LLM deve ser tratado como assistivo, com validação
-  humana quando envolver decisões críticas.
-
-## 8. Operação Mínima (Checklist)
-
-- API online: `/health` e `/llm/health` respondendo `200`.
-- Provider LLM configurado corretamente em `.env` e YAML.
-- Drift e métricas operacionais disponíveis nos dashboards.
-- Testes de guardrail passando:
-  `tests/test_guardrails.py` e `tests/test_guardrails_adversarial.py`.
+- **LGPD**: plano em [LGPD_PLAN.md](LGPD_PLAN.md)
+- **OWASP LLM**: mapeamento em [OWASP_MAPPING.md](OWASP_MAPPING.md)
+- **Fairness**: documentação no [MODEL_CARD.md](MODEL_CARD.md)
+- **Explicabilidade**: interpretação global por importância de features; explicabilidade local permanece evolução futura
