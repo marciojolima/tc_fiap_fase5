@@ -498,6 +498,14 @@ poetry run task eval_llm_judge
 poetry run task eval_ab_test_prompts
 ```
 
+Para isolar as dependências pesadas do RAGAS (`sentence-transformers` e
+`torch`) fora da imagem do serving, use a imagem dedicada de avaliação:
+
+```bash
+poetry run task eval_ragas_docker
+poetry run task eval_all_sample_docker
+```
+
 Ou execute tudo em sequência:
 
 ```bash
@@ -662,6 +670,8 @@ Este tópico resume o que foi implementado na trilha LLM e como operar em conjun
 - **Integração:** a API usa o `llm_provider` ativo definido em `configs/pipeline_global_config.yaml`, com implementação para `ollama`, `openai` e `claude`.
 - **Segredos:** providers externos leem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY` do `.env`.
 - **Compose base:** `poetry run task appstack` sobe apenas a stack comum, sem carregar container local de modelo.
+- **Índice RAG:** `poetry run task rag_index_rebuild_docker` gera o cache vetorial em `artifacts/rag/cache/index.joblib` usando a imagem leve do serving antes de subir a API.
+- **Avaliação LLM isolada:** `poetry run task eval_ragas_docker` e `poetry run task eval_all_docker` usam a imagem `tc-fiap-evaluation`, separando RAGAS/PyTorch da imagem `tc-fiap-fase5-app`.
 - **Compose com Ollama:** `poetry run task appstack_ollama` adiciona `ollama` e `ollama-pull`. Esse é o modo indicado quando `llm.active_provider=ollama`.
 - **Base URL no Docker:** no cenário com Ollama local, o override do Compose injeta `LLM_BASE_URL=http://ollama:11434` no `serving`, porque `127.0.0.1` dentro do container apontaria para o próprio container da API.
 - **Modelo Ollama:** use uma **tag válida** na biblioteca Ollama (por exemplo `gemma3:270m`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.

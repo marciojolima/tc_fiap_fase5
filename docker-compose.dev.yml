@@ -12,3 +12,15 @@ services:
       PYTHONPATH: /app/src
     volumes:
       - ./src:/app/src
+
+  rag-index:
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./src:/app/src
+
+  evaluation:
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./src:/app/src

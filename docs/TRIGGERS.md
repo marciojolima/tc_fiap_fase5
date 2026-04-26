@@ -594,6 +594,27 @@ Raw data
 `mlflow server ...`
 -> sobe servidor local de tracking para treino e retreino
 
+### 8.3 Índice RAG em container
+
+**Tipo:** batch manual  
+**Start:** `task rag_index_rebuild_docker`
+
+**Cadeia**
+
+`docker compose --profile rag run --rm rag-index`
+-> usa a imagem do serving com FastEmbed/ONNX
+-> descobre `README.md`, `docs/**/*.md` e JSON relevantes
+-> gera embeddings dos chunks
+-> salva `artifacts/rag/cache/index.joblib`
+-> reaproveita `artifacts/rag/fastembed_model_cache`
+
+**Arquivos envolvidos**
+
+- [`docker-compose.yml`](../docker-compose.yml)
+- [`infra/dockerfiles/serving/Dockerfile`](../infra/dockerfiles/serving/Dockerfile)
+- [`src/agent/rag_pipeline.py`](../src/agent/rag_pipeline.py)
+- [`pyproject.toml`](../pyproject.toml)
+
 ## 9. Gatilhos de Avaliação LLM
 
 ### 9.1 Prompt A/B offline
@@ -628,6 +649,28 @@ Raw data
   prompt vale promover.
 - O modo `--with-judge` aproxima o A/B dos critérios da etapa 3, mas continua
   sendo avaliação offline.
+
+### 9.2 RAGAS em container dedicado
+
+**Tipo:** batch manual  
+**Start:** `task eval_ragas_docker`
+
+**Cadeia**
+
+`docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval`
+-> usa a imagem `tc-fiap-evaluation`
+-> mantém `sentence-transformers` e `torch` fora da imagem do serving
+-> carrega [`data/golden-set.json`](../data/golden-set.json)
+-> recupera contextos via [`retrieve_contexts`](../src/agent/rag_pipeline.py)
+-> calcula métricas RAGAS
+-> salva `artifacts/evaluation/llm_agent/results/ragas_scores.json`
+
+**Arquivos envolvidos**
+
+- [`docker-compose.yml`](../docker-compose.yml)
+- [`infra/dockerfiles/evaluation/Dockerfile`](../infra/dockerfiles/evaluation/Dockerfile)
+- [`src/evaluation/llm_agent/ragas_eval.py`](../src/evaluation/llm_agent/ragas_eval.py)
+- [`pyproject.toml`](../pyproject.toml)
 
 ## 10. Mapa por Natureza do Gatilho
 

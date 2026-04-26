@@ -60,6 +60,68 @@ services:
     networks:
       - ml_platform
 
+  rag-index:
+    build:
+      context: .
+      dockerfile: infra/dockerfiles/serving/Dockerfile
+    image: tc-fiap-fase5-app:latest
+    container_name: tc-fiap-rag-index
+    profiles:
+      - rag
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    command:
+      - python
+      - -m
+      - src.agent.rag_pipeline
+      - --force-rebuild
+    environment:
+      HOME: /tmp
+      PROJECT_ROOT: /app
+      PYTHONUNBUFFERED: "1"
+      TZ: America/Sao_Paulo
+      USER: appuser
+      PROJECT_TIMEZONE: America/Sao_Paulo
+    volumes:
+      - ./README.md:/app/README.md:ro
+      - ./configs:/app/configs:ro
+      - ./data/feature_store:/app/data/feature_store:ro
+      - ./data/processed:/app/data/processed:ro
+      - ./docs:/app/docs:ro
+      - ./artifacts:/app/artifacts
+      - ./feature_store:/app/feature_store:ro
+    networks:
+      - ml_platform
+
+  evaluation:
+    build:
+      context: .
+      dockerfile: infra/dockerfiles/evaluation/Dockerfile
+    image: tc-fiap-evaluation:latest
+    container_name: tc-fiap-evaluation
+    profiles:
+      - evaluation
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /tmp
+      PROJECT_ROOT: /app
+      PYTHONUNBUFFERED: "1"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      TZ: America/Sao_Paulo
+      USER: appuser
+      PROJECT_TIMEZONE: America/Sao_Paulo
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./README.md:/app/README.md:ro
+      - ./configs:/app/configs:ro
+      - ./data:/app/data:ro
+      - ./docs:/app/docs:ro
+      - ./artifacts:/app/artifacts
+      - ./feature_store:/app/feature_store:ro
+    networks:
+      - ml_platform
+
   mlflow:
     build:
       context: .
