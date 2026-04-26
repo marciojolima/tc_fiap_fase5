@@ -193,24 +193,41 @@ def test_app_registers_llm_routes() -> None:
 
 
 def test_chat_with_react_agent_returns_structured_response(monkeypatch) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_run_react_agent(*_args: object, **kwargs: object) -> AgentRunResult:
+        captured_kwargs.update(kwargs)
+        return AgentRunResult(
+            answer="Resposta final.",
+            trace=[{"iteration": 1, "action": "rag_search"}],
+            used_tools=["rag_search"],
+        )
+
     monkeypatch.setattr(
         "serving.llm_routes.build_llm_client",
         _stub_llm_client,
     )
     monkeypatch.setattr(
         "serving.llm_routes.run_react_agent",
-        lambda *_args, **_kwargs: AgentRunResult(
-            answer="Resposta final.",
-            trace=[{"iteration": 1, "action": "rag_search"}],
-            used_tools=["rag_search"],
-        ),
+        fake_run_react_agent,
     )
     response = chat_with_react_agent(
-        LLMChatRequest(message="Explique churn", include_trace=True)
+        LLMChatRequest(
+            message="Explique churn",
+            include_trace=True,
+            answer_style="short",
+        )
     )
     assert response.answer == "Resposta final."
     assert response.used_tools == ["rag_search"]
     assert response.trace
+    assert captured_kwargs["answer_style"] == "short"
+
+
+def test_llm_chat_request_defaults_to_medium_answer_style() -> None:
+    payload = LLMChatRequest(message="Explique churn")
+
+    assert payload.answer_style == "medium"
 
 
 def test_chat_with_react_agent_updates_llm_metrics(monkeypatch) -> None:

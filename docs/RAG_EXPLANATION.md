@@ -193,14 +193,21 @@ O historico detalhado dessas inicializacoes tambem fica salvo em:
 
 ## Endpoint `/llm/chat`
 
-Payload minimo:
+Payload recomendado:
 
 ```json
 {
   "message": "Quais rotas HTTP o projeto expoe especificamente para o assistente LLM e diagnostico do provider LLM?",
-  "include_trace": true
+  "include_trace": true,
+  "answer_style": "medium"
 }
 ```
+
+O campo `answer_style` controla o tamanho da resposta final:
+
+- `short`: resposta curta, em ate 3 bullets ou 1 paragrafo curto
+- `medium`: resposta objetiva, em ate 2 paragrafos curtos ou 4 bullets (default)
+- `long`: resposta mais detalhada quando util
 
 O que esperar na resposta:
 
@@ -260,6 +267,16 @@ chamadas diretas para `POST /llm/chat`.
 
 Use estas perguntas quando quiser validar se o agente esta encontrando contexto
 documental no repositorio e respondendo com base nas fontes indexadas.
+
+Exemplo com resposta curta:
+
+```json
+{
+  "message": "Em linhas gerais, como o RAG do projeto obtem contexto para uma pergunta?",
+  "include_trace": true,
+  "answer_style": "short"
+}
+```
 
 1. Pergunta:
 ```text

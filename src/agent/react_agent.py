@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal, cast
 
 from agent.tools import AgentTool, build_default_tools
 from common.config_loader import load_global_config
@@ -15,6 +15,22 @@ from security.guardrails import InputGuardrail, OutputGuardrail
 logger = get_logger("agent.react_agent")
 
 MIN_TOOLS_EXPECTED = 3
+AnswerStyle = Literal["short", "medium", "long"]
+DEFAULT_ANSWER_STYLE: AnswerStyle = "medium"
+ANSWER_STYLE_INSTRUCTIONS: dict[AnswerStyle, str] = {
+    "short": (
+        "Responda de forma curta: no máximo 3 bullets ou 1 parágrafo curto, "
+        "sem conclusão adicional."
+    ),
+    "medium": (
+        "Responda de forma objetiva: até 2 parágrafos curtos ou 4 bullets, "
+        "com apenas os detalhes essenciais."
+    ),
+    "long": (
+        "Responda de forma detalhada quando útil, mantendo a resposta ancorada "
+        "nas evidências observadas."
+    ),
+}
 DOCUMENTAL_KEYWORDS = (
     "/llm",
     "/predict",
@@ -164,6 +180,13 @@ def _normalize_action_input(raw_action_input: Any) -> str:
     return str(raw_action_input).strip()
 
 
+def _resolve_answer_style(answer_style: str | None) -> AnswerStyle:
+    normalized = (answer_style or DEFAULT_ANSWER_STYLE).strip().lower()
+    if normalized in ANSWER_STYLE_INSTRUCTIONS:
+        return cast(AnswerStyle, normalized)
+    return DEFAULT_ANSWER_STYLE
+
+
 def is_documental_question(user_input: str) -> bool:
     """Heurística leve para perguntas cuja resposta deve vir do repositório."""
 
@@ -181,6 +204,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
     llm_client: LLMClientProtocol,
     tools: list[AgentTool] | None = None,
     max_iterations: int | None = None,
+    answer_style: str | None = DEFAULT_ANSWER_STYLE,
 ) -> AgentRunResult:
     """Execute a compact ReAct loop with at least three tools."""
 
@@ -189,6 +213,8 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
     max_steps = max_iterations or int(agent_cfg.get("max_iterations", 6))
     active_tools = tools or build_default_tools()
     llm_metadata = _resolve_llm_metadata(llm_client)
+    resolved_answer_style = _resolve_answer_style(answer_style)
+    answer_style_instruction = ANSWER_STYLE_INSTRUCTIONS[resolved_answer_style]
 
     if len(active_tools) < MIN_TOOLS_EXPECTED:
         logger.warning(
@@ -229,6 +255,8 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
         prompt = (
             f"{REACT_SYSTEM_PROMPT}\n"
             f"Modo da pergunta: {question_mode}\n"
+            f"Estilo da resposta final: {resolved_answer_style}\n"
+            f"Instrução de tamanho: {answer_style_instruction}\n"
             f"Ferramentas disponíveis:\n{tool_descriptions}\n\n"
             f"Pergunta do usuário: {user_input}\n\n"
             f"Histórico ReAct:\n" + "\n".join(scratchpad)
@@ -249,6 +277,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
                 {
                     "iteration": step + 1,
                     "question_mode": question_mode,
+                    "answer_style": resolved_answer_style,
                     "parse_status": parse_status,
                     "fallback_reason": parse_message,
                     "raw_llm_output": llm_answer,
@@ -275,6 +304,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
                     {
                         "iteration": step + 1,
                         "question_mode": question_mode,
+                        "answer_style": resolved_answer_style,
                         "thought": thought,
                         "final_answer": str(parsed["final_answer"]),
                         "parse_status": "missing_documentary_evidence",
@@ -304,6 +334,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
                 {
                     "iteration": step + 1,
                     "question_mode": question_mode,
+                    "answer_style": resolved_answer_style,
                     "thought": thought,
                     "final_answer": final_answer,
                     "parse_status": parse_status,
@@ -332,6 +363,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
                 {
                     "iteration": step + 1,
                     "question_mode": question_mode,
+                    "answer_style": resolved_answer_style,
                     "thought": thought,
                     "action": action_name,
                     "action_input": action_input,
@@ -368,6 +400,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
             {
                 "iteration": step + 1,
                 "question_mode": question_mode,
+                "answer_style": resolved_answer_style,
                 "thought": thought,
                 "action": action_name,
                 "action_input": action_input,

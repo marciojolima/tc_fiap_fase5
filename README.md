@@ -668,6 +668,7 @@ poetry run task test
 Este tópico resume o que foi implementado na trilha LLM e como operar em conjunto com o Docker Compose. O detalhamento por arquivo e endpoint está na subseção **6. LLM, agente ReAct, RAG e segurança**, em [O que o Projeto Entrega](#o-que-o-projeto-entrega).
 
 - **Integração:** a API usa o `llm_provider` ativo definido em `configs/pipeline_global_config.yaml`, com implementação para `ollama`, `openai` e `claude`.
+- **Tamanho da resposta:** `POST /llm/chat` aceita `answer_style` com `short`, `medium` (default) ou `long` para controlar a extensão da resposta final do agente.
 - **Segredos:** providers externos leem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY` do `.env`.
 - **Compose base:** `poetry run task appstack` sobe apenas a stack comum, sem carregar container local de modelo.
 - **Índice RAG:** `poetry run task rag_index_rebuild_docker` gera o cache vetorial em `artifacts/rag/cache/index.joblib` usando a imagem leve do serving antes de subir a API.

@@ -51,6 +51,18 @@ class StructuredActionInputLLMClient(LLMClientProtocol):
         )
 
 
+class PromptCaptureLLMClient(LLMClientProtocol):
+    def __init__(self):
+        self.prompt = ""
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        self.prompt = messages[-1]["content"]
+        return (
+            '{"thought":"resposta direta",'
+            '"final_answer":"Resumo curto do comportamento solicitado."}'
+        )
+
+
 def test_react_agent_executes_tool_then_returns_final_answer() -> None:
     tool = AgentTool(
         name="fake_tool",
@@ -110,6 +122,38 @@ def test_react_agent_serializes_structured_action_input_as_json() -> None:
             '"improved_scenario": {"Age": 45, "NumOfProducts": 3}}'
         )
     ]
+
+
+def test_react_agent_includes_answer_style_instruction_in_prompt() -> None:
+    client = PromptCaptureLLMClient()
+    tool = AgentTool(
+        name="fake_tool",
+        description="Ferramenta de teste",
+        run=lambda _: "ok",
+    )
+    aux_tool_1 = AgentTool(
+        name="aux_tool_1",
+        description="Auxiliar",
+        run=lambda _: "ok",
+    )
+    aux_tool_2 = AgentTool(
+        name="aux_tool_2",
+        description="Auxiliar",
+        run=lambda _: "ok",
+    )
+
+    result = run_react_agent(
+        "Avalie este perfil de churn.",
+        llm_client=client,
+        tools=[tool, aux_tool_1, aux_tool_2],
+        max_iterations=1,
+        answer_style="short",
+    )
+
+    assert result.answer == "Resumo curto do comportamento solicitado."
+    assert "Estilo da resposta final: short" in client.prompt
+    assert "no máximo 3 bullets" in client.prompt
+    assert result.trace[0]["answer_style"] == "short"
 
 
 class InvalidJsonThenValidLLMClient(LLMClientProtocol):

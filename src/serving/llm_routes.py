@@ -54,7 +54,9 @@ def llm_status() -> dict[str, object]:
         "`Cite pelo menos três ferramentas do agente ReAct ligadas ao domínio do "
         "datathon.`. A resposta esperada deve mencionar `rag_search`, "
         "`predict_churn`, `drift_status` e/ou `scenario_prediction`. "
-        "Mantenha `include_trace=true` para depuração."
+        "Use `answer_style` como `short`, `medium` ou `long` para controlar "
+        "o tamanho da resposta final. Mantenha `include_trace=true` para "
+        "depuração."
     ),
 )
 def chat_with_react_agent(payload: LLMChatRequest) -> LLMChatResponse:
@@ -76,11 +78,17 @@ def chat_with_react_agent(payload: LLMChatRequest) -> LLMChatResponse:
 
         try:
             logger.info(
-                "Recebida requisicao POST /llm/chat | chars=%d | include_trace=%s",
+                "Recebida requisicao POST /llm/chat | chars=%d | "
+                "include_trace=%s | answer_style=%s",
                 len(payload.message),
                 payload.include_trace,
+                payload.answer_style,
             )
-            result = run_react_agent(payload.message, build_llm_client())
+            result = run_react_agent(
+                payload.message,
+                build_llm_client(),
+                answer_style=payload.answer_style,
+            )
         except RuntimeError as exc:
             status_code = "503"
             logger.warning("Falha em /llm/chat | motivo=%s", exc)
