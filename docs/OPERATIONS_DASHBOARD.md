@@ -1,5 +1,13 @@
 # Dashboard Operacional
 
+## Índice
+
+- [Como interpretar o dashboard](#como-interpretar-o-dashboard)
+- [Como validar rapidamente sem depender do Grafana](#como-validar-rapidamente-sem-depender-do-grafana)
+- [Como subir localmente](#como-subir-localmente)
+- [Acessos](#acessos)
+- [Observação](#observação)
+
 O projeto expõe métricas Prometheus no serving por meio do endpoint `GET /metrics`.
 
 As métricas operacionais iniciais são:
@@ -7,6 +15,10 @@ As métricas operacionais iniciais são:
 - `churn_serving_predict_latency_seconds`: latência do endpoint `POST /predict`
 - `churn_serving_predict_requests_total`: total de requisições por método e status HTTP
 - `churn_serving_predict_requests_in_progress`: requisições de predição em andamento
+- `churn_serving_llm_chat_latency_seconds`: latência do endpoint `POST /llm/chat`
+- `churn_serving_llm_chat_provider_latency_seconds`: latencia da chamada ao `llm_provider` dentro do fluxo `/llm/chat` (com label `provider`)
+- `churn_serving_llm_chat_requests_total`: total de requisições por método e status HTTP do chat
+- `churn_serving_llm_chat_requests_in_progress`: requisições de chat em andamento
 
 ## Como interpretar o dashboard
 
@@ -166,7 +178,7 @@ Use o Swagger em `http://127.0.0.1:8000/docs` ou faça chamadas para `POST /pred
 - Usuário padrão Grafana: `admin`
 - Senha padrão Grafana: `admin`
 
-O dashboard `Serving Operacional - Churn API` é provisionado automaticamente.
+Os dashboards `Serving Operacional - Churn API` e `LLM Chat Operacional - Churn API` são provisionados automaticamente.
 
 ## Observação
 

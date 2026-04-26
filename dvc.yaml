@@ -1,13 +1,13 @@
 stages:
   featurize:
-    cmd: python -m src.features.feature_engineering
+    cmd: python -m src.feature_engineering.feature_engineering
     deps:
       - src/common/config_loader.py
       - src/common/data_loader.py
       - src/common/logger.py
       - src/common/seed.py
-      - src/features/schema_validation.py
-      - src/features/feature_engineering.py
+      - src/feature_engineering/schema_validation.py
+      - src/feature_engineering/feature_engineering.py
       - configs/pipeline_global_config.yaml
       - data/raw/Customer-Churn-Records.csv
     outs:
@@ -19,15 +19,15 @@ stages:
       - artifacts/models/feature_pipeline.joblib
 
   train:
-    cmd: python -m src.models.train
+    cmd: python -m src.model_lifecycle.train
     deps:
       - src/common/config_loader.py
       - src/common/logger.py
       - src/common/seed.py
-      - src/models/catalog.py
-      - src/models/train.py
+      - src/model_lifecycle/catalog.py
+      - src/model_lifecycle/train.py
       - configs/pipeline_global_config.yaml
-      - configs/training/model_current.yaml
+      - configs/model_lifecycle/model_current.yaml
       - data/processed/train.parquet
       - data/processed/test.parquet
     outs:
@@ -40,7 +40,7 @@ stages:
       - src/common/config_loader.py
       - src/common/data_loader.py
       - src/common/logger.py
-      - src/features/feature_engineering.py
+      - src/feature_engineering/feature_engineering.py
       - src/serving/pipeline.py
       - src/feast_ops/config.py
       - src/feast_ops/export.py

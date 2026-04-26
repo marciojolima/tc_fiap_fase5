@@ -1,5 +1,23 @@
 # Feature Store com Feast e Redis
 
+## Índice
+
+- [Objetivo no contexto do projeto](#objetivo-no-contexto-do-projeto)
+- [Por que esta abordagem foi escolhida](#por-que-esta-abordagem-foi-escolhida)
+- [Offline store x Online store](#offline-store-x-online-store)
+- [Features expostas na Feature Store](#features-expostas-na-feature-store)
+- [Feature Services por versão de modelo](#feature-services-por-versão-de-modelo)
+- [Materialização incremental](#materialização-incremental)
+- [O que `apply` e `materialize` fazem](#o-que-apply-e-materialize-fazem)
+- [Quando a online store é atualizada](#quando-a-online-store-é-atualizada)
+- [Relação entre offline e online no projeto](#relação-entre-offline-e-online-no-projeto)
+- [Fluxo local recomendado](#fluxo-local-recomendado)
+- [Fluxo operacional recomendado](#fluxo-operacional-recomendado)
+- [Desenho lógico](#desenho-lógico)
+- [Integração com a narrativa MLOps](#integração-com-a-narrativa-mlops)
+- [Limitações assumidas](#limitações-assumidas)
+- [Próximos passos naturais](#próximos-passos-naturais)
+
 ## Objetivo no contexto do projeto
 
 Esta evolução adiciona uma Feature Store ao projeto de churn bancário sem reescrever o pipeline já existente. A ideia é aproximar a arquitetura de um cenário produtivo, mantendo a execução local simples, didática e defensável em banca.
@@ -162,7 +180,7 @@ Esse desenho resolve o principal gap arquitetural do projeto: evitar uma online 
 ### 1. Instalar dependências
 
 ```bash
-poetry install
+poetry install --all-extras
 ```
 
 ### 2. Subir o Redis
@@ -171,22 +189,25 @@ poetry install
 docker compose up -d redis
 ```
 
-### 3. Gerar features do pipeline principal
+### 3. Gerar features e modelo do pipeline principal
 
 ```bash
-poetry run python -m src.features.feature_engineering
+poetry run dvc repro featurize
+poetry run dvc repro train
 ```
 
 ### 4. Exportar a camada offline do Feast
 
 ```bash
-poetry run python -m src.feast_ops.export
+poetry run dvc repro export_feature_store
 ```
 
-Se preferir reaproveitar o DVC:
+Se preferir executar os módulos diretamente durante desenvolvimento:
 
 ```bash
-poetry run dvc repro export_feature_store
+poetry run python -m src.feature_engineering.feature_engineering
+poetry run python -m src.model_lifecycle.train
+poetry run python -m src.feast_ops.export
 ```
 
 ### 5. Aplicar as definições do Feast

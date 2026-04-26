@@ -45,20 +45,40 @@ mlflow:
   phase: datathon-fase05
   dataset_name: bank-customer-churn
 
-# llm.base_url: padrao local; em Docker sobrescreva com LLM_BASE_URL (ver .env.example).
 llm:
-  provider: ollama
-  base_url: http://127.0.0.1:11434
-  # Tag valida na biblioteca Ollama (ollama.com/library/qwen2.5). Quantizacao vem no blob do modelo.
-  model_name: qwen2.5:3b
+  active_provider: claude
   timeout_seconds: 45
+  providers:
+    ollama:
+      base_url: http://127.0.0.1:11434
+      model_name: qwen2.5:3b
+    openai:
+      base_url: https://api.openai.com/v1
+      model_name: gpt-4o-mini
+      api_key_env_var: OPENAI_API_KEY
+      max_tokens: 1200
+    claude:
+      base_url: https://api.anthropic.com
+      model_name: claude-haiku-4-5-20251001
+      api_key_env_var: ANTHROPIC_API_KEY
+      max_tokens: 1200
 
 agent:
   max_iterations: 6
   min_tools: 3
 
 rag:
-  top_k: 3
+  top_k: 4
+  chunk_size: 900
+  chunk_overlap: 150
+  embedding_backend: fastembed
+  embedding_model_name: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  embedding_cache_dir: artifacts/rag/fastembed_model_cache
+  ragas_embedding_cache_dir: artifacts/rag/ragas_embedding_model_cache
+  cache_dir: artifacts/rag/cache
+  history_path: artifacts/rag/index_build_history.jsonl
+  lexical_rerank_weight: 0.15
+  vector_candidate_multiplier: 4
 
 security:
   max_input_chars: 4096

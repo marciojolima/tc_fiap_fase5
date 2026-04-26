@@ -22,8 +22,8 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 - [Arquitetura da Solução](#arquitetura-da-solução)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-- [Como Executar](#como-executar)
-- [LLM, agente ReAct e Ollama](#llm-agente-react-e-ollama)
+- [Instalação e Execução](#instalação-e-execução)
+- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
 - [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
@@ -49,7 +49,7 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - feature store local com Feast + Redis para materialização online incremental
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 
-Além da trilha tabular principal, o repositório inclui uma trilha **LLM** (agente ReAct, RAG, guardrails e integração com **Ollama**) já utilizável via API; avaliação formal (RAGAS, benchmark com várias configs) e CI/CD específicos do agente são os próximos passos planejados. O andamento frente aos requisitos do Datathon continua detalhado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
+Além da trilha tabular principal, o repositório inclui uma trilha **LLM** (agente ReAct, RAG, guardrails e integração com `llm_provider`) já utilizável via API; avaliação formal (RAGAS, benchmark com várias configs) e CI/CD específicos do agente são os próximos passos planejados. O andamento frente aos requisitos do Datathon continua detalhado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
 
 ## O que o Projeto Entrega
 
@@ -59,18 +59,18 @@ Hoje o repositório já possui uma base funcional e demonstrável nas seguintes 
 
 - versionamento de dados com DVC
 - separação entre camadas `raw`, `interim` e `processed`
-- pipeline de engenharia de features em [src/features/feature_engineering.py](src/features/feature_engineering.py)
-- componentes reutilizáveis em [src/features/pipeline_components.py](src/features/pipeline_components.py)
-- validação estrutural com Pandera em [src/features/schema_validation.py](src/features/schema_validation.py)
+- pipeline de engenharia de features em [src/feature_engineering/feature_engineering.py](src/feature_engineering/feature_engineering.py)
+- componentes reutilizáveis em [src/feature_engineering/pipeline_components.py](src/feature_engineering/pipeline_components.py)
+- validação estrutural com Pandera em [src/feature_engineering/schema_validation.py](src/feature_engineering/schema_validation.py)
 - persistência de datasets preparados e artefatos auxiliares para reuso
 
 ### 2. Treinamento e gestão de modelo
 
-- treinamento principal em [src/models/train.py](src/models/train.py)
+- treinamento principal em [src/model_lifecycle/train.py](src/model_lifecycle/train.py)
 - rastreamento de parâmetros, métricas e artefatos com MLflow
-- múltiplas configurações de experimento em `configs/training/experiments/`
+- múltiplas configurações de experimento em `configs/model_lifecycle/experiments/`
 - persistência do modelo atual, challengers e metadados em `artifacts/models/`
-- apoio a promoção champion-challenger em [src/models/promotion.py](src/models/promotion.py)
+- apoio a promoção champion-challenger em [src/model_lifecycle/promotion.py](src/model_lifecycle/promotion.py)
 
 ### 3. Serving e inferência
 
@@ -81,47 +81,63 @@ Hoje o repositório já possui uma base funcional e demonstrável nas seguintes 
 
 ### 4. Cenários de negócio e validação
 
-- suíte de cenários versionados em [configs/scenario_analysis/inference_cases.yaml](configs/scenario_analysis/inference_cases.yaml)
-- execução automatizada em [src/scenario_analysis/inference_cases.py](src/scenario_analysis/inference_cases.py)
-- geração de lotes sintéticos de drift em [src/scenario_analysis/synthetic_drifts.py](src/scenario_analysis/synthetic_drifts.py)
+- suíte de cenários versionados em [configs/scenario_experiments/inference_cases.yaml](configs/scenario_experiments/inference_cases.yaml)
+- execução automatizada em [src/scenario_experiments/inference_cases.py](src/scenario_experiments/inference_cases.py)
+- geração de lotes sintéticos de drift em [src/evaluation/model/drift/synthetic_drifts.py](src/evaluation/model/drift/synthetic_drifts.py)
 
 ### 5. Monitoramento e operação
 
-- logging de inferências em [src/monitoring/inference_log.py](src/monitoring/inference_log.py)
+- logging de inferências em [src/evaluation/model/drift/prediction_logger.py](src/evaluation/model/drift/prediction_logger.py)
 - métricas operacionais expostas em [src/monitoring/metrics.py](src/monitoring/metrics.py)
-- detecção batch de drift com Evidently e PSI em [src/monitoring/drift.py](src/monitoring/drift.py)
-- relatórios HTML e arquivos JSON para auditoria em `artifacts/monitoring/`
+- detecção batch de drift com Evidently e PSI em [src/evaluation/model/drift/drift.py](src/evaluation/model/drift/drift.py)
+- relatórios HTML e arquivos JSON para auditoria em `artifacts/evaluation/model/`
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 - workflow básico de CI em [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ### 6. LLM, agente ReAct, RAG e segurança
 
-Implementação alinhada à opção **LLM quantizado servido fora do processo Python** ([Ollama](https://ollama.com/)), integrado à API FastAPI sem alterar o contrato do endpoint tabular `/predict`.
+Implementação alinhada a uma camada de provider LLM configurável, integrada à API FastAPI sem alterar o contrato do endpoint tabular `/predict`.
 
 - **API (FastAPI)**  
   - `GET /llm/health` — health do router LLM.  
-  - `GET /llm/status` — URL do Ollama resolvida (`LLM_BASE_URL`), modelo esperado (`OLLAMA_MODEL` / `configs/pipeline_global_config.yaml`), lista de modelos instalados no daemon e dicas se o modelo não existir.  
+  - `GET /llm/status` — provider ativo (`llm.active_provider`), modelo esperado, diagnóstico específico do provider e status do RAG.  
   - `POST /llm/chat` — pergunta do usuário, resposta do agente, lista de tools usadas e trace opcional.
 
 - **Agente ReAct** — [src/agent/react_agent.py](src/agent/react_agent.py): loop no estilo pensar → agir → observar, com limite de iterações e integração com guardrails de entrada e saída.
 
-- **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict`), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
+- **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict/raw`, com payload bruto), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
 
-- **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação simples por sobreposição lexical sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
+- **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação vetorial local com FastEmbed/ONNX e rerank lexical leve sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
+  O modelo de embeddings do RAG usa cache persistente local em `artifacts/rag/fastembed_model_cache`, reduzindo downloads repetidos entre reinícios da stack.
 
 - **Segurança** — [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py): validação básica de input e mascaramento de PII na resposta.
 
-- **Configuração** — blocos `llm`, `agent`, `rag` e `security` em [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml); variáveis de ambiente documentadas em [.env.example](.env.example) (`LLM_BASE_URL`, `OLLAMA_MODEL`, etc.).
+- **Configuração** — blocos `llm`, `agent`, `rag` e `security` em [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml); o `llm_provider` ativo, `model_name`, `base_url`, `max_tokens` e demais parâmetros ficam no YAML. Chaves de API de providers externos ficam no `.env` (ex.: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`).
+  Em ambiente Docker, `LLM_BASE_URL` pode sobrescrever a `base_url` do provider ativo quando for necessário ajustar o endpoint interno do container.
 
 - **Testes** — [tests/test_agent.py](tests/test_agent.py), [tests/test_guardrails.py](tests/test_guardrails.py), [tests/test_llm_routes.py](tests/test_llm_routes.py).
 
-- **Utilitário** — [scripts/list_ollama_models.py](scripts/list_ollama_models.py) (task `ollama_list`): lista modelos no container `tc-fiap-ollama` ou, se indisponível, no Ollama em `127.0.0.1:11434`.
+- **Utilitário** — [scripts/list_ollama_models.py](scripts/list_ollama_models.py) (task `ollama_list`): diagnóstico opcional para ambientes em que o `llm_provider` ativo é `ollama`.
 
-- **Golden set (RAG / judge):** [configs/evaluation/golden_set.yaml](configs/evaluation/golden_set.yaml) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
+- **Golden set (RAG / judge):** [data/golden-set.json](data/golden-set.json) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
 
-- **RAGAS (4 métricas):** [evaluation/ragas_eval.py](evaluation/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set (respostas geradas via Ollama + contextos do `rag_pipeline`; embeddings multilingues via `sentence-transformers`). Execução local: `poetry run task ragas_eval` (requer Ollama no ar; na primeira execução baixa o modelo de embeddings). Saída típica: `evaluation/results/ragas_scores.json` (pasta ignorada no Git se contiver apenas resultados).
+- **RAGAS (4 métricas):** [src/evaluation/llm_agent/ragas_eval.py](src/evaluation/llm_agent/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set usando o `llm_provider` ativo + contextos do `rag_pipeline`; embeddings multilingues via `sentence-transformers`. Execução local: `poetry run task eval_ragas` (requer provider LLM configurado; na primeira execução baixa o modelo de embeddings). Saída típica: `artifacts/evaluation/llm_agent/results/ragas_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/ragas_runs.jsonl`.
 
-**Próximos passos planejados (ainda não concluídos no repositório):** pipeline de benchmark com ≥3 configs comparando runs, extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
+- **LLM-as-judge (3 critérios):** [src/evaluation/llm_agent/llm_judge.py](src/evaluation/llm_agent/llm_judge.py) — avalia respostas do RAG nos critérios `adequacao_negocio`, `correcao_conteudo` e `clareza_utilidade`. Execução local: `poetry run task eval_llm_judge`. Saída típica: `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/llm_judge_runs.jsonl`.
+
+- **Prompt A/B (3 variantes):** [src/evaluation/llm_agent/ab_test_prompts.py](src/evaluation/llm_agent/ab_test_prompts.py) — benchmark offline com três variantes de prompt sobre o golden set, comparando cobertura lexical mínima da resposta e, opcionalmente, notas do `llm_judge`. Execução local: `poetry run task eval_ab_test_prompts` ou `poetry run python -m src.evaluation.llm_agent.ab_test_prompts --with-judge`. Saída típica: `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`, com histórico em `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`.
+
+- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. Se o modelo de embeddings do RAGAS já estiver baixado no cache local, `poetry run task eval_all_offline` força reuso local (`HF_HUB_OFFLINE=1` e `TRANSFORMERS_OFFLINE=1`) e evita novas chamadas ao Hugging Face.
+
+  As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
+
+  Se `artifacts/rag/` tiver sido criado por um container antigo com outro usuário, corrija a posse uma vez antes da execução local:
+
+  ```bash
+  sudo chown -R "$(id -u):$(id -g)" artifacts/rag
+  ```
+
+**Próximos passos planejados (ainda não concluídos no repositório):** extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
 
 ## Arquitetura da Solução
 
@@ -170,16 +186,16 @@ tc_fiap_fase5/
 ├── data/                   # camadas raw, interim e processed
 ├── docs/                   # documentação técnica e de governança
 ├── feature_store/          # repositório Feast e definições da feature store
-├── evaluation/             # scripts de avaliação para trilhas com LLM
 ├── notebooks/              # notebooks exploratórios e de apoio
 ├── scripts/                # utilitários auxiliares
 ├── src/
-│   ├── agent/              # componentes em evolução para agente e RAG
+│   ├── agent/              # agente, RAG e gateway de LLM
 │   ├── common/             # utilidades compartilhadas
-│   ├── features/           # engenharia e validação de features
-│   ├── models/             # treino, promoção e retreino
-│   ├── monitoring/         # drift, métricas e logging de inferências
-│   ├── scenario_analysis/  # cenários de negócio e geração de batches sintéticos
+│   ├── evaluation/         # avaliação de LLM e de modelo/drift
+│   ├── feature_engineering/ # engenharia e validação de features
+│   ├── model_lifecycle/    # treino, promoção e retreino
+│   ├── monitoring/         # métricas operacionais
+│   ├── scenario_experiments/ # cenários de negócio
 │   ├── security/           # guardrails e PII em evolução
 │   └── serving/            # aplicação FastAPI e pipeline de inferência
 ├── tests/                  # suíte de testes automatizados
@@ -189,21 +205,98 @@ tc_fiap_fase5/
 └── STATUS_ATUAL_PROJETO.md
 ```
 
-## Como Executar
+## Instalação e Execução
 
 ### Pré-requisitos
 
 - Python 3.13
-- Poetry
-- Docker e Docker Compose, caso queira subir a stack de observabilidade
+- Poetry 2.x
+- Docker e Docker Compose, para Redis, serving, MLflow, Prometheus, Grafana e, opcionalmente, Ollama
+- acesso ao remote DVC no Google Drive, caso vá baixar os dados versionados em vez de reconstruir a partir de arquivos locais
 
-### 1. Instalação
+### 1. Clone do repositório
+
+Comece clonando o projeto e entrando na raiz do repositório:
+
+```bash
+git clone https://github.com/marciojolima/tc_fiap_fase5.git
+cd tc_fiap_fase5
+```
+
+Se estiver validando uma branch específica, troque para ela antes da instalação:
+
+```bash
+git checkout <nome-da-branch>
+```
+
+### 2. Instalação completa do ambiente
+
+Entre na raiz do repositório e instale as dependências do projeto. Para gerar todos os artefatos documentados neste README, use os extras opcionais de treino, serving, monitoramento, avaliação e operações:
+
+```bash
+poetry install --all-extras
+```
+
+Se a intenção for apenas trabalhar no núcleo Python sem DVC, Feast, MLflow, Evidently ou avaliação LLM, a instalação mínima também funciona:
 
 ```bash
 poetry install
 ```
 
-### 2. Sincronização de dados versionados
+Se o Poetry informar que o `pyproject.toml` mudou significativamente desde a última geração do `poetry.lock`, a branch clonada está com o lock file desatualizado. Nesse caso, regenere o lock e repita a instalação:
+
+```bash
+poetry lock
+poetry install --all-extras
+```
+
+Depois da instalação, valide se as tasks do projeto estão disponíveis:
+
+```bash
+poetry run task --list
+```
+
+Os comandos deste README usam `poetry run`, então não é obrigatório ativar o ambiente virtual manualmente. Se preferir trabalhar com o ambiente ativado no shell atual, use:
+
+```bash
+eval "$(poetry env activate)"
+```
+
+Em ambientes com o plugin `poetry-plugin-shell` instalado, a alternativa equivalente é:
+
+```bash
+poetry shell
+```
+
+Crie também o arquivo `.env` local usado pelo Docker Compose e pelos providers externos de LLM:
+
+```bash
+cp .env.example .env
+```
+
+Quando usar OpenAI ou Claude como provider ativo, preencha no `.env` as variáveis correspondentes:
+
+```bash
+OPENAI_API_KEY=<sua-chave>
+ANTHROPIC_API_KEY=<sua-chave>
+```
+
+#### Poetry ainda é necessário se eu usar Docker?
+
+Para subir apenas a stack já construída com `docker compose`, o Docker executa a API e os serviços de apoio em containers. Mesmo assim, o fluxo completo do projeto ainda usa Poetry no host para os comandos batch e de produção de artefatos, como:
+
+- `poetry run dvc pull`
+- `poetry run dvc repro featurize`
+- `poetry run dvc repro train`
+- `poetry run dvc repro export_feature_store`
+- `poetry run task feastapply`
+- `poetry run task feastmaterialize`
+- `poetry run task mldrift`
+- `poetry run task eval_all`
+
+Na prática: Docker cobre serving, Redis, MLflow, Prometheus, Grafana e Ollama. Poetry cobre a orquestração local dos pipelines, DVC, geração de datasets, treino, avaliação e manutenção dos artefatos que a stack monta por volume.
+
+### 3. Sincronização de dados versionados
 
 O projeto utiliza DVC para dados e artefatos versionados. No repositório atual, o remote padrão já está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
 
@@ -301,40 +394,161 @@ dvc pull
 - se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
 - `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 
-### 3. Pipeline principal
+### 4. Produção dos artefatos principais
 
-Fluxo recomendado para deixar o projeto pronto para treino, Feature Store e serving online:
+Esta é a sequência recomendada para sair de um clone novo do repositório e produzir os artefatos necessários para treino, serving, Feature Store e monitoramento.
+
+#### 4.1 Preparar dados, features e modelo champion
+
+Execute os stages do DVC na ordem de dependência:
 
 ```bash
 poetry run dvc repro featurize
 poetry run dvc repro train
 poetry run dvc repro export_feature_store
-poetry run task feastapply
-poetry run task feastmaterialize
 ```
 
 Responsabilidade de cada gatilho:
 
-- `dvc repro featurize`: gera `data/processed/train.parquet`, `data/processed/test.parquet` e `artifacts/models/feature_pipeline.joblib`
-- `dvc repro train`: treina o modelo e gera `artifacts/models/model_current.pkl`
-- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet`
-- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast
-- `task feastmaterialize`: lê a camada offline e materializa incrementalmente as features na online store Redis
+- `dvc repro featurize`: gera `data/interim/cleaned.parquet`, `data/processed/train.parquet`, `data/processed/test.parquet`, `data/processed/feature_columns.json`, `data/processed/schema_report.json` e `artifacts/models/feature_pipeline.joblib`
+- `dvc repro train`: treina o modelo champion e gera `artifacts/models/model_current.pkl` e `artifacts/models/model_current_metadata.json`
+- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet` e `data/feature_store/export_metadata.json`
 
 Observações importantes:
 
 - `dvc repro export_feature_store` depende do artefato `artifacts/models/feature_pipeline.joblib`, gerado no stage `featurize`
 - a API de predição completa também depende de `artifacts/models/model_current.pkl`, gerado no stage `train`
-- `feast apply` registra a estrutura da Feature Store; ele não publica dados no Redis
-- `feast materialize-incremental` depende de o Redis estar em execução
 
-Execução ampliada com múltiplos experimentos e cenários:
+#### 4.2 Registrar e materializar a Feature Store
+
+A materialização online depende do Redis. Para subir apenas o Redis:
+
+```bash
+docker compose up -d redis
+```
+
+Depois registre as definições do Feast e materialize os dados para a online store:
+
+```bash
+poetry run task feastapply
+poetry run task feastmaterialize
+```
+
+Responsabilidade de cada comando:
+
+- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast, gerando `feature_store/data/registry.db`
+- `task feastmaterialize`: lê `data/feature_store/customer_features.parquet` e materializa incrementalmente as features na online store Redis
+- `task feastdemo`: valida uma leitura online de exemplo para o cliente `15634602`
+
+Validação opcional:
+
+```bash
+poetry run task feastdemo
+```
+
+#### 4.3 Produzir experimentos, cenários e trilha MLflow
+
+Para executar o champion, os challengers configurados e a suíte de cenários de negócio em uma única sequência:
 
 ```bash
 poetry run task mlrunall
 ```
 
-### 4. Stack local com Docker Compose
+Esse comando registra runs no MLflow local configurado em `file:./mlruns` quando nenhum `MLFLOW_TRACKING_URI` externo é informado. Ele também gera modelos experimentais em `artifacts/models/` conforme os caminhos declarados em `configs/model_lifecycle/experiments/`.
+
+Também é possível executar partes isoladas:
+
+```bash
+poetry run task mltrain
+poetry run task mlrunexperiments
+poetry run task mlscenarios
+```
+
+#### 4.4 Produzir artefatos de monitoramento e drift
+
+Com o modelo e os dados processados disponíveis, gere uma execução demonstrável de drift usando a base de teste como base corrente:
+
+```bash
+poetry run task mldriftdemo
+```
+
+Para executar o monitoramento sobre o log real de inferências da API, primeiro suba a stack, gere predições no endpoint `/predict` e depois rode:
+
+```bash
+poetry run task mldrift
+```
+
+Os principais artefatos gerados ficam em:
+
+- `artifacts/logs/inference/predictions.jsonl`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_report_evidently.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/retraining/`, quando o gatilho de retreino é acionado
+
+#### 4.5 Produzir artefatos de avaliação LLM
+
+As avaliações LLM usam o provider configurado em `configs/pipeline_global_config.yaml`. Com o provider pronto, rode:
+
+```bash
+poetry run task eval_ragas
+poetry run task eval_llm_judge
+poetry run task eval_ab_test_prompts
+```
+
+Para isolar as dependências pesadas do RAGAS (`sentence-transformers` e
+`torch`) fora da imagem do serving, use a imagem dedicada de avaliação:
+
+```bash
+poetry run task eval_ragas_docker
+poetry run task eval_all_sample_docker
+```
+
+Ou execute tudo em sequência:
+
+```bash
+poetry run task eval_all
+```
+
+Se o modelo de embeddings do RAGAS já estiver em cache e o objetivo for evitar novas chamadas ao Hugging Face:
+
+```bash
+poetry run task eval_all_offline
+```
+
+Saídas esperadas:
+
+- `artifacts/evaluation/llm_agent/results/ragas_scores.json`
+- `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`
+- `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`
+- `artifacts/evaluation/llm_agent/runs/*.jsonl`
+
+#### 4.6 Sequência curta para reproduzir os artefatos essenciais
+
+Para uma execução local completa e objetiva:
+
+```bash
+poetry install --all-extras
+cp .env.example .env
+poetry run dvc pull
+poetry run dvc repro featurize
+poetry run dvc repro train
+poetry run dvc repro export_feature_store
+docker compose up -d redis
+poetry run task feastapply
+poetry run task feastmaterialize
+poetry run task mldriftdemo
+```
+
+Se quiser validar também serving, dashboards e MLflow:
+
+```bash
+poetry run task appstack
+```
+
+### 5. Stack local com Docker Compose
 
 O arquivo `.env.example` é apenas um modelo versionado com valores de referência.
 O arquivo efetivamente lido pelo `docker compose` é o `.env`, que você cria a partir dele.
@@ -344,22 +558,34 @@ cp .env.example .env
 poetry run task appstack
 ```
 
+Se preferir executar a stack sem as tasks do projeto, o modo normal também pode ser iniciado diretamente com:
+
+```bash
+docker compose up -d
+```
+
 A stack local sobe os seguintes serviços de forma integrada:
 
 - serving FastAPI
-- **Ollama** (LLM quantizado; volume `ollama_data` para modelos) e um job **one-shot** `ollama-pull` que executa `ollama pull` do modelo definido em `OLLAMA_MODEL` (padrão recomendado: `qwen2.5:3b`, tag válida na biblioteca Ollama)
-- MLflow server
 - Redis
+- MLflow server
 - Prometheus
 - Grafana
-- serving FastAPI
-- MLflow server
+
+Quando o `llm_provider` ativo for `ollama`, use o override [docker-compose.ollama.yml](docker-compose.ollama.yml) via `poetry run task appstack_ollama` ou `poetry run task appstack_ollama_rebuild`. Nesse modo, a stack adiciona:
+
+- **Ollama** (volume `ollama_data` para modelos)
+- job **one-shot** `ollama-pull`, que executa `ollama pull` do modelo definido em `llm.providers.ollama.model_name`
 
 Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local (incluindo rotas `/llm/*`).
 
-**Imagem Docker da aplicação:** o [Dockerfile](src/serving/Dockerfile) copia `src/` no *build*. Depois de alterar código Python ou configuração embutida na imagem, use `poetry run task observability_rebuild` para reconstruir e subir de novo. Para apenas iniciar containers com as imagens já existentes, `poetry run task observability` é mais rápido.
+**Modo desenvolvimento:** use `poetry run task appstack_dev` para subir a stack com o override [docker-compose.dev.yml](docker-compose.dev.yml). Nesse modo, o `serving` monta `./src` em `/app/src` e roda o Uvicorn com `--reload`, então alterações em arquivos Python dentro de `src/` não exigem rebuild da imagem.
 
-**Diagnóstico LLM:** com a stack no ar, abra `http://127.0.0.1:8000/llm/status` ou execute `poetry run task ollama_list` para ver se o modelo esperado está instalado no mesmo Ollama que a API usa (`LLM_BASE_URL`, em geral `http://ollama:11434` dentro do Compose).
+**Quando usar rebuild:** reconstrua a stack apenas quando mudar Dockerfile, `pyproject.toml`, `poetry.lock`, dependências ou alguma estrutura relevante de build. Para a stack base, use `poetry run task appstack_rebuild`; para desenvolvimento, use `poetry run task appstack_dev_rebuild`; para o cenário com Ollama local, use `poetry run task appstack_ollama_rebuild`.
+
+**Quando não precisa rebuild:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo Uvicorn. Configurações, dados e artefatos também já ficam disponíveis por volumes do Compose principal, incluindo `configs/`, `data/processed/`, `data/feature_store/`, `artifacts/` e `feature_store/`.
+
+**Diagnóstico LLM:** com a stack no ar, abra `http://127.0.0.1:8000/llm/status` para ver o `llm_provider` ativo, o modelo esperado e o diagnóstico específico do provider. Se o provider for `ollama`, `poetry run task ollama_list` ajuda a confirmar os modelos instalados nessa instância.
 
 Para encerrar os serviços:
 
@@ -367,7 +593,7 @@ Para encerrar os serviços:
 poetry run task appstack_down
 ```
 
-### 5. Execução manual isolada
+### 6. Execução manual isolada
 
 Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
 
@@ -411,7 +637,7 @@ MLflow:
 poetry run task mlflow
 ```
 
-### 6. Monitoramento e demonstração de drift
+### 7. Monitoramento e demonstração de drift
 
 Monitoramento batch:
 
@@ -431,20 +657,27 @@ Geração de cenários sintéticos:
 poetry run task mlsyntheticdrift
 ```
 
-### 7. Testes
+### 8. Testes
 
 ```bash
 poetry run task test
 ```
 
-## LLM, agente ReAct e Ollama
+## LLM, agente ReAct e llm_provider
 
 Este tópico resume o que foi implementado na trilha LLM e como operar em conjunto com o Docker Compose. O detalhamento por arquivo e endpoint está na subseção **6. LLM, agente ReAct, RAG e segurança**, em [O que o Projeto Entrega](#o-que-o-projeto-entrega).
 
-- **Integração:** a API conversa com o daemon **Ollama** por HTTP (`LLM_BASE_URL`). No Compose, o padrão é o serviço `ollama` na mesma rede (`http://ollama:11434`). No `.env`, alinhe `LLM_BASE_URL` e `OLLAMA_MODEL` com o que você realmente instalou (`poetry run task ollama_list` ou `GET /llm/status`).
-- **Modelo:** use uma **tag válida** na biblioteca Ollama (ex.: `qwen2.5:3b`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
-- **Container `ollama-pull`:** ao subir a stack, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
-- **Rebuild da imagem da app:** após mudanças em `src/`, rode `poetry run task observability_rebuild` para que o container `serving` inclua o código novo.
+- **Integração:** a API usa o `llm_provider` ativo definido em `configs/pipeline_global_config.yaml`, com implementação para `ollama`, `openai` e `claude`.
+- **Tamanho da resposta:** `POST /llm/chat` aceita `answer_style` com `short`, `medium` (default) ou `long` para controlar a extensão da resposta final do agente.
+- **Segredos:** providers externos leem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY` do `.env`.
+- **Compose base:** `poetry run task appstack` sobe apenas a stack comum, sem carregar container local de modelo.
+- **Índice RAG:** `poetry run task rag_index_rebuild_docker` gera o cache vetorial em `artifacts/rag/cache/index.joblib` usando a imagem leve do serving antes de subir a API.
+- **Avaliação LLM isolada:** `poetry run task eval_ragas_docker` e `poetry run task eval_all_docker` usam a imagem `tc-fiap-evaluation`, separando RAGAS/PyTorch da imagem `tc-fiap-fase5-app`.
+- **Compose com Ollama:** `poetry run task appstack_ollama` adiciona `ollama` e `ollama-pull`. Esse é o modo indicado quando `llm.active_provider=ollama`.
+- **Base URL no Docker:** no cenário com Ollama local, o override do Compose injeta `LLM_BASE_URL=http://ollama:11434` no `serving`, porque `127.0.0.1` dentro do container apontaria para o próprio container da API.
+- **Modelo Ollama:** use uma **tag válida** na biblioteca Ollama (por exemplo `gemma3:270m`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
+- **Container `ollama-pull`:** ao subir a stack com override Ollama, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
+- **Rebuild da imagem da app:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo `serving` com Uvicorn `--reload`. Rebuild fica reservado para mudanças em Dockerfile, `pyproject.toml`, `poetry.lock`, dependências ou estrutura relevante de build.
 
 ## Monitoramento e Observabilidade
 
@@ -461,11 +694,11 @@ As métricas expostas pela aplicação permitem acompanhar o comportamento da AP
 - taxa de erro
 - requisições em andamento
 
-Essas métricas são consumidas pela stack local configurada em `configs/observability/`, agora orquestrada pelo Docker Compose junto com o serving e o MLflow.
+Essas métricas são consumidas pela stack local configurada em `configs/monitoring/`, agora orquestrada pelo Docker Compose junto com o serving e o MLflow.
 
 #### Logging de inferências
 
-As inferências podem ser registradas em `artifacts/monitoring/inference_logs/predictions.jsonl`, criando uma trilha de execução útil para:
+As inferências podem ser registradas em `artifacts/logs/inference/predictions.jsonl`, criando uma trilha de execução útil para:
 
 - auditoria das features efetivamente servidas ao modelo
 - composição do dataset corrente de monitoramento
@@ -477,12 +710,12 @@ consumidas pelo modelo em produção, com metadados mínimos de predição e ori
 
 #### Monitoramento batch de drift
 
-O fluxo em [src/monitoring/drift.py](src/monitoring/drift.py) compara uma base de referência com dados correntes e produz evidências operacionais em:
+O fluxo em [src/evaluation/model/drift/drift.py](src/evaluation/model/drift/drift.py) compara uma base de referência com dados correntes e produz evidências operacionais em:
 
-- `artifacts/monitoring/drift/drift_report.html`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/drift/drift_status.json`
-- `artifacts/monitoring/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
 
 Na prática, isso permite:
 
@@ -502,10 +735,10 @@ auxiliar separado para diagnóstico complementar.
 
 Quando o monitoramento identifica condição crítica, o projeto já suporta uma trilha auditável de retreino, com artefatos como:
 
-- `artifacts/monitoring/retraining/retrain_request.json`
-- `artifacts/monitoring/retraining/retrain_run.json`
-- `artifacts/monitoring/retraining/promotion_decision.json`
-- `artifacts/monitoring/retraining/generated_configs/`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
+- `artifacts/evaluation/model/retraining/generated_configs/`
 
 Essa trilha documenta:
 
@@ -537,7 +770,7 @@ O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis c
 5. Abra o Grafana para visualizar os painéis provisionados.
 6. Abra o MLflow para revisar runs, parâmetros, métricas e artefatos.
 7. Rode `poetry run task mldriftdemo` ou `poetry run task mldrift` para produzir uma execução de drift.
-8. Abra os relatórios HTML e os arquivos JSON em `artifacts/monitoring/` para inspecionar as evidências geradas.
+8. Abra os relatórios HTML e os arquivos JSON em `artifacts/evaluation/model/` para inspecionar as evidências geradas.
 
 Resumo rápido:
 
@@ -559,19 +792,19 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `artifacts/models/model_current.pkl` | Modelo champion atualmente mantido como versão principal para inferência. |
 | `artifacts/models/model_current_metadata.json` | Metadados do champion atual, incluindo informações de versão, configuração e métricas relevantes. |
 | `artifacts/models/challengers/` | Diretório reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promoção. |
-| `artifacts/monitoring/inference_logs/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. No contrato atual, ele registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
-| `artifacts/monitoring/drift/drift_report.html` | Relatório HTML oficial do projeto para drift, coerente com `drift_metrics.json` e com a decisão operacional baseada em PSI. |
-| `artifacts/monitoring/drift/drift_report_evidently.html` | Relatório auxiliar do Evidently, mantido para diagnóstico visual complementar das distribuições e widgets estatísticos. |
-| `artifacts/monitoring/drift/drift_metrics.json` | Consolidação das métricas de drift, incluindo PSI por feature e resumo para automação de decisão. |
-| `artifacts/monitoring/drift/drift_status.json` | Estado mais recente do monitoramento de drift, com classificação para apoio ao gatilho de retreino. |
-| `artifacts/monitoring/drift/drift_runs.jsonl` | Histórico de execuções do monitoramento, útil para trilha de auditoria e acompanhamento temporal. |
-| `artifacts/monitoring/retraining/retrain_request.json` | Registro do pedido de retreino, com motivação e contexto do disparo do processo. |
-| `artifacts/monitoring/retraining/retrain_run.json` | Resultado consolidado da execução do retreino, incluindo status, motivo, métricas e decisão final. |
-| `artifacts/monitoring/retraining/promotion_decision.json` | Decisão champion-challenger com regra de promoção explícita e deltas de métricas entre os modelos comparados. |
-| `artifacts/monitoring/retraining/generated_configs/` | Configurações geradas automaticamente para retreinos auditáveis e reproduzíveis. |
-| `configs/scenario_analysis/inference_cases.yaml` | Suíte versionada de cenários de inferência usada para validar comportamento do modelo em casos de negócio. |
-| `artifacts/scenario_analysis/drift/*.jsonl` | Lotes sintéticos construídos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
-| `artifacts/scenario_analysis/drift/*_report.html` | Relatórios HTML dos cenários sintéticos, usados para demonstração e validação do processo de drift. |
+| `artifacts/logs/inference/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. No contrato atual, ele registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
+| `artifacts/evaluation/model/drift/drift_report.html` | Relatório HTML oficial do projeto para drift, coerente com `drift_metrics.json` e com a decisão operacional baseada em PSI. |
+| `artifacts/evaluation/model/drift/drift_report_evidently.html` | Relatório auxiliar do Evidently, mantido para diagnóstico visual complementar das distribuições e widgets estatísticos. |
+| `artifacts/evaluation/model/drift/drift_metrics.json` | Consolidação das métricas de drift, incluindo PSI por feature e resumo para automação de decisão. |
+| `artifacts/evaluation/model/drift/drift_status.json` | Estado mais recente do monitoramento de drift, com classificação para apoio ao gatilho de retreino. |
+| `artifacts/evaluation/model/drift/drift_runs.jsonl` | Histórico de execuções do monitoramento, útil para trilha de auditoria e acompanhamento temporal. |
+| `artifacts/evaluation/model/retraining/retrain_request.json` | Registro do pedido de retreino, com motivação e contexto do disparo do processo. |
+| `artifacts/evaluation/model/retraining/retrain_run.json` | Resultado consolidado da execução do retreino, incluindo status, motivo, métricas e decisão final. |
+| `artifacts/evaluation/model/retraining/promotion_decision.json` | Decisão champion-challenger com regra de promoção explícita e deltas de métricas entre os modelos comparados. |
+| `artifacts/evaluation/model/retraining/generated_configs/` | Configurações geradas automaticamente para retreinos auditáveis e reproduzíveis. |
+| `configs/scenario_experiments/inference_cases.yaml` | Suíte versionada de cenários de inferência usada para validar comportamento do modelo em casos de negócio. |
+| `artifacts/evaluation/model/scenario_experiments/drift/*.jsonl` | Lotes sintéticos construídos para simular diferentes perfis de drift e testar o fluxo de monitoramento. |
+| `artifacts/evaluation/model/scenario_experiments/drift/*_report.html` | Relatórios HTML dos cenários sintéticos, usados para demonstração e validação do processo de drift. |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Visão consolidada das avaliações do projeto: modelo tabular, cenários, drift, retreino e trilha futura de LLM. |
 
 ## Documentação Complementar

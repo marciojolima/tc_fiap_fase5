@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 from common.config_loader import load_global_config
@@ -154,11 +156,42 @@ class ChurnPredictionResponse(BaseModel):
 class LLMChatRequest(BaseModel):
     """Request payload for LLM chat endpoint."""
 
-    message: str = Field(..., min_length=1, description="Pergunta do usuário.")
-    include_trace: bool = Field(
-        default=False,
-        description="Retorna trilha ReAct com ferramentas usadas.",
+    message: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Pergunta do usuário para o agente ReAct. "
+            "Para smoke test, use perguntas alinhadas ao golden set do projeto."
+        ),
     )
+    include_trace: bool = Field(
+        default=True,
+        description=(
+            "Quando `true`, retorna a trilha ReAct com parse, tools usadas, "
+            "observações e metadados úteis para debug."
+        ),
+    )
+    answer_style: Literal["short", "medium", "long"] = Field(
+        default="medium",
+        description=(
+            "Controla o tamanho da resposta final: `short` para respostas "
+            "curtas, `medium` para respostas objetivas e `long` para respostas "
+            "mais detalhadas."
+        ),
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": (
+                    "Cite pelo menos três ferramentas do agente ReAct "
+                    "ligadas ao domínio do datathon."
+                ),
+                "include_trace": True,
+                "answer_style": "short",
+            }
+        }
+    }
 
 
 class LLMChatResponse(BaseModel):

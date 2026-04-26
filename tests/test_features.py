@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from features.feature_engineering import (
+from feature_engineering.feature_engineering import (
     FeatureEngineeringConfig,
     build_features,
     clean_interim_data,
@@ -97,7 +97,7 @@ def test_build_features_returns_train_and_test_without_leakage(
         stratify=True,
     )
     monkeypatch.setattr(
-        "features.feature_engineering.load_feature_engineering_config",
+        "feature_engineering.feature_engineering.load_feature_engineering_config",
         lambda: cfg,
     )
 
@@ -116,7 +116,7 @@ def test_build_features_returns_train_and_test_without_leakage(
 def test_validate_lgpd_exclusions_logs_success() -> None:
     df = pd.DataFrame({"CreditScore": [600], "Geography": ["France"]})
 
-    with patch("features.feature_engineering.logger.info") as mock_info:
+    with patch("feature_engineering.feature_engineering.logger.info") as mock_info:
         validate_lgpd_exclusions(df, ["RowNumber", "CustomerId", "Surname"])
 
     mock_info.assert_any_call(
@@ -139,11 +139,11 @@ def test_build_features_logs_lgpd_governance_for_geography(
         stratify=True,
     )
     monkeypatch.setattr(
-        "features.feature_engineering.load_feature_engineering_config",
+        "feature_engineering.feature_engineering.load_feature_engineering_config",
         lambda: cfg,
     )
 
-    with patch("features.feature_engineering.logger.info") as mock_info:
+    with patch("feature_engineering.feature_engineering.logger.info") as mock_info:
         build_features(churn_dataframe)
 
     mock_info.assert_any_call(

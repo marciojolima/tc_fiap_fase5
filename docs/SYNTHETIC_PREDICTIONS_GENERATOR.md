@@ -1,5 +1,16 @@
 # Gerador de Predições Sintéticas
 
+## Índice
+
+- [Objetivo](#objetivo)
+- [Módulo](#módulo)
+- [Como executar](#como-executar)
+- [Parâmetros](#parâmetros)
+- [Modos de geração](#modos-de-geração)
+- [Preciso analisar a camada raw?](#preciso-analisar-a-camada-raw)
+- [Exemplo de integração com o monitoramento](#exemplo-de-integração-com-o-monitoramento)
+- [Relação com o serving via Feast](#relação-com-o-serving-via-feast)
+
 ## Objetivo
 
 Este módulo gera arquivos JSONL compatíveis com o contrato usado pelo
@@ -37,7 +48,7 @@ Arquivo:
 
 Saída padrão:
 
-- `artifacts/monitoring/drift/experiments/predictions/synthetic_predictions_v1.jsonl`
+- `artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_v1.jsonl`
 
 ## Como executar
 
@@ -63,8 +74,8 @@ Gerando em um caminho específico e salvando metadados:
 poetry run python -m scripts.generate_synthetic_predictions \
   --num-predictions 120 \
   --drift with_drift \
-  --output artifacts/monitoring/drift/experiments/predictions/synthetic_predictions_v1_with_drift_120.jsonl \
-  --metadata-output artifacts/monitoring/drift/experiments/predictions/synthetic_predictions_v1_with_drift_120.metadata.json
+  --output artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_v1_with_drift_120.jsonl \
+  --metadata-output artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_v1_with_drift_120.metadata.json
 ```
 
 ## Parâmetros
@@ -72,9 +83,9 @@ poetry run python -m scripts.generate_synthetic_predictions \
 - `--num-predictions`: quantidade de registros sintéticos a gerar. Obrigatório.
 - `--drift`: define o tipo de lote. Valores aceitos: `no_drift` e `with_drift`. Obrigatório.
 - `--input-csv`: CSV base usado para preservar o domínio das features. Padrão: `data/raw/Customer-Churn-Records.csv`.
-- `--output`: arquivo JSONL de saída. Padrão: `artifacts/monitoring/drift/experiments/predictions/synthetic_predictions_v1.jsonl`.
+- `--output`: arquivo JSONL de saída. Padrão: `artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_v1.jsonl`.
 - `--metadata-output`: caminho opcional para salvar um resumo JSON da geração.
-- `--experiment-config`: YAML do modelo atual usado para calcular `churn_probability` e `churn_prediction`. Padrão: `configs/training/model_current.yaml`.
+- `--experiment-config`: YAML do modelo atual usado para calcular `churn_probability` e `churn_prediction`. Padrão: `configs/model_lifecycle/model_current.yaml`.
 - `--seed`: seed para reprodutibilidade. Padrão: `42`.
 
 ## Modos de geração
@@ -110,7 +121,7 @@ propositalmente diferente da base de referência usada no treino.
 
 Na implementação atual, o gerador reaproveita o cenário
 `build_mixed_extreme_drift_batch` de
-[src/scenario_analysis/synthetic_drifts.py](../src/scenario_analysis/synthetic_drifts.py).
+[src/evaluation/model/drift/synthetic_drifts.py](../src/evaluation/model/drift/synthetic_drifts.py).
 Esse cenário foi pensado para deslocar a distribuição de forma suficientemente
 forte para que o monitoramento batch tenha alta chance de detectar drift.
 
@@ -174,8 +185,8 @@ monitoramento.
 O artefato resultante pode ser inspecionado junto com:
 
 - [DRIFT_MONITORING.md](DRIFT_MONITORING.md)
-- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
-- [src/monitoring/drift.py](../src/monitoring/drift.py)
+- [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
+- [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
 
 ## Relação com o serving via Feast
 

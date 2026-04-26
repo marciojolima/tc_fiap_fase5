@@ -1,5 +1,21 @@
 # Importância das Métricas de ML — Churn Bancário
 
+## Índice
+
+- [Regra de ouro](#regra-de-ouro)
+- [Análise de Modelos de Classificação — Churn Bancário](#análise-de-modelos-de-classificação--churn-bancário)
+- [Objetivo](#objetivo)
+- [Modelos Avaliados](#modelos-avaliados)
+- [Resultados Consolidados](#resultados-consolidados)
+- [Melhor Modelo Geral](#melhor-modelo-geral)
+- [Modelo Orientado a Recall](#modelo-orientado-a-recall)
+- [Modelo Orientado a Precision](#modelo-orientado-a-precision)
+- [Impacto do Threshold](#impacto-do-threshold)
+- [Observação sobre AUC](#observação-sobre-auc)
+- [Limitações da Accuracy](#limitações-da-accuracy)
+- [Conclusões Finais](#conclusões-finais)
+- [Conexão com o Fluxo Atual de Retreino](#conexão-com-o-fluxo-atual-de-retreino)
+
 Ordenadas da mais importante para a menos importante no contexto de churn bancário,
 onde **perder um cliente sem perceber** custa mais do que acionar um cliente fiel por engano.
 
@@ -28,9 +44,9 @@ o cliente errado tem custo real.
 > No projeto com `class_weight=balanced`, o modelo já compensa o desequilíbrio das classes
 > e dá mais peso ao recall — que é a escolha certa para churn bancário.
 
-# 📊 Análise de Modelos de Classificação — Churn Bancário
+## Análise de Modelos de Classificação — Churn Bancário
 
-## 🎯 Objetivo
+## Objetivo
 
 Avaliar diferentes modelos de classificação para previsão de churn, considerando métricas como **Accuracy, Precision, Recall, F1-score e AUC**, além do impacto do **threshold de decisão**.
 
@@ -46,7 +62,7 @@ comparação champion-challenger.
 
 ---
 
-## 🧠 Modelos Avaliados
+## Modelos Avaliados
 
 * Random Forest (v1, v2, v3)
 * Gradient Boosting (v1)
@@ -60,7 +76,7 @@ mais equilibrados mostrada nesta tabela.
 
 ---
 
-## 🏆 Resultados Consolidados
+## Resultados Consolidados
 
 | Modelo               | Accuracy | AUC   | F1        | Precision | Recall    |
 | -------------------- | -------- | ----- | --------- | --------- | --------- |
@@ -72,9 +88,9 @@ mais equilibrados mostrada nesta tabela.
 
 ---
 
-## 🏅 Melhor Modelo Geral
+## Melhor Modelo Geral
 
-### ✅ Random Forest v2
+### Random Forest v2
 
 * Melhor **F1-score (0.642)**
 * Equilíbrio entre **precision** e **recall**
@@ -90,9 +106,9 @@ novo realmente manter ou melhorar o comportamento esperado frente ao champion.
 
 ---
 
-## 🔥 Modelo Orientado a Recall
+## Modelo Orientado a Recall
 
-### ⚠️ Random Forest v3 (threshold = 0.4)
+### Random Forest v3 (threshold = 0.4)
 
 * Recall: **0.833** (muito alto)
 * Precision: **0.429** (baixo)
@@ -108,9 +124,9 @@ novo realmente manter ou melhorar o comportamento esperado frente ao champion.
 
 ---
 
-## 🎯 Modelo Orientado a Precision
+## Modelo Orientado a Precision
 
-### ⚠️ Gradient Boosting v1
+### Gradient Boosting v1
 
 * Precision: **0.772**
 * Recall: **0.490**
@@ -126,7 +142,7 @@ novo realmente manter ou melhorar o comportamento esperado frente ao champion.
 
 ---
 
-## ⚖️ Impacto do Threshold
+## Impacto do Threshold
 
 Foi observado que a alteração do threshold (limiar de decisão) impacta significativamente o comportamento do modelo:
 
@@ -146,7 +162,7 @@ threshold escolhido.
 
 ---
 
-## 📈 Observação sobre AUC
+## Observação sobre AUC
 
 * Os modelos apresentaram AUC semelhantes (~0.87)
 * Isso indica que possuem **capacidade similar de separação entre classes**
@@ -157,7 +173,7 @@ threshold escolhido.
 
 ---
 
-## ⚠️ Limitações da Accuracy
+## Limitações da Accuracy
 
 Apesar de alguns modelos apresentarem alta accuracy:
 
@@ -170,7 +186,7 @@ Apesar de alguns modelos apresentarem alta accuracy:
 
 ---
 
-## 🧠 Conclusões Finais
+## Conclusões Finais
 
 * **Random Forest v2** é o melhor modelo geral
 * **Threshold é um fator crítico de decisão**

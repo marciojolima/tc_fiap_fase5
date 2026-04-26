@@ -1,5 +1,18 @@
 # Model Card
 
+## Índice
+
+- [Visão Geral](#visão-geral)
+- [Modelo Atual](#modelo-atual)
+- [Contexto do Domínio](#contexto-do-domínio)
+- [Dicionário de Dados — Bank Customer Churn](#dicionário-de-dados--bank-customer-churn)
+- [Domínio das Features](#domínio-das-features)
+- [Contagem e Evolução das Colunas](#contagem-e-evolução-das-colunas)
+- [Interpretação das Features Mais Importantes](#interpretação-das-features-mais-importantes)
+- [Como Ler a Importância de Features com Cuidado](#como-ler-a-importância-de-features-com-cuidado)
+- [Limitações Conhecidas](#limitações-conhecidas)
+- [Uso Recomendado](#uso-recomendado)
+
 ## Visão Geral
 
 Este documento descreve o modelo tabular atualmente mantido como champion no
@@ -99,7 +112,7 @@ um fenômeno multifatorial. Um cliente pode sair por preço, experiência,
 concorrência, mudança de país, insatisfação ou baixa utilização dos produtos.
 As variáveis do dataset são aproximações estruturadas desse contexto.
 
-## 📋 Dicionário de Dados — Bank Customer Churn
+## Dicionário de Dados — Bank Customer Churn
 
 Antes de olhar importâncias e interpretações, vale registrar o papel de cada
 campo no domínio. A tabela abaixo ajuda a conectar o nome técnico da feature ao
@@ -192,7 +205,7 @@ O resultado final é um conjunto com `15` features usadas no treino:
 `Tenure`, `Balance`, `NumOfProducts`, `HasCrCard`, `IsActiveMember`,
 `EstimatedSalary`, `Point Earned`, `BalancePerProduct` e `PointsPerSalary`.
 
-## 🔍 Interpretação das Features Mais Importantes
+## Interpretação das Features Mais Importantes
 
 A tabela abaixo é uma leitura de negócio das features mais relevantes em um
 cenário típico de churn. Ela ajuda a explicar por que certas variáveis tendem a

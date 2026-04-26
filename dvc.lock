@@ -1,45 +1,45 @@
 schema: '2.0'
 stages:
   featurize:
-    cmd: python -m src.features.feature_engineering
+    cmd: python -m src.feature_engineering.feature_engineering
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: bf9a6183b425c50d5a64d47642b06210
-      size: 883
+      md5: 9e0c979f01167e1422aaf97e5c2021a5
+      size: 1766
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
       md5: e37acb179fefe4cac8a33e280a12f62c
       size: 837415
     - path: src/common/config_loader.py
       hash: md5
-      md5: b315e5e29208d2c71033714ef6e2b004
-      size: 1411
+      md5: 195a2fd75c63acd46dddfc6a4c4bd263
+      size: 8278
     - path: src/common/data_loader.py
       hash: md5
       md5: b5491e0d88e5b8f314f07ebf9ee8c519
       size: 612
     - path: src/common/logger.py
       hash: md5
-      md5: 565469f45d9fcb971ee7542affdb367a
-      size: 1525
+      md5: e114d4c5ef4ea22a4ba9837cb00aae28
+      size: 1991
     - path: src/common/seed.py
       hash: md5
       md5: e3863cbaf4b2627fabdafd56456a880f
       size: 178
-    - path: src/features/feature_engineering.py
+    - path: src/feature_engineering/feature_engineering.py
       hash: md5
-      md5: c8c587409b0bc2e393de3d2b18e97b0f
-      size: 18322
-    - path: src/features/schema_validation.py
+      md5: d42d2c97eaebbb6cbdc00d0d3486a252
+      size: 18355
+    - path: src/feature_engineering/schema_validation.py
       hash: md5
-      md5: db85d5ea9e42e5cd2f706c15502ede76
-      size: 4177
+      md5: abe6334b5e0cad8b32e3f259304f5023
+      size: 4188
     outs:
     - path: artifacts/models/feature_pipeline.joblib
       hash: md5
-      md5: c3db56dae2fed178f232ae94a85e2e2a
-      size: 5525
+      md5: 1031bbd4e8d4df4abc6f5cb82e969cd0
+      size: 5541
     - path: data/interim/cleaned.parquet
       hash: md5
       md5: 6ca8c33d4d89b12f65d1ba2311f4cdeb
@@ -61,16 +61,16 @@ stages:
       md5: 1a15939f1d7c262d568cad4be64f1380
       size: 322297
   train:
-    cmd: python -m src.models.train
+    cmd: python -m src.model_lifecycle.train
     deps:
+    - path: configs/model_lifecycle/model_current.yaml
+      hash: md5
+      md5: ae8317bc7ac8eea93c0b1328eecce556
+      size: 815
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: bf9a6183b425c50d5a64d47642b06210
-      size: 883
-    - path: configs/training/model_current.yaml
-      hash: md5
-      md5: 732c6efb267b80b4593a04043899d8fb
-      size: 762
+      md5: 9e0c979f01167e1422aaf97e5c2021a5
+      size: 1766
     - path: data/processed/test.parquet
       hash: md5
       md5: 7f1a2bbcf281161a66843145231c3c24
@@ -81,24 +81,24 @@ stages:
       size: 322297
     - path: src/common/config_loader.py
       hash: md5
-      md5: d696fa66291cdc8c4bcfa9f80da091e6
-      size: 1322
+      md5: 195a2fd75c63acd46dddfc6a4c4bd263
+      size: 8278
     - path: src/common/logger.py
       hash: md5
-      md5: ed0345d8d4a981440409ab02e7359bec
-      size: 510
+      md5: e114d4c5ef4ea22a4ba9837cb00aae28
+      size: 1991
     - path: src/common/seed.py
       hash: md5
       md5: e3863cbaf4b2627fabdafd56456a880f
       size: 178
-    - path: src/models/catalog.py
+    - path: src/model_lifecycle/catalog.py
       hash: md5
-      md5: adfc0fae1169bb526517a070e2b41bae
-      size: 954
-    - path: src/models/train.py
+      md5: 0741e27976f18dda9ce6b235eb669231
+      size: 1378
+    - path: src/model_lifecycle/train.py
       hash: md5
-      md5: 08042df7a046fab99ff0120c8c6c14ec
-      size: 12583
+      md5: 2fea5f605efb4a076eed2344f360574f
+      size: 15946
     outs:
     - path: artifacts/models/model_current.pkl
       hash: md5
@@ -106,51 +106,51 @@ stages:
       size: 15298713
     - path: artifacts/models/model_current_metadata.json
       hash: md5
-      md5: 55f6704ad4fdfcfda8918e56dd326e4b
-      size: 747
+      md5: d2cb292a32424db8ea8e3c62ae2684a5
+      size: 797
   export_feature_store:
     cmd: python -m src.feast_ops.export
     deps:
     - path: artifacts/models/feature_pipeline.joblib
       hash: md5
-      md5: c3db56dae2fed178f232ae94a85e2e2a
-      size: 5525
+      md5: 1031bbd4e8d4df4abc6f5cb82e969cd0
+      size: 5541
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: bf9a6183b425c50d5a64d47642b06210
-      size: 883
+      md5: 9e0c979f01167e1422aaf97e5c2021a5
+      size: 1766
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
       md5: e37acb179fefe4cac8a33e280a12f62c
       size: 837415
     - path: src/common/config_loader.py
       hash: md5
-      md5: b315e5e29208d2c71033714ef6e2b004
-      size: 1411
+      md5: 195a2fd75c63acd46dddfc6a4c4bd263
+      size: 8278
     - path: src/common/data_loader.py
       hash: md5
       md5: b5491e0d88e5b8f314f07ebf9ee8c519
       size: 612
     - path: src/common/logger.py
       hash: md5
-      md5: 565469f45d9fcb971ee7542affdb367a
-      size: 1525
+      md5: e114d4c5ef4ea22a4ba9837cb00aae28
+      size: 1991
     - path: src/feast_ops/config.py
       hash: md5
       md5: c497e40a4b99502f5abdb537cf0e71fb
       size: 1135
     - path: src/feast_ops/export.py
       hash: md5
-      md5: eba2f6f80835397d265245a371dd7ac4
-      size: 4228
-    - path: src/features/feature_engineering.py
+      md5: 39381769f808c14c81c87f071100f441
+      size: 4337
+    - path: src/feature_engineering/feature_engineering.py
       hash: md5
-      md5: c8c587409b0bc2e393de3d2b18e97b0f
-      size: 18322
+      md5: d42d2c97eaebbb6cbdc00d0d3486a252
+      size: 18355
     - path: src/serving/pipeline.py
       hash: md5
-      md5: 4354c8676e73f42e0ccdf50c3e22e5a7
-      size: 10022
+      md5: d4d1a3ba57b7123ed18e994965c9b789
+      size: 10425
     outs:
     - path: data/feature_store/customer_features.parquet
       hash: md5
@@ -158,5 +158,5 @@ stages:
       size: 640953
     - path: data/feature_store/export_metadata.json
       hash: md5
-      md5: 402cb8d157986cd02fd6c06d5702c5f5
+      md5: f5dbf5155ae1420f36a7ed8707964f40
       size: 415

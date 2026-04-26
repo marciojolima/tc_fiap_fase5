@@ -1,0 +1,416 @@
+{
+    "schema_version": 1,
+    "title": "golden_set_churn_mops",
+    "description": "Pares alinhados ao repositório TC FIAP Fase 5 (dados, modelo, serving, observabilidade, governança).",
+    "locale": "pt-BR",
+    "items": [
+        {
+            "id": "gs-001",
+            "question": "O que significa a variável alvo Exited neste projeto de churn bancário?",
+            "expected_answer": "Exited é a variável alvo: indica se o cliente deixou o banco (churn). Valores tipicamente 0 (permaneceu) ou 1 (saiu). O modelo aprende a prever essa saída a partir das features após o pré-processamento.",
+            "contexts": [
+                "A variável Exited representa o target do modelo de churn.",
+                "O problema é uma classificação binária onde 1 indica churn e 0 indica retenção."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-002",
+            "question": "Quais colunas são removidas na preparação dos dados por conterem identificadores e não serem usadas no modelo?",
+            "expected_answer": "O pipeline remove colunas como RowNumber, CustomerId e Surname (identificadores ou não preditivos), conforme configuração em pipeline_global_config e o fluxo de feature engineering.",
+            "contexts": [
+                "Colunas identificadoras são removidas para evitar leakage.",
+                "RowNumber, CustomerId e Surname não possuem valor preditivo."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-003",
+            "question": "O que representa NumOfProducts no contexto do datathon e por que importa para churn?",
+            "expected_answer": "NumOfProducts é o número de produtos bancários ativos do cliente. Clientes com muitos ou muito poucos produtos podem ter padrão de risco de saída diferente; a feature entra no pipeline de modelagem de churn.",
+            "contexts": [
+                "NumOfProducts indica quantidade de produtos contratados.",
+                "A quantidade de produtos impacta diretamente no engajamento do cliente."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-004",
+            "question": "Qual o papel de Geography e como ela entra no modelo após o pré-processamento?",
+            "expected_answer": "Geography indica o país (ex.: France, Germany, Spain). No pipeline vira features categóricas (ex. one-hot) e está entre colunas com governança/LGPD documentada no serving.",
+            "contexts": [
+                "Geography é uma variável categórica.",
+                "A variável é transformada via one-hot encoding no pipeline."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-005",
+            "question": "O que é Tenure e como se relaciona com fidelidade do cliente?",
+            "expected_answer": "Tenure é o tempo (em anos) como cliente do banco. Em geral, maior permanência pode indicar relacionamento estabelecido; o modelo usa essa variável numérica entre outras para estimar risco de churn.",
+            "contexts": [
+                "Tenure mede o tempo de relacionamento com o cliente.",
+                "Clientes com maior tenure tendem a ter menor churn."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-006",
+            "question": "Explique de forma resumida o que o endpoint POST /predict retorna para o time de negócios.",
+            "expected_answer": "O endpoint retorna a probabilidade de churn, a decisão binária (acima/abaixo do limiar), o nome do experimento/modelo e o limiar (threshold) usado na inferência, alinhado ao treino e ao MLflow.",
+            "contexts": [
+                "O endpoint /predict retorna probabilidade e classe.",
+                "O threshold define a decisão final de churn."
+            ],
+            "expected_tools": [
+                "predict_churn"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "medium",
+                "type": "tool_use"
+            }
+        },
+        {
+            "id": "gs-007",
+            "question": "Onde ficam o pipeline de features e o modelo champion usados em produção pelo serving?",
+            "expected_answer": "Artefatos em artifacts/models/ — em particular feature_pipeline.joblib (transformações) e model_current.pkl com metadados em model_current_metadata.json, alinhados ao experimento em configs/training/.",
+            "contexts": [
+                "Os artefatos do modelo ficam em artifacts/models.",
+                "O pipeline de features é salvo separadamente do modelo."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "mlops",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-008",
+            "question": "Qual ferramenta o projeto usa para rastreio de experimentos e em qual diretório local isso costuma ser armazenado em desenvolvimento?",
+            "expected_answer": "O projeto usa MLflow; a URI padrão no config global aponta para file:./mlruns e os runs ficam acessíveis via MLflow UI no fluxo de observabilidade (Docker).",
+            "contexts": [
+                "MLflow é utilizado para tracking de experimentos.",
+                "Os dados são armazenados localmente em ./mlruns."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "mlops",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-009",
+            "question": "O que o monitoramento de drift com Evidently e PSI busca identificar neste repositório?",
+            "expected_answer": "Comparar a distribuição de dados de referência com dados correntes, calcular métricas como PSI por feature, sinalizar alerta (warning/critical) e apoiar decisão de retreino com artefatos em artifacts/evaluation/model/drift/.",
+            "contexts": [
+                "PSI mede mudança na distribuição das features.",
+                "Evidently é usado para detectar drift."
+            ],
+            "expected_tools": [
+                "drift_status"
+            ],
+            "metadata": {
+                "category": "mlops",
+                "difficulty": "medium",
+                "type": "tool_use"
+            }
+        },
+        {
+            "id": "gs-010",
+            "question": "O que acontece quando o monitoramento de drift aponta condição crítica e o retreino está habilitado na configuração?",
+            "expected_answer": "O fluxo pode registrar retrain_request e artefatos auditáveis (retrain_run, promotion_decision) com regras champion–challenger, sem promover automaticamente sem política explícita do projeto.",
+            "contexts": [
+                "Drift crítico pode acionar retreinamento.",
+                "O processo segue estratégia champion-challenger."
+            ],
+            "expected_tools": [
+                "drift_status"
+            ],
+            "metadata": {
+                "category": "mlops",
+                "difficulty": "hard",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-011",
+            "question": "Quais campos o payload de predição de churn precisa conter no mínimo, em termos de família de variáveis?",
+            "expected_answer": "Inclui atributos do cliente como CreditScore, Geography, Gender, Age, Tenure, Balance, NumOfProducts, HasCrCard, IsActiveMember, EstimatedSalary, Card Type e Point Earned, validados pelos schemas Pydantic de serving.",
+            "contexts": [
+                "O payload contém features do cliente.",
+                "Validação é feita via Pydantic."
+            ],
+            "expected_tools": [
+                "predict_churn"
+            ],
+            "metadata": {
+                "category": "api_serving",
+                "difficulty": "medium",
+                "type": "tool_use"
+            }
+        },
+        {
+            "id": "gs-012",
+            "question": "Por que o serving reutiliza o mesmo pipeline de features do treino?",
+            "expected_answer": "Para evitar training-serving skew: as mesmas transformações (ordem, encoding, features derivadas) aplicadas no treino são aplicadas na inferência, garantindo consistência de métricas e decisão.",
+            "contexts": [
+                "Evita discrepância entre treino e produção.",
+                "Mesma transformação garante consistência."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "api_serving",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-013",
+            "question": "Onde a aplicação expõe métricas operacionais consumíveis por Prometheus no stack do README?",
+            "expected_answer": "A API registra métricas do serving (ex.: latência e contagem de requisições de predição) e expõe o endpoint /metrics integrado ao Prometheus no docker-compose de observabilidade.",
+            "contexts": [
+                "Endpoint /metrics expõe métricas.",
+                "Prometheus consome métricas do serviço."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "observabilidade",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-014",
+            "question": "O que é registrado em artifacts/logs/inference quando o logging de inferência está ativo?",
+            "expected_answer": "Predições e contexto operacional (probabilidade, limiar, versão do modelo) em formato adequado a auditoria e a composição de bases para drift e análise posterior.",
+            "contexts": [
+                "Logs incluem probabilidade e versão do modelo.",
+                "Dados são usados para auditoria e drift."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "observabilidade",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-015",
+            "question": "Mencione uma prática de governança ou LGPD descrita no fluxo de inferência do serving.",
+            "expected_answer": "O pipeline de inferência loga intenção de governança sobre colunas sensíveis (ex.: Geography governada) e evita uso de identificadores diretos removidos no preparo, conforme mensagens de log documentadas no código de serving.",
+            "contexts": [
+                "Dados sensíveis são tratados com governança.",
+                "Identificadores diretos são removidos."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "governanca",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-016",
+            "question": "Quais rotas HTTP o projeto expõe especificamente para o assistente LLM e diagnóstico do provider LLM?",
+            "expected_answer": "Prefixo /llm: health, status (diagnóstico do llm_provider ativo, modelo esperado e RAG) e chat (agente ReAct com tools), integrado ao provider LLM definido na config global.",
+            "contexts": [
+                "Rotas /llm incluem health, status e chat.",
+                "Servem para diagnóstico e interação com o agente."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "rag_llm",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-017",
+            "question": "Cite pelo menos três ferramentas (tools) do agente ReAct ligadas ao domínio do datathon.",
+            "expected_answer": "Exemplos: rag_search (recuperação sobre documentação do repositório), predict_churn (predição alinhada ao /predict/raw com payload bruto), drift_status (leitura de status de drift), scenario_prediction (cenário hipotético com schema de serving).",
+            "contexts": [
+                "O agente utiliza ferramentas para executar tarefas.",
+                "Ferramentas incluem predição, RAG e monitoramento."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "rag_llm",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-018",
+            "question": "Em linhas gerais, como o RAG do projeto obtém contexto para uma pergunta?",
+            "expected_answer": "Recupera trechos de arquivos de documentação e metadados (README, status do projeto, docs, JSON de schema/features quando presentes) com heurística lexical e limita a top-k passagens com indicação de fonte.",
+            "contexts": [
+                "RAG usa recuperação de documentos.",
+                "Top-k passagens são usadas como contexto."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "rag_llm",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-019",
+            "question": "Onde a suíte de cenários de negócio versionada é definida e como costuma ser executada?",
+            "expected_answer": "Em configs/scenario_analysis/inference_cases.yaml, com execução via módulo scenario_analysis ou task no pyproject, registrando análise no MLflow no experimento de scenario analysis.",
+            "contexts": [
+                "Cenários são definidos em arquivos YAML.",
+                "Executados via pipeline ou task."
+            ],
+            "expected_tools": [
+                "scenario_prediction"
+            ],
+            "metadata": {
+                "category": "cenarios",
+                "difficulty": "medium",
+                "type": "tool_use"
+            }
+        },
+        {
+            "id": "gs-020",
+            "question": "Qual a função do DVC neste repositório em relação aos dados brutos e processados?",
+            "expected_answer": "O DVC versiona ponteiros e metadados de datasets grandes; o Git rastreia arquivos .dvc e configuração, permitindo rastreabilidade e pull dos dados no ambiente da equipe.",
+            "contexts": [
+                "DVC gerencia dados grandes.",
+                "Git versiona ponteiros dos dados."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "dados",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-021",
+            "question": "Nomeie duas saídas típicas do pipeline de processamento após a engenharia de features.",
+            "expected_answer": "Exemplos: data/processed/train.parquet e data/processed/test.parquet, além de listas e relatórios auxiliares como feature_columns.json e schema_report.json quando gerados no fluxo.",
+            "contexts": [
+                "Saídas incluem datasets de treino e teste.",
+                "Arquivos auxiliares ajudam na governança."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "dados",
+                "difficulty": "easy",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-022",
+            "question": "Por que EstimatedSalary e Balance podem ser relevantes para o risco de churn, em linguagem de negócios?",
+            "expected_answer": "Saldo e renda estimada refletem engajamento financeiro e sensibilidade a ofertas ou restrições; o modelo as usa com outras features para separar clientes com maior propensão a deixar o banco.",
+            "contexts": [
+                "Saldo e renda indicam comportamento financeiro.",
+                "Impactam diretamente no churn."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "negocio_churn",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-023",
+            "question": "O que a task observability do pyproject inicia com o docker-compose do projeto (componentes de alto nível)?",
+            "expected_answer": "Sobe, entre outros, o serving FastAPI, Redis, MLflow, Prometheus e Grafana na stack base. Quando o llm_provider for Ollama local, a task específica com override também adiciona o serviço Ollama e o job de pull do modelo.",
+            "contexts": [
+                "Stack inclui Prometheus, Grafana e MLflow.",
+                "Docker Compose orquestra os serviços."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "integracao",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        },
+        {
+            "id": "gs-024",
+            "question": "Que tipo de validação o InputGuardrail aplica ao texto do usuário antes de enviar ao LLM?",
+            "expected_answer": "Detecta padrões de prompt-injection conhecidos, limita tamanho do texto a um máximo (ex. 4096 caracteres) e rejeita entrada com motivo claro, alinhado à camada de segurança do router LLM.",
+            "contexts": [
+                "InputGuardrail protege contra prompt injection.",
+                "Limita tamanho e valida entrada do usuário."
+            ],
+            "expected_tools": [
+                "rag_search"
+            ],
+            "metadata": {
+                "category": "seguranca",
+                "difficulty": "medium",
+                "type": "rag"
+            }
+        }
+    ]
+}

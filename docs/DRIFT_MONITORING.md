@@ -1,5 +1,25 @@
 # Monitoramento de Drift e Gatilho de Retreino
 
+## Índice
+
+- [Objetivo](#objetivo)
+- [Estratégia Atual](#estratégia-atual)
+- [Como Pensar no Passo 1](#como-pensar-no-passo-1)
+- [Passo a Passo Operacional](#passo-a-passo-operacional)
+- [O Que Acontece em Cada Passo](#o-que-acontece-em-cada-passo)
+- [PSI em Termos Intuitivos](#psi-em-termos-intuitivos)
+- [Tipos de Drift Monitorados Hoje](#tipos-de-drift-monitorados-hoje)
+- [O Que Ainda Nao Esta Sendo Tratado](#o-que-ainda-nao-esta-sendo-tratado)
+- [Base de Referencia e Base Corrente](#base-de-referencia-e-base-corrente)
+- [Metricas e Ferramentas](#metricas-e-ferramentas)
+- [Consolidacao do Status](#consolidacao-do-status)
+- [Gatilho de Retreino](#gatilho-de-retreino)
+- [Estrategia Atual de Automacao](#estrategia-atual-de-automacao)
+- [Estrutura da Solicitacao de Retreino](#estrutura-da-solicitacao-de-retreino)
+- [Estrutura do Resultado do Retreino](#estrutura-do-resultado-do-retreino)
+- [Comparacao Champion vs Challenger](#comparacao-champion-vs-challenger)
+- [Leitura Atual do Core](#leitura-atual-do-core)
+
 ## Objetivo
 
 Este documento descreve a estratégia atual de monitoramento de drift do projeto,
@@ -27,15 +47,15 @@ Hoje, a base de referência é o conjunto processado de treino e a base corrente
 
 Arquivos principais do fluxo:
 
-- [configs/monitoring_config.yaml](../configs/monitoring_config.yaml)
-- [src/monitoring/drift.py](../src/monitoring/drift.py)
-- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
-- [src/models/retraining.py](../src/models/retraining.py)
-- [src/models/train.py](../src/models/train.py)
+- [configs/monitoring/global_monitoring.yaml](../configs/monitoring/global_monitoring.yaml)
+- [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
+- [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
+- [src/model_lifecycle/train.py](../src/model_lifecycle/train.py)
 
 O fluxo atual é:
 
-1. a API registra as inferências em `artifacts/monitoring/inference_logs/predictions.jsonl`
+1. a API registra as inferências em `artifacts/logs/inference/predictions.jsonl`
 2. a rotina de drift carrega base de referência e base corrente
 3. o sistema compara distribuições de features e, quando habilitado, das
    probabilidades previstas
@@ -63,7 +83,7 @@ Ela é construída a partir das predições recebidas pela API.
 No desenho atual do projeto, o drift compara:
 
 - a base de referência: `data/processed/train.parquet`
-- a base corrente: `artifacts/monitoring/inference_logs/predictions.jsonl`
+- a base corrente: `artifacts/logs/inference/predictions.jsonl`
 
 Ou seja: sem serving e sem predição, não existe base corrente para comparar.
 
@@ -71,7 +91,7 @@ Mapeamento no código:
 
 - rota de predição: [src/serving/routes.py](../src/serving/routes.py)
 - preparação da configuração de serving: [src/serving/pipeline.py](../src/serving/pipeline.py)
-- log de inferência que alimenta a base corrente: [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
+- log de inferência que alimenta a base corrente: [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
 
 Esse log é justamente o insumo que depois será lido pela rotina de drift.
 No contrato atual, ele representa principalmente as features transformadas
@@ -108,11 +128,11 @@ Arquivos envolvidos:
 
 - [src/serving/routes.py](../src/serving/routes.py)
 - [src/serving/pipeline.py](../src/serving/pipeline.py)
-- [src/monitoring/inference_log.py](../src/monitoring/inference_log.py)
+- [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
 
 O arquivo gerado nessa fase é:
 
-- `artifacts/monitoring/inference_logs/predictions.jsonl`
+- `artifacts/logs/inference/predictions.jsonl`
 
 Esse arquivo contém:
 
@@ -131,7 +151,7 @@ poetry run task mldrift
 
 Ponto de entrada:
 
-- [src/monitoring/drift.py](../src/monitoring/drift.py)
+- [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
 
 Essa rotina:
 
@@ -147,28 +167,28 @@ Essa rotina:
 
 Mapeamento principal:
 
-- carga de datasets: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- preparação dos dados de monitoramento: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- cálculo de PSI numérico: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- cálculo de PSI categórico: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- PSI por feature: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- consolidação do status: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- bloqueio operacional por amostra pequena: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- carga de datasets: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- preparação dos dados de monitoramento: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- cálculo de PSI numérico: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- cálculo de PSI categórico: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- PSI por feature: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- consolidação do status: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- bloqueio operacional por amostra pequena: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
 
 ### 3. Artefatos Gerados
 
 Após rodar o drift, os arquivos principais são:
 
-- `artifacts/monitoring/drift/drift_report.html`
-- `artifacts/monitoring/drift/drift_report_evidently.html`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/drift/drift_status.json`
-- `artifacts/monitoring/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_report_evidently.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
 
 Onde isso acontece:
 
-- gravação dos JSONs principais: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- histórico de execuções: [src/monitoring/drift.py](../src/monitoring/drift.py)
+- gravação dos JSONs principais: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- histórico de execuções: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
 
 Leitura rápida:
 
@@ -193,18 +213,18 @@ aberto.
 
 Configuração:
 
-- [configs/monitoring_config.yaml](../configs/monitoring_config.yaml)
+- [configs/monitoring/global_monitoring.yaml](../configs/monitoring/global_monitoring.yaml)
 
 Implementação:
 
-- abertura da solicitação: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- política de disparo: [src/monitoring/drift.py](../src/monitoring/drift.py)
-- executor dedicado: [src/models/retraining.py](../src/models/retraining.py)
+- abertura da solicitação: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- política de disparo: [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
+- executor dedicado: [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
 
 Artefatos dessa fase:
 
-- `artifacts/monitoring/retraining/retrain_request.json`
-- `artifacts/monitoring/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
 
 Formas atuais de acionamento:
 
@@ -272,7 +292,7 @@ atingiu o tamanho mínimo configurado. Antes disso, o PSI é tratado como sinal
 exploratório e não como justificativa para retreino.
 
 Esses thresholds são os mesmos usados pela rotina de decisão operacional e
-estão definidos em [configs/monitoring_config.yaml](../configs/monitoring_config.yaml).
+estão definidos em [configs/monitoring/global_monitoring.yaml](../configs/monitoring/global_monitoring.yaml).
 
 ## Tipos de Drift Monitorados Hoje
 
@@ -340,7 +360,7 @@ Trecho central da configuracao atual:
 drift:
   enabled: true
   reference_data_path: data/processed/train.parquet
-  current_data_path: artifacts/monitoring/inference_logs/predictions.jsonl
+  current_data_path: artifacts/logs/inference/predictions.jsonl
   feature_columns_path: data/processed/feature_columns.json
   feature_pipeline_path: artifacts/models/feature_pipeline.joblib
   model_path: artifacts/models/model_current.pkl
@@ -366,10 +386,10 @@ O monitoramento atual usa:
 
 Os artefatos gerados hoje incluem:
 
-- `artifacts/monitoring/drift/drift_report.html`
-- `artifacts/monitoring/drift/drift_report_evidently.html`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_report_evidently.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
 
 ## Consolidacao do Status
 
@@ -398,10 +418,10 @@ Trecho atual do YAML:
 retraining:
   enabled: true
   trigger_mode: auto_train_manual_promote
-  training_config_path: configs/training/model_current.yaml
-  request_path: artifacts/monitoring/retraining/retrain_request.json
-  run_path: artifacts/monitoring/retraining/retrain_run.json
-  promotion_decision_path: artifacts/monitoring/retraining/promotion_decision.json
+  training_config_path: configs/model_lifecycle/model_current.yaml
+  request_path: artifacts/evaluation/model/retraining/retrain_request.json
+  run_path: artifacts/evaluation/model/retraining/retrain_run.json
+  promotion_decision_path: artifacts/evaluation/model/retraining/promotion_decision.json
   promotion_rules:
     primary_metric: auc
     minimum_improvement: 0.005
@@ -449,11 +469,11 @@ Exemplo conceitual:
   "status": "requested",
   "reason": "critical_data_or_prediction_drift",
   "model_path": "artifacts/models/model_current.pkl",
-  "training_config_path": "configs/training/model_current.yaml",
+  "training_config_path": "configs/model_lifecycle/model_current.yaml",
   "created_at": "2026-04-12T00:00:00+00:00",
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
-  "promotion_decision_path": "artifacts/monitoring/retraining/promotion_decision.json",
+  "promotion_decision_path": "artifacts/evaluation/model/retraining/promotion_decision.json",
   "promotion_rules": {
     "primary_metric": "auc",
     "minimum_improvement": 0.005
@@ -487,8 +507,8 @@ Exemplo conceitual:
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
   "drift_status": "critical",
-  "training_config_path": "configs/training/model_current.yaml",
-  "challenger_training_config_path": "artifacts/monitoring/retraining/generated_configs/retrain_<request_id>.yaml",
+  "training_config_path": "configs/model_lifecycle/model_current.yaml",
+  "challenger_training_config_path": "artifacts/evaluation/model/retraining/generated_configs/retrain_<request_id>.yaml",
   "experiment_name": "random_forest_current",
   "model_output_path": "artifacts/models/challengers/model_current_<request_id>.pkl",
   "model_version": "0.2.0-challenger-<request_id>",
@@ -514,13 +534,13 @@ entre:
 
 Arquivos envolvidos:
 
-- [src/models/retraining.py](../src/models/retraining.py)
-- [src/models/promotion.py](../src/models/promotion.py)
-- [artifacts/models/model_current_metadata.json](../artifacts/models/model_current_metadata.json)
+- [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
+- [src/model_lifecycle/promotion.py](../src/model_lifecycle/promotion.py)
+- `artifacts/models/model_current_metadata.json`
 
 O resultado dessa etapa vai para:
 
-- `artifacts/monitoring/retraining/promotion_decision.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
 
 Essa decisao ainda nao promove nada sozinha. Ela apenas responde:
 

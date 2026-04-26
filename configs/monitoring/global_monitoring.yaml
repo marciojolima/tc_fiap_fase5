@@ -1,0 +1,33 @@
+drift:
+  enabled: true
+  reference_data_path: data/processed/train.parquet
+  current_data_path: artifacts/logs/inference/predictions.jsonl
+  feature_columns_path: data/processed/feature_columns.json
+  feature_pipeline_path: artifacts/models/feature_pipeline.joblib
+  model_path: artifacts/models/model_current.pkl
+  report_html_path: artifacts/evaluation/model/drift/drift_report.html
+  metrics_json_path: artifacts/evaluation/model/drift/drift_metrics.json
+  status_path: artifacts/evaluation/model/drift/drift_status.json
+  runs_history_path: artifacts/evaluation/model/drift/drift_runs.jsonl
+  minimum_current_sample_size_for_decision: 30
+
+  data_drift:
+    enabled: true
+    warning_threshold: 0.10
+    critical_threshold: 0.20
+
+  prediction_drift:
+    enabled: true
+    warning_threshold: 0.10
+    critical_threshold: 0.20
+
+  retraining:
+    enabled: true
+    trigger_mode: auto_train_manual_promote
+    training_config_path: configs/model_lifecycle/model_current.yaml
+    request_path: artifacts/evaluation/model/retraining/retrain_request.json
+    run_path: artifacts/evaluation/model/retraining/retrain_run.json
+    promotion_decision_path: artifacts/evaluation/model/retraining/promotion_decision.json
+    promotion_rules:
+      primary_metric: auc
+      minimum_improvement: 0.005

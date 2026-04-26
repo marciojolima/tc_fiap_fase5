@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from models.retraining import load_retraining_request, run_retraining_request
-from models.train import ExperimentTrainingConfig
+from model_lifecycle.retraining import load_retraining_request, run_retraining_request
+from model_lifecycle.train import ExperimentTrainingConfig
 
 EXPECTED_RETRAIN_AUC = 0.91
 EXPECTED_REFERENCE_ROW_COUNT = 8000
@@ -20,12 +20,12 @@ def build_request_payload() -> dict[str, object]:
         "status": "requested",
         "reason": "critical_data_or_prediction_drift",
         "model_path": "artifacts/models/model_current.pkl",
-        "training_config_path": "configs/training/model_current.yaml",
+        "training_config_path": "configs/model_lifecycle/model_current.yaml",
         "created_at": "2026-04-12T00:00:00+00:00",
         "trigger_mode": "auto_train_manual_promote",
         "promotion_policy": "manual_approval_required",
         "promotion_decision_path": (
-            "artifacts/monitoring/retraining/promotion_decision.json"
+            "artifacts/evaluation/model/retraining/promotion_decision.json"
         ),
         "promotion_rules": {
             "primary_metric": "auc",
@@ -81,7 +81,7 @@ def test_load_retraining_request_parses_contract(tmp_path: Path) -> None:
 
     assert request.request_id == "req-123"
     assert request.status == "requested"
-    assert request.training_config_path == "configs/training/model_current.yaml"
+    assert request.training_config_path == "configs/model_lifecycle/model_current.yaml"
     assert request.drifted_features == ["Age"]
     assert request.promotion_rules["primary_metric"] == "auc"
     assert request.reference_row_count == EXPECTED_REFERENCE_ROW_COUNT
@@ -134,15 +134,15 @@ def test_run_retraining_request_executes_training_and_writes_result(
     )
 
     monkeypatch.setattr(
-        "models.retraining.run_training",
+        "model_lifecycle.retraining.run_training",
         lambda config_path, retraining_context=None: {"auc": 0.91, "f1": 0.80},
     )
     monkeypatch.setattr(
-        "models.retraining.create_challenger_training_config",
+        "model_lifecycle.retraining.create_challenger_training_config",
         lambda request: str(generated_config_path),
     )
     monkeypatch.setattr(
-        "models.retraining.load_experiment_training_config",
+        "model_lifecycle.retraining.load_experiment_training_config",
         lambda config_path: build_experiment_training_config(
             tmp_path
             / "artifacts"
@@ -152,7 +152,7 @@ def test_run_retraining_request_executes_training_and_writes_result(
         ),
     )
     monkeypatch.setattr(
-        "models.retraining.evaluate_challenger_promotion",
+        "model_lifecycle.retraining.evaluate_challenger_promotion",
         lambda **_: {
             "status": "eligible",
             "eligible_for_promotion": True,
@@ -192,13 +192,13 @@ def test_run_retraining_request_marks_failure_when_training_breaks(
     )
 
     monkeypatch.setattr(
-        "models.retraining.run_training",
+        "model_lifecycle.retraining.run_training",
         lambda config_path, retraining_context=None: (_ for _ in ()).throw(
             RuntimeError("falha no treino")
         ),
     )
     monkeypatch.setattr(
-        "models.retraining.create_challenger_training_config",
+        "model_lifecycle.retraining.create_challenger_training_config",
         lambda request: str(tmp_path / "generated_retrain.yaml"),
     )
 

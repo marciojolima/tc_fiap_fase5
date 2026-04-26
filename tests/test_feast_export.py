@@ -4,8 +4,10 @@ import pandas as pd
 
 from feast_ops.config import FEATURE_ENTITY_JOIN_KEY, ONLINE_FEATURE_COLUMNS
 from feast_ops.export import build_feature_store_export_dataframe
-from features.feature_engineering import load_feature_engineering_config
-from features.pipeline_components import build_feature_transformation_pipeline
+from feature_engineering.feature_engineering import load_feature_engineering_config
+from feature_engineering.pipeline_components import (
+    build_feature_transformation_pipeline,
+)
 
 EXPECTED_FIRST_CUSTOMER_ID = 1000
 

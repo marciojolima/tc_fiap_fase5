@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from models.catalog import build_model
-from models.train import (
+from model_lifecycle.catalog import build_model
+from model_lifecycle.train import (
     DatasetSplits,
     ExperimentTrainingConfig,
     ModelSpec,
@@ -306,31 +306,31 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        "models.train.load_global_config",
+        "model_lifecycle.train.load_global_config",
         return_global_training_config,
     )
     monkeypatch.setattr(
-        "models.train.load_training_experiment_config",
+        "model_lifecycle.train.load_training_experiment_config",
         return_experiment_training_config,
     )
     monkeypatch.setattr(
-        "models.train.compute_training_data_version",
+        "model_lifecycle.train.compute_training_data_version",
         return_data_hash,
     )
     monkeypatch.setattr(
-        "models.train.resolve_git_sha",
+        "model_lifecycle.train.resolve_git_sha",
         return_git_sha,
     )
     monkeypatch.setattr(
-        "models.train.resolve_git_tag",
+        "model_lifecycle.train.resolve_git_tag",
         return_git_tag,
     )
     monkeypatch.setattr(
-        "models.train.resolve_git_nearest_tag",
+        "model_lifecycle.train.resolve_git_nearest_tag",
         return_git_nearest_tag,
     )
 
-    cfg = load_experiment_training_config("configs/training/model_current.yaml")
+    cfg = load_experiment_training_config("configs/model_lifecycle/model_current.yaml")
 
     assert isinstance(cfg, ExperimentTrainingConfig)
     assert cfg.algorithm == "random_forest"
@@ -396,19 +396,19 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
     _TAG_LOG.clear()
 
     monkeypatch.setattr(
-        "models.train.mlflow.log_params",
+        "model_lifecycle.train.mlflow.log_params",
         ignore_logged_params,
     )
     monkeypatch.setattr(
-        "models.train.mlflow.log_param",
+        "model_lifecycle.train.mlflow.log_param",
         return_logged_param,
     )
     monkeypatch.setattr(
-        "models.train.mlflow.set_tag",
+        "model_lifecycle.train.mlflow.set_tag",
         return_logged_tag,
     )
     monkeypatch.setattr(
-        "models.train.mlflow.log_artifact",
+        "model_lifecycle.train.mlflow.log_artifact",
         return_logged_artifact,
     )
 
@@ -451,10 +451,13 @@ def test_log_run_metadata_registers_retraining_context(monkeypatch) -> None:
     _TAG_LOG.clear()
     _ARTIFACT_LOG.clear()
 
-    monkeypatch.setattr("models.train.mlflow.log_params", ignore_logged_params)
-    monkeypatch.setattr("models.train.mlflow.log_param", return_logged_param)
-    monkeypatch.setattr("models.train.mlflow.set_tag", return_logged_tag)
-    monkeypatch.setattr("models.train.mlflow.log_artifact", return_logged_artifact)
+    monkeypatch.setattr("model_lifecycle.train.mlflow.log_params", ignore_logged_params)
+    monkeypatch.setattr("model_lifecycle.train.mlflow.log_param", return_logged_param)
+    monkeypatch.setattr("model_lifecycle.train.mlflow.set_tag", return_logged_tag)
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.log_artifact",
+        return_logged_artifact,
+    )
 
     log_run_metadata(
         cfg.model_params,
@@ -494,12 +497,21 @@ def test_train_and_log_model_trains_logs_and_saves(
     _METADATA_LOG.clear()
     _START_RUN_NAMES.clear()
 
-    monkeypatch.setattr("models.train.mlflow.start_run", return_dummy_run)
-    monkeypatch.setattr("models.train.mlflow.log_metrics", return_logged_metrics)
-    monkeypatch.setattr("models.train.mlflow.sklearn.log_model", return_logged_model)
-    monkeypatch.setattr("models.train.dump", return_dump_call)
-    monkeypatch.setattr("models.train.log_run_metadata", return_logged_metadata)
-    monkeypatch.setattr("models.train.build_model", return_dummy_classifier)
+    monkeypatch.setattr("model_lifecycle.train.mlflow.start_run", return_dummy_run)
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.log_metrics",
+        return_logged_metrics,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.sklearn.log_model",
+        return_logged_model,
+    )
+    monkeypatch.setattr("model_lifecycle.train.dump", return_dump_call)
+    monkeypatch.setattr(
+        "model_lifecycle.train.log_run_metadata",
+        return_logged_metadata,
+    )
+    monkeypatch.setattr("model_lifecycle.train.build_model", return_dummy_classifier)
 
     metrics = train_and_log_model(spec, cfg, datasets)
 
@@ -538,12 +550,21 @@ def test_train_and_log_model_uses_retrain_suffix_in_mlflow_run_name(
 
     _START_RUN_NAMES.clear()
 
-    monkeypatch.setattr("models.train.mlflow.start_run", return_dummy_run)
-    monkeypatch.setattr("models.train.mlflow.log_metrics", return_logged_metrics)
-    monkeypatch.setattr("models.train.mlflow.sklearn.log_model", return_logged_model)
-    monkeypatch.setattr("models.train.dump", return_dump_call)
-    monkeypatch.setattr("models.train.log_run_metadata", return_logged_metadata)
-    monkeypatch.setattr("models.train.build_model", return_dummy_classifier)
+    monkeypatch.setattr("model_lifecycle.train.mlflow.start_run", return_dummy_run)
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.log_metrics",
+        return_logged_metrics,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.sklearn.log_model",
+        return_logged_model,
+    )
+    monkeypatch.setattr("model_lifecycle.train.dump", return_dump_call)
+    monkeypatch.setattr(
+        "model_lifecycle.train.log_run_metadata",
+        return_logged_metadata,
+    )
+    monkeypatch.setattr("model_lifecycle.train.build_model", return_dummy_classifier)
 
     train_and_log_model(
         spec,
@@ -561,15 +582,21 @@ def test_run_training_executes_single_experiment(monkeypatch) -> None:
     _TRAIN_CALLS.clear()
 
     monkeypatch.setattr(
-        "models.train.load_experiment_training_config",
+        "model_lifecycle.train.load_experiment_training_config",
         return_experiment_cfg_for_run,
     )
-    monkeypatch.setattr("models.train.set_global_seed", seed_calls.append)
-    monkeypatch.setattr("models.train.load_training_data", return_datasets_stub)
-    monkeypatch.setattr("models.train.configure_mlflow", mlflow_cfg_calls.append)
-    monkeypatch.setattr("models.train.train_and_log_model", return_train_call)
+    monkeypatch.setattr("model_lifecycle.train.set_global_seed", seed_calls.append)
+    monkeypatch.setattr(
+        "model_lifecycle.train.load_training_data",
+        return_datasets_stub,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.configure_mlflow",
+        mlflow_cfg_calls.append,
+    )
+    monkeypatch.setattr("model_lifecycle.train.train_and_log_model", return_train_call)
 
-    run_training("configs/training/model_current.yaml")
+    run_training("configs/model_lifecycle/model_current.yaml")
 
     assert seed_calls == [42]
     assert len(mlflow_cfg_calls) == 1

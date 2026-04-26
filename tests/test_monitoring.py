@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from monitoring.drift import (
+from src.evaluation.model.drift.drift import (
     ProjectDriftReportContext,
     apply_minimum_sample_size_policy,
     build_evidently_drift_preset,
@@ -19,7 +19,7 @@ from monitoring.drift import (
     prepare_feature_matrix,
     run_drift_monitoring,
 )
-from monitoring.inference_log import (
+from src.evaluation.model.drift.prediction_logger import (
     append_inference_log,
     build_inference_log_record,
 )
@@ -93,6 +93,34 @@ def test_append_inference_log_writes_json_lines(tmp_path) -> None:
 
     lines = log_path.read_text(encoding="utf-8").splitlines()
     assert [json.loads(line)["CreditScore"] for line in lines] == [650, 700]
+
+
+def test_append_inference_log_preserves_jsonl_when_file_lacks_final_newline(
+    tmp_path,
+) -> None:
+    log_path = tmp_path / "predictions.jsonl"
+    log_path.write_text(json.dumps({"CreditScore": 650}), encoding="utf-8")
+
+    append_inference_log({"CreditScore": 700}, log_path)
+
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line)["CreditScore"] for line in lines] == [650, 700]
+
+
+def test_load_dataset_reports_invalid_jsonl_line(tmp_path) -> None:
+    log_path = tmp_path / "predictions.jsonl"
+    log_path.write_text(
+        "\n".join(
+            [
+                json.dumps({"CreditScore": 650}),
+                f"{json.dumps({'CreditScore': 700})}{json.dumps({'CreditScore': 800})}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="JSONL inválido.*linha 2"):
+        load_dataset(log_path)
 
 
 def test_inject_project_drift_summary_into_html_adds_thresholds(tmp_path) -> None:
@@ -202,7 +230,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     runs_history_path = tmp_path / "artifacts" / "monitoring" / "drift_runs.jsonl"
     retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
     retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
-    config_path = tmp_path / "monitoring_config.yaml"
+    config_path = tmp_path / "global_monitoring.yaml"
 
     pd.DataFrame(
         {
@@ -245,7 +273,9 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                     "retraining": {
                         "enabled": True,
                         "trigger_mode": "manual",
-                        "training_config_path": "configs/training/model_current.yaml",
+                        "training_config_path": (
+                            "configs/model_lifecycle/model_current.yaml"
+                        ),
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
                         "promotion_decision_path": str(
@@ -281,7 +311,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
         Path(output_path).write_text("<html></html>", encoding="utf-8")
 
     monkeypatch.setattr(
-        "monitoring.drift.build_evidently_report",
+        "src.evaluation.model.drift.drift.build_evidently_report",
         write_dummy_report,
     )
 
@@ -295,7 +325,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     assert retrain_payload["trigger_mode"] == "manual"
     assert (
         retrain_payload["training_config_path"]
-        == "configs/training/model_current.yaml"
+        == "configs/model_lifecycle/model_current.yaml"
     )
     assert retrain_payload["promotion_policy"] == "manual_approval_required"
     assert retrain_payload["promotion_rules"]["primary_metric"] == "auc"
@@ -322,7 +352,7 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
     runs_history_path = tmp_path / "artifacts" / "monitoring" / "drift_runs.jsonl"
     retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
     retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
-    config_path = tmp_path / "monitoring_config.yaml"
+    config_path = tmp_path / "global_monitoring.yaml"
     retraining_calls: list[tuple[str, str]] = []
 
     pd.DataFrame(
@@ -366,7 +396,9 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
                     "retraining": {
                         "enabled": True,
                         "trigger_mode": "auto_train_manual_promote",
-                        "training_config_path": "configs/training/model_current.yaml",
+                        "training_config_path": (
+                            "configs/model_lifecycle/model_current.yaml"
+                        ),
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
                         "promotion_decision_path": str(
@@ -387,12 +419,12 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
     )
 
     monkeypatch.setattr(
-        "monitoring.drift.build_evidently_report",
+        "src.evaluation.model.drift.drift.build_evidently_report",
         lambda **_: report_path.parent.mkdir(parents=True, exist_ok=True)
         or report_path.write_text("<html></html>", encoding="utf-8"),
     )
     monkeypatch.setattr(
-        "monitoring.drift.run_retraining_request",
+        "src.evaluation.model.drift.drift.run_retraining_request",
         lambda request_path, output_path: retraining_calls.append(
             (request_path, output_path)
         ),
@@ -423,7 +455,7 @@ def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small
     runs_history_path = tmp_path / "artifacts" / "monitoring" / "drift_runs.jsonl"
     retrain_path = tmp_path / "artifacts" / "retraining" / "retrain_request.json"
     retrain_run_path = tmp_path / "artifacts" / "retraining" / "retrain_run.json"
-    config_path = tmp_path / "monitoring_config.yaml"
+    config_path = tmp_path / "global_monitoring.yaml"
     retraining_calls: list[tuple[str, str]] = []
 
     pd.DataFrame(
@@ -467,7 +499,9 @@ def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small
                     "retraining": {
                         "enabled": True,
                         "trigger_mode": "auto_train_manual_promote",
-                        "training_config_path": "configs/training/model_current.yaml",
+                        "training_config_path": (
+                            "configs/model_lifecycle/model_current.yaml"
+                        ),
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
                         "promotion_decision_path": str(
@@ -488,12 +522,12 @@ def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small
     )
 
     monkeypatch.setattr(
-        "monitoring.drift.build_evidently_report",
+        "src.evaluation.model.drift.drift.build_evidently_report",
         lambda **_: report_path.parent.mkdir(parents=True, exist_ok=True)
         or report_path.write_text("<html></html>", encoding="utf-8"),
     )
     monkeypatch.setattr(
-        "monitoring.drift.run_retraining_request",
+        "src.evaluation.model.drift.drift.run_retraining_request",
         lambda request_path, output_path: retraining_calls.append(
             (request_path, output_path)
         ),

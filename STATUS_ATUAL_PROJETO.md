@@ -1,6 +1,6 @@
 # Status Atual do Projeto
 
-Última revisão: 2026-04-19
+Última revisão: 2026-04-24
 
 O objetivo aqui é ser honesto sobre o que já está de pé, o que está parcial e
 o que ainda falta para a banca.
@@ -25,12 +25,10 @@ defensável de:
 Os maiores gaps frente ao que a live enfatizou continuam em:
 
 - baseline adicional em PyTorch
-- golden set formal
-- agente ReAct com tools reais
-- pipeline RAG operacional
-- guardrails e PII efetivos
+- guardrails, PII e red team efetivos
 - fairness audit e explicabilidade formal
 - CI/CD com deploy e gate formal de cobertura
+- execução e reporte formal de RAGAS, LLM-as-judge e benchmark RAG/LLM
 
 ## Checklist da Datathon
 
@@ -46,7 +44,7 @@ Os maiores gaps frente ao que a live enfatizou continuam em:
 - [x] Execução de múltiplos experimentos de treino por configuração
 - [ ] Baseline adicional em PyTorch
 - [x] Notebook de EDA incluído no repositório
-- [ ] Golden set formal em `data/golden_set/`
+- [x] Golden set formal em `data/golden-set.json`
 - [x] Feature store com Feast introduzida no projeto
 - [x] Redis configurado como online store local via Docker Compose
 - [x] Camada offline da feature store derivada do pipeline atual, sem duplicar regras de features
@@ -73,22 +71,34 @@ Observações:
 - [x] API FastAPI para serving
 - [x] Schemas de entrada e saída para inferência
 - [x] Análise de cenários com payloads versionados
-- [ ] Agente ReAct funcional com pelo menos 3 tools
-- [ ] Tools de negócio implementadas
-- [ ] Pipeline RAG operacional
-- [ ] Integração com LLM de serving
-- [ ] Endpoints adicionais para agente ou RAG
+- [x] Agente ReAct funcional com pelo menos 3 tools
+- [x] Tools de negócio implementadas
+- [x] Pipeline RAG operacional
+- [x] Integração com LLM de serving
+- [x] Endpoints adicionais para agente ou RAG
+- [x] LLM servido via API com provider gerenciado Claude
+- [ ] Quantização aplicada em provider local opcional
 
 Observações:
 
 - A parte tabular de inferência está implementada e testada.
-- `src/agent/` existe, mas ainda é placeholder e não deve ser apresentada como
-  entrega funcional completa.
+- A trilha `src/agent/` agora ja nao e mais placeholder: o agente usa ReAct com
+  quatro tools de dominio e um RAG operacional com embeddings em memoria.
+- O corpus e descoberto automaticamente a partir de `README.md`,
+  `docs/**/*.md` e JSON hardcoded relevantes; novos `.md` entram no indice no
+  proximo startup da stack.
+- O RAG possui cache persistido em `artifacts/rag/cache/` com manifesto de
+  fontes e historico em `artifacts/rag/index_build_history.jsonl`.
+- A decisão arquitetural atual é consumir Claude como serviço gerenciado. Nesse
+  caminho, o projeto integra o LLM via API, mas não controla nem comprova
+  quantização interna do modelo. O caminho local com Ollama existe como opção,
+  e é nele que uma evidência de quantização poderia ser documentada, se a equipe
+  decidir demonstrar esse requisito também.
 
 ### Etapa 3: Avaliação e observabilidade
 
 - [x] Estrutura de avaliação criada em `evaluation/`
-- [x] Configuração de monitoramento dedicada em `configs/monitoring_config.yaml`
+- [x] Configuração de monitoramento dedicada em `configs/monitoring/global_monitoring.yaml`
 - [x] Módulos base de drift e métricas presentes em `src/monitoring/`
 - [x] Dashboard operacional Prometheus/Grafana
 - [x] Drift detection operacional e automatizado em fluxo local batch
@@ -96,6 +106,7 @@ Observações:
 - [x] Comparação champion-challenger com decisão persistida de promoção
 - [ ] RAGAS com 4 métricas efetivamente executadas
 - [ ] LLM-as-judge com pelo menos 3 critérios efetivamente executados
+- [ ] Benchmark RAG/LLM com 3 configurações consolidado em artefato
 - [ ] Alertas automáticos
 - [ ] Observabilidade LLM com Langfuse ou TruLens
 
@@ -111,6 +122,14 @@ Observações:
   métrica primária e melhoria mínima, mas a promoção final continua manual.
 - Ainda não existe agendamento/cron formal nem canal de alerta externo, então a
   automação operacional ainda não está completa no sentido mais forte da live.
+- A observabilidade da trilha de LLM foi reforcada com metricas Prometheus e um
+  dashboard dedicado ao RAG, cobrindo corpus, chunks, bytes, memoria estimada,
+  delta de RSS, tempo por etapa de startup, cache hit e latencia da busca.
+- `evaluation/ragas_eval.py`, `evaluation/llm_judge.py` e
+  `evaluation/ab_test_prompts.py` existem e têm testes de suporte. As saídas
+  foram padronizadas para `artifacts/evaluation/llm_agent/results/`, com histórico em
+  `artifacts/evaluation/llm_agent/runs/`, mas ainda precisam ser executadas e reportadas
+  formalmente.
 
 ### Etapa 4: Segurança e governança
 
@@ -121,8 +140,8 @@ Observações:
 - [ ] System Card efetivamente preenchido
 - [ ] Mapeamento OWASP documentado de forma substantiva
 - [ ] Red Team Report documentado de forma substantiva
-- [ ] Guardrails de input/output implementados de forma efetiva
-- [ ] Detecção e sanitização de PII implementadas
+- [ ] Guardrails de input/output robustos e evidenciados por cenários adversariais
+- [ ] Detecção e sanitização de PII aplicadas de ponta a ponta
 - [ ] Fairness audit automatizada e anexada ao ciclo de treino
 - [ ] Explicabilidade formal da predição
 
@@ -132,7 +151,11 @@ Observações:
   `docs/RED_TEAM_REPORT.md` existem, mas hoje estão essencialmente vazios e não
   sustentam banca como entrega concluída.
 - Os módulos `src/security/guardrails.py` e `src/security/pii_detection.py`
-  ainda não configuram segurança aplicada de ponta a ponta.
+  já implementam uma camada básica: bloqueio de alguns padrões de prompt
+  injection, limite de tamanho de input e mascaramento simples de e-mail,
+  telefone e CPF. Isso é útil como base, mas ainda não configura segurança
+  aplicada de ponta a ponta nem substitui OWASP mapping, red team e relatório de
+  mitigação.
 
 ### Engenharia de software e qualidade
 
@@ -149,6 +172,8 @@ Observações:
 
 - O workflow atual em `.github/workflows/ci.yml` já roda checkout, install,
   lint, compile, test e `pip check`.
+- A verificação local mais recente executou `poetry run ruff check` com sucesso e
+  `poetry run pytest -q` com 114 testes aprovados.
 - Ainda não há deploy/staging nem `--cov-fail-under`.
 - `.pre-commit-config.yaml` existe, mas está praticamente vazia.
 
@@ -174,12 +199,11 @@ interessada em engenharia de machine learning do que em “ter o melhor modelo�
 
 Os pontos abaixo não devem ser “vendidos como prontos” sem ressalva:
 
-- agente ReAct
-- tools de negócio
-- RAG
 - LLM-as-judge
 - RAGAS
-- guardrails efetivos
+- benchmark RAG/LLM com 3 configurações
+- quantização aplicada em provider local opcional
+- guardrails efetivos e red team
 - PII sanitization
 - fairness automatizada
 - System Card / OWASP / Red Team como governança madura
@@ -220,28 +244,38 @@ Se a intenção for maximizar aderência aos requisitos com menor risco, a ordem
 mais segura hoje parece ser:
 
 1. consolidar a narrativa da trilha tabular já funcional
-2. completar documentação de governança crítica
-3. fortalecer segurança aplicada com evidência concreta
-4. decidir se vale fechar um agente mínimo funcional ou tirar essa promessa da narrativa
+2. executar e reportar RAGAS, LLM-as-judge e benchmark de prompts/RAG
+3. completar documentação de governança crítica
+4. fortalecer segurança aplicada com evidência concreta
 5. amadurecer CI/CD e gates de qualidade
 
 ## Evidências-Chave do Repositório
 
-- `artifacts/monitoring/drift/drift_report.html`
-- `artifacts/monitoring/drift/drift_metrics.json`
-- `artifacts/monitoring/drift/drift_status.json`
-- `artifacts/monitoring/drift/drift_runs.jsonl`
-- `artifacts/monitoring/retraining/retrain_request.json`
-- `artifacts/monitoring/retraining/retrain_run.json`
-- `artifacts/monitoring/retraining/promotion_decision.json`
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
 - `artifacts/models/model_current.pkl`
 - `artifacts/models/model_current_metadata.json`
 - `artifacts/models/challengers/`
+- `artifacts/rag/cache/manifest.json`
+- `artifacts/rag/index_build_history.jsonl`
+- `artifacts/evaluation/llm_agent/results/`
+- `artifacts/evaluation/llm_agent/runs/`
+- `data/golden-set.json`
+- `evaluation/ragas_eval.py`
+- `evaluation/llm_judge.py`
+- `evaluation/ab_test_prompts.py`
 
 ## Conclusão
 
 O projeto já demonstra um ciclo relevante de engenharia de machine learning para
 modelo tabular, com drift, gatilho de retreino, challenger, feature store e
-governança operacional básica. A parte mais frágil frente aos requisitos
-continua sendo a trilha de IA generativa, segurança aplicada e governança
-documental profunda.
+governança operacional básica. A trilha de IA generativa agora possui agente,
+RAG, rotas e scripts de avaliação, mas ainda precisa transformar esses scripts
+em resultados reportados. A parte mais frágil frente aos requisitos continua
+sendo segurança aplicada, red team, governança documental profunda, fairness e
+explicabilidade.

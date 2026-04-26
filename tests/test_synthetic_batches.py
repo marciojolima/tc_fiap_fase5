@@ -7,8 +7,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from scenario_analysis.synthetic_drifts import (
+from src.evaluation.model.drift.synthetic_drifts import (
     INPUT_COLUMNS,
+    ScoredSyntheticBatch,
     SyntheticBatchConfig,
     build_high_risk_prediction_drift_batch,
     build_prediction_records,
@@ -61,7 +62,7 @@ def build_batch_config(tmp_path: Path) -> SyntheticBatchConfig:
         mlflow_experiment_name="monitoring-drift-test",
         output_dir=tmp_path,
         batch_size=4,
-        experiment_config_path="configs/training/model_current.yaml",
+        experiment_config_path="configs/model_lifecycle/model_current.yaml",
     )
 
 
@@ -90,18 +91,44 @@ def test_high_risk_prediction_drift_batch_applies_expected_constraints() -> None
 
 
 def test_build_prediction_records_includes_monitoring_metadata() -> None:
-    batch = build_base_dataframe()
+    features = pd.DataFrame(
+        [
+            {
+                "Card Type": 1.0,
+                "Gender": 0.0,
+                "CreditScore": 620.0,
+                "Age": 40.0,
+                "BalancePerProduct": 5000.0,
+                "PointsPerSalary": 0.005,
+            },
+            {
+                "Card Type": 3.0,
+                "Gender": 1.0,
+                "CreditScore": 710.0,
+                "Age": 33.0,
+                "BalancePerProduct": 82000.0,
+                "PointsPerSalary": 0.0076,
+            },
+        ]
+    )
     records = build_prediction_records(
-        batch_dataframe=batch,
-        probabilities=np.array([0.2, 0.8]),
-        predictions=np.array([0, 1]),
-        model_name="random_forest_current",
-        threshold=0.5,
+        scored_batch=ScoredSyntheticBatch(
+            transformed_features=features,
+            probabilities=np.array([0.2, 0.8]),
+            predictions=np.array([0, 1]),
+            model_name="random_forest_current",
+            model_version="0.2.0",
+            threshold=0.5,
+        )
     )
 
     assert len(records) == 2  # noqa: PLR2004
     assert records[0]["model_name"] == "random_forest_current"
+    assert records[0]["model_version"] == "0.2.0"
+    assert records[0]["monitoring_contract"] == "transformed_features_v1"
+    assert records[0]["feature_source"] == "synthetic_batch"
     assert records[1]["churn_prediction"] == 1
+    assert records[1]["BalancePerProduct"] == 82000.0  # noqa: PLR2004
     assert "timestamp" in records[0]
     assert datetime.fromisoformat(records[0]["timestamp"]).utcoffset() == timedelta(
         hours=-3
@@ -124,28 +151,39 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
         return report_output_path
 
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.load_generation_base_dataframe",
+        "src.evaluation.model.drift.synthetic_drifts.load_generation_base_dataframe",
         build_base_dataframe,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.score_batch_predictions",
-        lambda batch_dataframe, experiment_config_path: (
-            np.array([0.1, 0.2, 0.7, 0.9]),
-            np.array([0, 0, 1, 1]),
-            "random_forest_current",
-            0.5,
+        "src.evaluation.model.drift.synthetic_drifts.score_batch_predictions",
+        lambda batch_dataframe, experiment_config_path: ScoredSyntheticBatch(
+            transformed_features=pd.DataFrame(
+                {
+                    "Card Type": [1.0, 1.0, 2.0, 3.0],
+                    "Gender": [0.0, 1.0, 0.0, 1.0],
+                    "CreditScore": [620.0, 710.0, 590.0, 660.0],
+                    "Age": [40.0, 33.0, 55.0, 48.0],
+                    "BalancePerProduct": [5000.0, 82000.0, 40000.0, 20000.0],
+                    "PointsPerSalary": [0.005, 0.007, 0.004, 0.006],
+                }
+            ),
+            probabilities=np.array([0.1, 0.2, 0.7, 0.9]),
+            predictions=np.array([0, 0, 1, 1]),
+            model_name="random_forest_current",
+            model_version="0.2.0",
+            threshold=0.5,
         ),
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.build_drift_report_for_scenario",
+        "src.evaluation.model.drift.synthetic_drifts.build_drift_report_for_scenario",
         write_dummy_report,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.set_tracking_uri",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.set_tracking_uri",
         lambda uri: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.set_experiment",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.set_experiment",
         lambda name: None,
     )
 
@@ -157,23 +195,23 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
             return None
 
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.start_run",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.start_run",
         lambda run_name: DummyRun(),
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.log_param",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.log_param",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.log_metric",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.log_metric",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.set_tag",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.set_tag",
         lambda key, value: None,
     )
     monkeypatch.setattr(
-        "scenario_analysis.synthetic_drifts.mlflow.log_artifact",
+        "src.evaluation.model.drift.synthetic_drifts.mlflow.log_artifact",
         lambda path, artifact_path: logged_artifacts.append((path, artifact_path)),
     )
 

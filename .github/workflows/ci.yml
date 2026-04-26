@@ -16,17 +16,20 @@ jobs:
           python-version: "3.13"
           cache: "pip"
 
+      - name: Install Poetry
+        run: pip install poetry
+
       - name: Install dependencies
-        run: pip install -e . ruff
+        run: poetry install --with dev -E serving -E training -E monitoring -E evaluation
 
       - name: Lint
-        run: ruff check src tests
+        run: poetry run ruff check src tests
 
       - name: Syntax check
-        run: python -m compileall src tests evaluation
+        run: poetry run python -m compileall src tests evaluation
 
       - name: Test
-        run: pytest -q
+        run: poetry run pytest -q
 
       - name: Build
-        run: python -m pip check
+        run: poetry run python -m pip check
