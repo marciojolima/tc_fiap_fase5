@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
-import os
 import resource
 import threading
 from dataclasses import asdict, dataclass
@@ -14,7 +14,11 @@ from typing import Any
 
 import joblib
 import numpy as np
-from sentence_transformers import SentenceTransformer
+
+try:
+    from fastembed import TextEmbedding
+except ModuleNotFoundError:
+    TextEmbedding = None  # type: ignore[assignment]
 
 from common.config_loader import ROOT_DIR, load_global_config
 from common.logger import get_logger
@@ -22,15 +26,17 @@ from monitoring.metrics import report_rag_index_stats, report_rag_query
 
 logger = get_logger("agent.rag_pipeline")
 
+DEFAULT_EMBEDDING_BACKEND = "fastembed"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_CACHE_DIR = "artifacts/rag/cache"
-DEFAULT_EMBEDDING_CACHE_DIR = "artifacts/rag/embedding_model_cache"
+DEFAULT_EMBEDDING_CACHE_DIR = "artifacts/rag/fastembed_model_cache"
 DEFAULT_HISTORY_PATH = "artifacts/rag/index_build_history.jsonl"
 DEFAULT_CHUNK_SIZE = 900
 DEFAULT_CHUNK_OVERLAP = 150
 DEFAULT_TOP_K = 4
 DEFAULT_LEXICAL_RERANK_WEIGHT = 0.15
 DEFAULT_VECTOR_CANDIDATE_MULTIPLIER = 4
+CACHE_SCHEMA_VERSION = "fastembed_rag_index_v1"
 
 JSON_CONTEXT_FILES = (
     "data/processed/feature_columns.json",
@@ -88,11 +94,17 @@ class RAGRuntimeState:
     """Estado atual do RAG carregado em memoria."""
 
     index: RAGIndex | None
-    encoder: SentenceTransformer | None
+    encoder: Any | None
+    embedding_backend: str
     embedding_model_name: str
 
 
-_RAG_STATE = RAGRuntimeState(index=None, encoder=None, embedding_model_name="")
+_RAG_STATE = RAGRuntimeState(
+    index=None,
+    encoder=None,
+    embedding_backend=DEFAULT_EMBEDDING_BACKEND,
+    embedding_model_name="",
+)
 _RAG_LOCK = threading.Lock()
 
 
@@ -110,6 +122,9 @@ def _rag_config() -> dict[str, Any]:
         "top_k": int(config.get("top_k", DEFAULT_TOP_K)),
         "chunk_size": int(config.get("chunk_size", DEFAULT_CHUNK_SIZE)),
         "chunk_overlap": int(config.get("chunk_overlap", DEFAULT_CHUNK_OVERLAP)),
+        "embedding_backend": str(
+            config.get("embedding_backend", DEFAULT_EMBEDDING_BACKEND)
+        ),
         "embedding_model_name": str(
             config.get("embedding_model_name", DEFAULT_EMBEDDING_MODEL)
         ),
@@ -136,15 +151,6 @@ def _cache_dir() -> Path:
 
 def _embedding_cache_dir() -> Path:
     return ROOT_DIR / _rag_config()["embedding_cache_dir"]
-
-
-def _hf_local_files_only() -> bool:
-    """Detecta modo offline do Hugging Face/Transformers para reusar cache local."""
-
-    return any(
-        os.environ.get(var_name, "").strip().lower() in {"1", "true", "yes", "on"}
-        for var_name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
-    )
 
 
 def _history_path() -> Path:
@@ -357,28 +363,42 @@ def _get_process_rss_bytes() -> int:
     return int(rss * 1024)
 
 
-def _load_encoder(model_name: str) -> SentenceTransformer:
+def _load_fastembed_encoder(model_name: str, cache_dir: Path) -> Any:
+    if TextEmbedding is None:
+        raise RuntimeError(
+            "Dependencia 'fastembed' nao instalada. "
+            "Instale o extra serving ou rode 'poetry install --extras serving'."
+        )
+
+    return TextEmbedding(model_name=model_name, cache_dir=str(cache_dir))
+
+
+def _load_encoder(*, backend: str, model_name: str) -> Any:
     state = _get_runtime_state()
-    if state.encoder is not None and state.embedding_model_name == model_name:
+    if (
+        state.encoder is not None
+        and state.embedding_backend == backend
+        and state.embedding_model_name == model_name
+    ):
         return state.encoder
 
     embedding_cache_dir = _embedding_cache_dir()
     embedding_cache_dir.mkdir(parents=True, exist_ok=True)
     logger.info(
-        "Carregando modelo de embeddings do RAG | model=%s | cache_dir=%s",
+        "Carregando modelo de embeddings do RAG | backend=%s | model=%s | cache_dir=%s",
+        backend,
         model_name,
         embedding_cache_dir,
     )
-    sentence_transformer_kwargs: dict[str, object] = {
-        "cache_folder": str(embedding_cache_dir),
-    }
-    if _hf_local_files_only():
-        sentence_transformer_kwargs["local_files_only"] = True
-    encoder = SentenceTransformer(model_name, **sentence_transformer_kwargs)
+    if backend != "fastembed":
+        raise ValueError(f"Backend de embeddings '{backend}' nao suportado pelo RAG.")
+
+    encoder = _load_fastembed_encoder(model_name, embedding_cache_dir)
     _replace_runtime_state(
         RAGRuntimeState(
             index=state.index,
             encoder=encoder,
+            embedding_backend=backend,
             embedding_model_name=model_name,
         )
     )
@@ -392,19 +412,27 @@ def _normalize_embeddings(matrix: np.ndarray) -> np.ndarray:
     return matrix / norms
 
 
-def _encode_texts(encoder: SentenceTransformer, texts: list[str]) -> np.ndarray:
-    embeddings = encoder.encode(
-        texts,
-        batch_size=32,
-        show_progress_bar=False,
-        convert_to_numpy=True,
-        normalize_embeddings=False,
-    )
+def _encode_texts(encoder: Any, texts: list[str], *, query: bool = False) -> np.ndarray:
+    if query and hasattr(encoder, "query_embed"):
+        embeddings = list(encoder.query_embed(texts))
+    elif not query and hasattr(encoder, "passage_embed"):
+        embeddings = list(encoder.passage_embed(texts))
+    else:
+        embeddings = list(encoder.embed(texts))
     return _normalize_embeddings(embeddings)
 
 
 def _serialize_index(index: RAGIndex) -> dict[str, Any]:
     return {
+        "schema_version": CACHE_SCHEMA_VERSION,
+        "embedding_backend": index.stats.get(
+            "embedding_backend",
+            DEFAULT_EMBEDDING_BACKEND,
+        ),
+        "embedding_model_name": index.stats.get(
+            "embedding_model_name",
+            DEFAULT_EMBEDDING_MODEL,
+        ),
         "chunks": [asdict(chunk) for chunk in index.chunks],
         "embeddings": index.embeddings.astype(np.float32),
         "source_manifest": [asdict(item) for item in index.source_manifest],
@@ -442,7 +470,12 @@ def _save_cache(index: RAGIndex) -> None:
     joblib.dump(_serialize_index(index), _cache_index_path(), compress=3)
 
 
-def _load_cache(manifest: list[SourceManifestItem]) -> RAGIndex | None:
+def _load_cache(  # noqa: PLR0911
+    manifest: list[SourceManifestItem],
+    *,
+    backend: str,
+    model_name: str,
+) -> RAGIndex | None:
     manifest_path = _cache_manifest_path()
     index_path = _cache_index_path()
     if not manifest_path.exists() or not index_path.exists():
@@ -466,6 +499,15 @@ def _load_cache(manifest: list[SourceManifestItem]) -> RAGIndex | None:
             exc,
         )
         return None
+    if payload.get("schema_version") != CACHE_SCHEMA_VERSION:
+        logger.info("Schema do cache do RAG mudou; reconstruindo indice.")
+        return None
+    if (
+        payload.get("embedding_backend") != backend
+        or payload.get("embedding_model_name") != model_name
+    ):
+        logger.info("Modelo/backend do cache do RAG mudou; reconstruindo indice.")
+        return None
     return _deserialize_index(payload)
 
 
@@ -478,13 +520,15 @@ def _append_history(event: dict[str, Any]) -> None:
 
 def _set_runtime_index(
     index: RAGIndex,
-    encoder: SentenceTransformer,
+    encoder: Any,
+    backend: str,
     model_name: str,
 ) -> None:
     _replace_runtime_state(
         RAGRuntimeState(
             index=index,
             encoder=encoder,
+            embedding_backend=backend,
             embedding_model_name=model_name,
         )
     )
@@ -492,13 +536,14 @@ def _set_runtime_index(
 
 def _collect_source_manifest_and_encoder(
     *,
+    backend: str,
     model_name: str,
     force_rebuild: bool,
 ) -> tuple[
     list[Path],
     list[SourceManifestItem],
     RAGIndex | None,
-    SentenceTransformer,
+    Any,
     dict[str, float],
 ]:
     stage_durations: dict[str, float] = {}
@@ -511,21 +556,27 @@ def _collect_source_manifest_and_encoder(
     cache_index: RAGIndex | None = None
     if not force_rebuild:
         cache_start = perf_counter()
-        cache_index = _load_cache(source_manifest)
+        cache_index = _load_cache(
+            source_manifest,
+            backend=backend,
+            model_name=model_name,
+        )
         stage_durations["cache_lookup"] = perf_counter() - cache_start
 
     encoder_start = perf_counter()
-    encoder = _load_encoder(model_name)
+    encoder = _load_encoder(backend=backend, model_name=model_name)
     stage_durations["encoder_load"] = perf_counter() - encoder_start
 
     return source_paths, source_manifest, cache_index, encoder, stage_durations
 
 
-def _build_index_from_sources(
+def _build_index_from_sources(  # noqa: PLR0913
     *,
     source_paths: list[Path],
     source_manifest: list[SourceManifestItem],
-    encoder: SentenceTransformer,
+    encoder: Any,
+    backend: str,
+    model_name: str,
     stage_durations: dict[str, float],
 ) -> RAGIndex:
     load_sources_start = perf_counter()
@@ -544,7 +595,11 @@ def _build_index_from_sources(
         embeddings=embeddings,
         source_manifest=source_manifest,
         source_mode="fresh",
-        stats={"source_bytes": source_bytes},
+        stats={
+            "source_bytes": source_bytes,
+            "embedding_backend": backend,
+            "embedding_model_name": model_name,
+        },
     )
 
     cache_write_start = perf_counter()
@@ -558,6 +613,7 @@ def _finalize_index_stats(  # noqa: PLR0913
     source_manifest: list[SourceManifestItem],
     index: RAGIndex,
     build_source: str,
+    backend: str,
     model_name: str,
     stage_durations: dict[str, float],
     rss_before: int,
@@ -577,6 +633,7 @@ def _finalize_index_stats(  # noqa: PLR0913
     return {
         "initialized_at_epoch": time(),
         "build_source": build_source,
+        "embedding_backend": backend,
         "embedding_model_name": model_name,
         "file_count": len(source_manifest),
         "chunk_count": len(index.chunks),
@@ -598,6 +655,7 @@ def initialize_rag_index(  # noqa: PLR0914, PLR0915
 
     with _RAG_LOCK:
         cfg = _rag_config()
+        backend = cfg["embedding_backend"]
         model_name = cfg["embedding_model_name"]
         state = _get_runtime_state()
 
@@ -613,6 +671,7 @@ def initialize_rag_index(  # noqa: PLR0914, PLR0915
             encoder,
             stage_durations,
         ) = _collect_source_manifest_and_encoder(
+            backend=backend,
             model_name=model_name,
             force_rebuild=force_rebuild,
         )
@@ -626,17 +685,20 @@ def initialize_rag_index(  # noqa: PLR0914, PLR0915
                 source_paths=source_paths,
                 source_manifest=source_manifest,
                 encoder=encoder,
+                backend=backend,
+                model_name=model_name,
                 stage_durations=stage_durations,
             )
 
         memory_allocation_start = perf_counter()
-        _set_runtime_index(index, encoder, model_name)
+        _set_runtime_index(index, encoder, backend, model_name)
         stage_durations["memory_ready"] = perf_counter() - memory_allocation_start
 
         stats = _finalize_index_stats(
             source_manifest=source_manifest,
             index=index,
             build_source=build_source,
+            backend=backend,
             model_name=model_name,
             stage_durations=stage_durations,
             rss_before=rss_before,
@@ -649,7 +711,7 @@ def initialize_rag_index(  # noqa: PLR0914, PLR0915
             source_mode=build_source,
             stats=stats,
         )
-        _set_runtime_index(hydrated_index, encoder, model_name)
+        _set_runtime_index(hydrated_index, encoder, backend, model_name)
         report_rag_index_stats(stats)
         _append_history(stats)
 
@@ -741,7 +803,7 @@ def retrieve_contexts(  # noqa: PLR0914
     if encoder is None:
         raise RuntimeError("Modelo de embeddings do RAG nao esta carregado.")
 
-    query_embedding = _encode_texts(encoder, [cleaned_query])[0]
+    query_embedding = _encode_texts(encoder, [cleaned_query], query=True)[0]
     vector_scores = index.embeddings @ query_embedding
 
     limit = top_k or cfg["top_k"]
@@ -769,6 +831,7 @@ def get_rag_runtime_summary() -> dict[str, Any]:
     if state.index is None:
         return {
             "ready": False,
+            "embedding_backend": state.embedding_backend,
             "embedding_model_name": state.embedding_model_name,
             "cache_path": str(_cache_index_path().relative_to(ROOT_DIR)),
             "embedding_cache_path": str(
@@ -788,3 +851,21 @@ def get_rag_runtime_summary() -> dict[str, Any]:
         }
     )
     return summary
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Inicializa ou reconstrói o índice RAG persistido em joblib.",
+    )
+    parser.add_argument(
+        "--force-rebuild",
+        action="store_true",
+        help="Reconstrói embeddings e cache mesmo quando o manifesto não mudou.",
+    )
+    args = parser.parse_args()
+    stats = initialize_rag_index(force_rebuild=args.force_rebuild)
+    print(json.dumps(stats, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

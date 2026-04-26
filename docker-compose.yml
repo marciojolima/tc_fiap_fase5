@@ -43,8 +43,6 @@ services:
       PYTHONUNBUFFERED: "1"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      TORCH_HOME: /tmp/torch
-      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor
       TZ: America/Sao_Paulo
       USER: appuser
       PROJECT_TIMEZONE: America/Sao_Paulo

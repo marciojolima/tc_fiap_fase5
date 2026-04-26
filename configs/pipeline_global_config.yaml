@@ -71,8 +71,10 @@ rag:
   top_k: 4
   chunk_size: 900
   chunk_overlap: 150
+  embedding_backend: fastembed
   embedding_model_name: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-  embedding_cache_dir: artifacts/rag/embedding_model_cache
+  embedding_cache_dir: artifacts/rag/fastembed_model_cache
+  ragas_embedding_cache_dir: artifacts/rag/ragas_embedding_model_cache
   cache_dir: artifacts/rag/cache
   history_path: artifacts/rag/index_build_history.jsonl
   lexical_rerank_weight: 0.15

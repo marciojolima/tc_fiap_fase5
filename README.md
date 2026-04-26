@@ -107,8 +107,8 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
 - **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict/raw`, com payload bruto), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
 
-- **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação simples por sobreposição lexical sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
-  O modelo de embeddings do RAG usa cache persistente local em `artifacts/rag/embedding_model_cache`, reduzindo downloads repetidos do Hugging Face entre reinícios da stack.
+- **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação vetorial local com FastEmbed/ONNX e rerank lexical leve sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
+  O modelo de embeddings do RAG usa cache persistente local em `artifacts/rag/fastembed_model_cache`, reduzindo downloads repetidos entre reinícios da stack.
 
 - **Segurança** — [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py): validação básica de input e mascaramento de PII na resposta.
 
@@ -127,7 +127,7 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
 - **Prompt A/B (3 variantes):** [src/evaluation/llm_agent/ab_test_prompts.py](src/evaluation/llm_agent/ab_test_prompts.py) — benchmark offline com três variantes de prompt sobre o golden set, comparando cobertura lexical mínima da resposta e, opcionalmente, notas do `llm_judge`. Execução local: `poetry run task eval_ab_test_prompts` ou `poetry run python -m src.evaluation.llm_agent.ab_test_prompts --with-judge`. Saída típica: `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`, com histórico em `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`.
 
-- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. Se o modelo de embeddings já estiver baixado no cache local, `poetry run task eval_all_offline` força reuso local (`HF_HUB_OFFLINE=1` e `TRANSFORMERS_OFFLINE=1`) e evita novas chamadas ao Hugging Face.
+- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. Se o modelo de embeddings do RAGAS já estiver baixado no cache local, `poetry run task eval_all_offline` força reuso local (`HF_HUB_OFFLINE=1` e `TRANSFORMERS_OFFLINE=1`) e evita novas chamadas ao Hugging Face.
 
   As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
 
@@ -504,7 +504,7 @@ Ou execute tudo em sequência:
 poetry run task eval_all
 ```
 
-Se o modelo de embeddings já estiver em cache e o objetivo for evitar novas chamadas ao Hugging Face:
+Se o modelo de embeddings do RAGAS já estiver em cache e o objetivo for evitar novas chamadas ao Hugging Face:
 
 ```bash
 poetry run task eval_all_offline

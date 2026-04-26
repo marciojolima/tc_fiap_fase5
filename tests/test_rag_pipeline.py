@@ -7,25 +7,19 @@ import numpy as np
 from agent import rag_pipeline
 
 
-class FakeSentenceTransformer:
+class FakeTextEmbedding:
     def __init__(
         self,
-        _model_name: str,
-        cache_folder: str | None = None,
+        model_name: str,
+        cache_dir: str | None = None,
     ):
-        self.model_name = _model_name
-        self.cache_folder = cache_folder
+        self.model_name = model_name
+        self.cache_dir = cache_dir
 
-    def encode(
+    def _encode(
         self,
         texts: list[str],
-        *,
-        batch_size: int,
-        show_progress_bar: bool,
-        convert_to_numpy: bool,
-        normalize_embeddings: bool,
     ) -> np.ndarray:
-        del batch_size, show_progress_bar, convert_to_numpy, normalize_embeddings
         _ = self.model_name
         rows: list[list[float]] = []
         for text in texts:
@@ -39,16 +33,33 @@ class FakeSentenceTransformer:
             )
         return np.asarray(rows, dtype=np.float32)
 
+    def embed(self, texts: list[str]) -> list[np.ndarray]:
+        return list(self._encode(texts))
+
+    def passage_embed(self, texts: list[str]) -> list[np.ndarray]:
+        return self.embed(texts)
+
+    def query_embed(self, texts: list[str]) -> list[np.ndarray]:
+        return self.embed(texts)
+
 
 def _patch_rag_environment(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(rag_pipeline, "ROOT_DIR", tmp_path)
-    monkeypatch.setattr(rag_pipeline, "SentenceTransformer", FakeSentenceTransformer)
+    monkeypatch.setattr(
+        rag_pipeline,
+        "_load_fastembed_encoder",
+        lambda model_name, cache_dir: FakeTextEmbedding(
+            model_name=model_name,
+            cache_dir=str(cache_dir),
+        ),
+    )
     monkeypatch.setattr(
         rag_pipeline,
         "_RAG_STATE",
         rag_pipeline.RAGRuntimeState(
             index=None,
             encoder=None,
+            embedding_backend="fastembed",
             embedding_model_name="",
         ),
     )
@@ -60,8 +71,9 @@ def _patch_rag_environment(monkeypatch, tmp_path: Path) -> None:
                 "top_k": 2,
                 "chunk_size": 120,
                 "chunk_overlap": 20,
+                "embedding_backend": "fastembed",
                 "embedding_model_name": "fake-model",
-                "embedding_cache_dir": "artifacts/rag/embedding_model_cache",
+                "embedding_cache_dir": "artifacts/rag/fastembed_model_cache",
                 "cache_dir": "artifacts/rag/cache",
                 "history_path": "artifacts/rag/index_build_history.jsonl",
                 "lexical_rerank_weight": 0.20,
@@ -125,6 +137,7 @@ def test_initialize_rag_index_uses_cache_and_answers_queries(
         rag_pipeline.RAGRuntimeState(
             index=None,
             encoder=None,
+            embedding_backend="fastembed",
             embedding_model_name="",
         ),
     )
@@ -137,5 +150,5 @@ def test_initialize_rag_index_uses_cache_and_answers_queries(
     assert "drift" in contexts[0].lower()
     assert (
         rag_pipeline.get_rag_runtime_summary()["embedding_cache_path"]
-        == "artifacts/rag/embedding_model_cache"
+        == "artifacts/rag/fastembed_model_cache"
     )

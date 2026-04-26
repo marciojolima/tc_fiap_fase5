@@ -24,13 +24,11 @@ serving = [
     "cryptography>=41.0.0",
     "fastapi[standard]>=0.135.3,<0.136.0",
     "feast[redis]>=0.57.0,<0.62.0",
+    "fastembed>=0.7.0,<0.9.0",
     "mlflow==3.10.1",
     "prometheus-client>=0.22.1,<0.23",
     "pyarrow>=16.0.0",
     "pyopenssl>=23.0.0",
-    "sentence-transformers>=2.2.0",
-    # sentence-transformers puxa torch; 2.1.x não tem wheel cp313 (Win/Linux). 2.5+ suporta Python 3.13.
-    "torch>=2.5.0",
     "uvicorn>=0.30.0",
 ]
 training = [
@@ -125,6 +123,8 @@ feastexport = 'python -m src.feast_ops.export'
 feastmaterialize = 'FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast -c feature_store materialize-incremental $(date -u +"%Y-%m-%dT%H:%M:%S")'
 format = 'ruff format'
 lint = 'ruff check'
+rag_index = 'python -m src.agent.rag_pipeline'
+rag_index_rebuild = 'python -m src.agent.rag_pipeline --force-rebuild'
 mldrift = 'python -m src.evaluation.model.drift.drift'
 mldriftdemo = 'python -m src.evaluation.model.drift.drift --current data/processed/test.parquet'
 mlfeateng = 'python -m src.feature_engineering.feature_engineering'

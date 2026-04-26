@@ -176,8 +176,8 @@ def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper
     embedding_cache_path = Path(
         str(
             rag_cfg.get(
-                "embedding_cache_dir",
-                "artifacts/rag/embedding_model_cache",
+                "ragas_embedding_cache_dir",
+                "artifacts/rag/ragas_embedding_model_cache",
             )
         )
     )

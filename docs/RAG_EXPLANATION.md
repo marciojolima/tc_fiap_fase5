@@ -94,8 +94,9 @@ Os chunks sao mantidos com:
 
 ## Embeddings e Busca Vetorial
 
-O runtime do RAG usa embeddings locais com `sentence-transformers`. O modelo
-padrao atual e configurado em
+O runtime do RAG usa embeddings locais com FastEmbed, que executa modelos ONNX
+quantizados sem carregar PyTorch no container de serving. O backend e o modelo
+padrao atual sao configurados em
 [configs/pipeline_global_config.yaml](../configs/pipeline_global_config.yaml).
 
 O fluxo de consulta faz:
@@ -116,6 +117,7 @@ Arquivos gerados:
 
 - `artifacts/rag/cache/manifest.json`
 - `artifacts/rag/cache/index.joblib`
+- `artifacts/rag/fastembed_model_cache/`
 - `artifacts/rag/index_build_history.jsonl`
 
 ### Como o cache funciona
@@ -130,9 +132,9 @@ No startup, o projeto monta um manifesto das fontes com:
 Se esse manifesto for igual ao ultimo manifesto salvo em cache, o indice vetorial
 e carregado do `joblib`.
 
-Se qualquer arquivo mudar, se um novo `.md` for adicionado em `docs/`, ou se um
-JSON hardcoded for alterado, o indice e reconstruido automaticamente no proximo
-startup.
+Se qualquer arquivo mudar, se um novo `.md` for adicionado em `docs/`, se um
+JSON hardcoded for alterado, ou se o backend/modelo de embedding mudar, o indice
+e reconstruido automaticamente no proximo startup.
 
 Isso atende ao objetivo de manutencao simples: basta adicionar o arquivo ao
 repositorio e reiniciar a stack para o corpus ser atualizado.
