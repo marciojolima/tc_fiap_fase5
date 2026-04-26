@@ -44,7 +44,7 @@
             "expected_answer": "NumOfProducts é o número de produtos bancários ativos do cliente. Clientes com muitos ou muito poucos produtos podem ter padrão de risco de saída diferente; a feature entra no pipeline de modelagem de churn.",
             "contexts": [
                 "NumOfProducts indica quantidade de produtos contratados.",
-                "A quantidade de produtos impacta diretamente no engajamento do cliente."
+                "A quantidade de produtos impacta diretamente no engajamento do cliente. PORÉM: um cliente com NumOfProducts muito alto ou em faixa pouco observada no treino pode gerar uma resposta que não reflete a interpretação clássica de “mais produtos = mais vínculo”"
             ],
             "expected_tools": [
                 "rag_search"
@@ -248,7 +248,8 @@
             "expected_answer": "O pipeline de inferência loga intenção de governança sobre colunas sensíveis (ex.: Geography governada) e evita uso de identificadores diretos removidos no preparo, conforme mensagens de log documentadas no código de serving.",
             "contexts": [
                 "Dados sensíveis são tratados com governança.",
-                "Identificadores diretos são removidos."
+                "Identificadores diretos são removidos.",
+                "Deve consultar docs/LGPD_PLAN.md para detalhes de LGPD."
             ],
             "expected_tools": [
                 "rag_search"
@@ -282,7 +283,8 @@
             "expected_answer": "Exemplos: rag_search (recuperação sobre documentação do repositório), predict_churn (predição alinhada ao /predict/raw com payload bruto), drift_status (leitura de status de drift), scenario_prediction (cenário hipotético com schema de serving).",
             "contexts": [
                 "O agente utiliza ferramentas para executar tarefas.",
-                "Ferramentas incluem predição, RAG e monitoramento."
+                "Ferramentas incluem predição, RAG e monitoramento.",
+                "Mais informações em docs/RAG_EXPLANATION.md#exemplos-por-tool"
             ],
             "expected_tools": [
                 "rag_search"
@@ -380,7 +382,7 @@
         },
         {
             "id": "gs-023",
-            "question": "O que a task observability do pyproject inicia com o docker-compose do projeto (componentes de alto nível)?",
+            "question": "O que a task appstack do pyproject inicia com o docker-compose do projeto (componentes de alto nível)?",
             "expected_answer": "Sobe, entre outros, o serving FastAPI, Redis, MLflow, Prometheus e Grafana na stack base. Quando o llm_provider for Ollama local, a task específica com override também adiciona o serviço Ollama e o job de pull do modelo.",
             "contexts": [
                 "Stack inclui Prometheus, Grafana e MLflow.",
