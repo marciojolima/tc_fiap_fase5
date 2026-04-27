@@ -5,8 +5,8 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 9e0c979f01167e1422aaf97e5c2021a5
-      size: 1766
+      md5: d8f56ef68bcf9729260955a5fa2162c4
+      size: 1868
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
       md5: e37acb179fefe4cac8a33e280a12f62c
@@ -69,8 +69,8 @@ stages:
       size: 815
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 9e0c979f01167e1422aaf97e5c2021a5
-      size: 1766
+      md5: d8f56ef68bcf9729260955a5fa2162c4
+      size: 1868
     - path: data/processed/test.parquet
       hash: md5
       md5: 7f1a2bbcf281161a66843145231c3c24
@@ -106,7 +106,7 @@ stages:
       size: 15298713
     - path: artifacts/models/model_current_metadata.json
       hash: md5
-      md5: d2cb292a32424db8ea8e3c62ae2684a5
+      md5: cf45a49e4b16d89c539cef911291b1e6
       size: 797
   export_feature_store:
     cmd: python -m src.feast_ops.export
@@ -160,3 +160,182 @@ stages:
       hash: md5
       md5: f5dbf5155ae1420f36a7ed8707964f40
       size: 415
+  create_fs_offline:
+    cmd: python -m src.feast_ops.export
+    deps:
+    - path: artifacts/models/feature_pipeline.joblib
+      hash: md5
+      md5: 1031bbd4e8d4df4abc6f5cb82e969cd0
+      size: 5541
+    - path: configs/pipeline_global_config.yaml
+      hash: md5
+      md5: d8f56ef68bcf9729260955a5fa2162c4
+      size: 1868
+    - path: data/raw/Customer-Churn-Records.csv
+      hash: md5
+      md5: e37acb179fefe4cac8a33e280a12f62c
+      size: 837415
+    - path: src/common/config_loader.py
+      hash: md5
+      md5: 195a2fd75c63acd46dddfc6a4c4bd263
+      size: 8278
+    - path: src/common/data_loader.py
+      hash: md5
+      md5: b5491e0d88e5b8f314f07ebf9ee8c519
+      size: 612
+    - path: src/common/logger.py
+      hash: md5
+      md5: e114d4c5ef4ea22a4ba9837cb00aae28
+      size: 1991
+    - path: src/feast_ops/config.py
+      hash: md5
+      md5: c497e40a4b99502f5abdb537cf0e71fb
+      size: 1135
+    - path: src/feast_ops/export.py
+      hash: md5
+      md5: 39381769f808c14c81c87f071100f441
+      size: 4337
+    - path: src/feature_engineering/feature_engineering.py
+      hash: md5
+      md5: d42d2c97eaebbb6cbdc00d0d3486a252
+      size: 18355
+    - path: src/serving/pipeline.py
+      hash: md5
+      md5: d4d1a3ba57b7123ed18e994965c9b789
+      size: 10425
+    outs:
+    - path: data/feature_store/customer_features.parquet
+      hash: md5
+      md5: 026520cbdf50c8ea432a4f126c1d17df
+      size: 640953
+    - path: data/feature_store/export_metadata.json
+      hash: md5
+      md5: 1c9a37a7ae4a497ef35d3f3fdb0422c7
+      size: 415
+  materialize_fs_online:
+    cmd: "sh -c ' until docker exec tc-fiap-redis redis-cli ping | grep -q PONG; do
+      echo \"Aguardando Redis...\"; sleep 1; done; FEAST_REDIS_CONNECTION_STRING=localhost:6379
+      feast -c feature_store apply; FEAST_REDIS_CONNECTION_STRING=localhost:6379 feast
+      -c feature_store materialize-incremental $(date -u +\"%Y-%m-%dT%H:%M:%S\") '\n"
+    deps:
+    - path: data/feature_store/customer_features.parquet
+      hash: md5
+      md5: 026520cbdf50c8ea432a4f126c1d17df
+      size: 640953
+    - path: data/feature_store/export_metadata.json
+      hash: md5
+      md5: 1c9a37a7ae4a497ef35d3f3fdb0422c7
+      size: 415
+    - path: feature_store
+      hash: md5
+      md5: 9026c867d7eeed86ad3ad17c27892bb5.dir
+      size: 7322
+      nfiles: 4
+  build_rag_cache:
+    cmd: python -m src.agent.rag_pipeline --force-rebuild
+    deps:
+    - path: README.md
+      hash: md5
+      md5: 9438499c43f56edb1bbd5424303460ef
+      size: 42816
+    - path: artifacts/models/model_current_metadata.json
+      hash: md5
+      md5: cf45a49e4b16d89c539cef911291b1e6
+      size: 797
+    - path: configs
+      hash: md5
+      md5: 7adbffb1d076d0c62f62ab29a14d1840.dir
+      size: 42667
+      nfiles: 16
+    - path: docs
+      hash: md5
+      md5: 19154bdb0656e8e5ab2a209e9f643aaa.dir
+      size: 785928
+      nfiles: 16
+    - path: src/agent
+      hash: md5
+      md5: d40eae40a64188331b3b16d92f6557c4.dir
+      size: 158878
+      nfiles: 22
+    outs:
+    - path: artifacts/rag
+      hash: md5
+      md5: dcbf82f7bcb0e41fcf165e546dfe738f.dir
+      size: 504720296
+      nfiles: 16
+  run_mlflow_experiments:
+    cmd: sh -c ' until curl -fsS http://127.0.0.1:5000 >/dev/null; do echo 
+      "Aguardando MLflow..."; sleep 2; done && export 
+      MLFLOW_TRACKING_URI=http://127.0.0.1:5000 && python -m 
+      src.model_lifecycle.train && python -m src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/random_forest_v1.yaml && python -m 
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/random_forest_v2.yaml && python -m 
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/random_forest_v3.yaml && python -m 
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/xgboost_v1.yaml && python -m 
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/gradient_boosting_v1.yaml && python -m
+      src.scenario_experiments.inference_cases --suite-file 
+      configs/scenario_experiments/inference_cases.yaml '
+    deps:
+    - path: artifacts/models/model_current.pkl
+      hash: md5
+      md5: 90591a8d150dd6de065445d791767d1f
+      size: 15298713
+    - path: configs/model_lifecycle
+      hash: md5
+      md5: 02aedbdecbf414fcd5aab2789bd06a39.dir
+      size: 5900
+      nfiles: 7
+    - path: configs/scenario_experiments
+      hash: md5
+      md5: 2f5a2a51b45291aced195b753b6a0da9.dir
+      size: 924
+      nfiles: 1
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 7f1a2bbcf281161a66843145231c3c24
+      size: 93065
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 1a15939f1d7c262d568cad4be64f1380
+      size: 322297
+    - path: src/model_lifecycle
+      hash: md5
+      md5: 6dfa277dec73d0c54f44953b5f6213fa.dir
+      size: 75218
+      nfiles: 10
+    - path: src/scenario_experiments
+      hash: md5
+      md5: 4212b89437b532ede6e0c2ca987a903c.dir
+      size: 23092
+      nfiles: 4
+  generate_synthetic_drift:
+    cmd: python -m src.evaluation.model.drift.synthetic_drifts --all
+    deps:
+    - path: artifacts/models/model_current.pkl
+      hash: md5
+      md5: 90591a8d150dd6de065445d791767d1f
+      size: 15298713
+    - path: artifacts/rag
+      hash: md5
+      md5: dcbf82f7bcb0e41fcf165e546dfe738f.dir
+      size: 504720296
+      nfiles: 16
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 7f1a2bbcf281161a66843145231c3c24
+      size: 93065
+    - path: src/evaluation/model/drift
+      hash: md5
+      md5: 5de25d27a01f435f13b210aee922c04f.dir
+      size: 135781
+      nfiles: 8
+    outs:
+    - path: artifacts/evaluation/model/scenario_experiments/drift
+      hash: md5
+      md5: 68fdb262f98b93303521ecfaf135db09.dir
+      size: 22259047
+      nfiles: 15

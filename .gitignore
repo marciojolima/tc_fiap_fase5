@@ -42,6 +42,7 @@ data/**
 !data/monitoring/
 !data/monitoring/.gitkeep
 data/external/*
+artifacts/rag/*
 
 # Cache interno do DVC
 .dvc/cache/
