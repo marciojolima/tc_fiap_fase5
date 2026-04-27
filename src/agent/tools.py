@@ -232,6 +232,7 @@ def _rag_search_tool(query: str) -> str:
             "status": "ok",
             "query": query,
             "evidence": evidence,
+            "retrieved_contexts": contexts,
             "sources": sources,
             "confidence": "média" if len(contexts) == 1 else "alta",
             "recommended_next_step": (

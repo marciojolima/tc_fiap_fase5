@@ -848,11 +848,12 @@ variantes `sample`
 
 **Cadeia**
 
-`docker compose --profile evaluation run --rm evaluation python -m src.evaluation.llm_agent.ragas_eval`
+`docker compose --profile evaluation run --rm -e RAGAS_SERVING_BASE_URL=http://serving:8000 evaluation python -m src.evaluation.llm_agent.ragas_eval`
 -> usa a imagem `tc-fiap-evaluation`
--> mantém `sentence-transformers` e `torch` fora da imagem do serving
+-> usa FastEmbed para embeddings, sem `sentence-transformers` nem `torch`
 -> carrega [`data/golden-set.json`](../data/golden-set.json)
--> recupera contextos via [`retrieve_contexts`](../src/agent/rag_pipeline.py)
+-> chama `POST /llm/chat` no serving avaliado
+-> extrai os contextos da trace de `rag_search`
 -> calcula métricas RAGAS
 -> salva resultados
 

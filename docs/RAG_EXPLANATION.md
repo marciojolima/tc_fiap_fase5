@@ -215,6 +215,10 @@ O que esperar na resposta:
 - `used_tools`: lista de tools usadas
 - `trace`: trilha ReAct quando `include_trace=true`
 
+Quando a tool `rag_search` e usada, a observacao da trace inclui
+`retrieved_contexts`. Esse campo preserva os trechos recuperados pelo RAG e e
+usado pela avaliacao RAGAS end-to-end contra o endpoint `/llm/chat`.
+
 Rotas e schemas relacionados:
 
 - [src/serving/llm_routes.py](../src/serving/llm_routes.py)
