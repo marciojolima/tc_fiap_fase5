@@ -1,37 +1,43 @@
 # Evaluation
 
-## Índice
+## Indice
 
 - [Objetivo](#objetivo)
-- [Taxonomia de Avaliação do Projeto](#taxonomia-de-avaliação-do-projeto)
-- [Resumo Executivo](#resumo-executivo)
+- [Mapa de documentos](#mapa-de-documentos)
+- [Taxonomia de avaliacao](#taxonomia-de-avaliacao)
+- [Artefatos principais](#artefatos-principais)
+- [Como reproduzir](#como-reproduzir)
+- [Resumo executivo](#resumo-executivo)
 
 ## Objetivo
 
-Este documento organiza, de forma taxativa, os diferentes tipos de avaliação
-que já acontecem no projeto. A ideia é evitar ambiguidade entre:
+Este documento e o ponto de entrada da avaliacao do projeto. Ele organiza as
+avaliacoes tabulares, operacionais e generativas sem misturar conceitos:
 
-- avaliação de modelo tabular
-- avaliação por cenários de negócio
-- avaliação operacional via drift e monitoramento
-- avaliação de retreino e promoção
-- avaliação futura para trilhas com LLM
+- modelo supervisionado de churn
+- cenarios de negocio
+- drift, retreino e champion-challenger
+- RAG, RAGAS, LLM-as-judge e benchmark de prompts
 
-Hoje o projeto já possui avaliação real em várias camadas, mesmo que a pasta
-`src/evaluation/llm_agent/` ainda esteja reservada principalmente para a trilha futura de IA
-generativa.
+## Mapa de documentos
 
-## Taxonomia de Avaliação do Projeto
+| Tema | Documento |
+| ---- | --------- |
+| Metricas do modelo de churn | [EVALUATION_MODEL_METRICS.md](EVALUATION_MODEL_METRICS.md) |
+| RAGAS, golden set e LLM-as-judge | [EVALUATION_RAGAS.md](EVALUATION_RAGAS.md) |
+| Monitoramento de drift | [DRIFT_MONITORING.md](DRIFT_MONITORING.md) |
+| Fluxos operacionais | [FLOWS.md](FLOWS.md) |
+| RAG e agente LLM | [RAG_EXPLANATION.md](RAG_EXPLANATION.md) |
 
-### 1. Avaliação de desempenho do modelo tabular
+## Taxonomia de avaliacao
 
-Este é o eixo mais tradicional de avaliação supervisionada do projeto.
+### 1. Modelo tabular
 
-Ele acontece durante o treino em:
+A avaliacao supervisionada acontece durante o treino em:
 
 - [src/model_lifecycle/train.py](../src/model_lifecycle/train.py)
 
-As métricas calculadas hoje incluem:
+Metricas calculadas:
 
 - `auc`
 - `f1`
@@ -39,175 +45,113 @@ As métricas calculadas hoje incluem:
 - `recall`
 - `accuracy`
 
-Essas métricas são usadas para:
+Essas metricas comparam execucoes, sustentam o champion e entram no fluxo de
+retreino. A prioridade de negocio para churn esta detalhada em
+[EVALUATION_MODEL_METRICS.md](EVALUATION_MODEL_METRICS.md).
 
-- comparar execuções de treino
-- registrar qualidade do champion
-- sustentar o sidecar de metadata do modelo
-- alimentar comparação com challengers em ciclos de retreino
+### 2. Cenarios de negocio
 
-Para a leitura detalhada da importância e prioridade dessas métricas no contexto
-de churn, consulte:
-
-- [EVALUATION_METRICS.md](EVALUATION_METRICS.md)
-
-### 2. Avaliação por cenários de negócio
-
-O projeto também avalia o comportamento do modelo em cenários hipotéticos
-controlados, que funcionam como testes de sanidade orientados a negócio.
-
-Esse fluxo acontece em:
+A avaliacao por cenarios verifica se a inferencia se comporta de forma coerente
+em casos controlados:
 
 - [src/scenario_experiments/inference_cases.py](../src/scenario_experiments/inference_cases.py)
 - [configs/scenario_experiments/inference_cases.yaml](../configs/scenario_experiments/inference_cases.yaml)
 
-Essa avaliação responde perguntas como:
+Ela ajuda a responder se perfis de alto risco, thresholds e simulacoes de
+mudanca fazem sentido para o dominio bancario.
 
-- o modelo reage de forma coerente em perfis de alto risco?
-- o threshold está gerando a classificação esperada?
-- o comportamento observado ainda faz sentido para os casos simulados?
+### 3. Drift e operacao
 
-Os resultados são registrados no MLflow e também ajudam na narrativa da banca,
-porque mostram avaliação além das métricas agregadas de treino.
-
-### 3. Avaliação operacional por monitoramento de drift
-
-Outra camada de avaliação no projeto é a avaliação operacional do modelo em
-produção simulada ou local.
-
-Esse fluxo acontece em:
+A avaliacao operacional verifica se os dados correntes continuam parecidos com o
+dominio usado no treino:
 
 - [src/evaluation/model/drift/drift.py](../src/evaluation/model/drift/drift.py)
 - [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
 
-Os principais sinais avaliados hoje são:
+Sinais principais:
 
-- `data drift` por feature
+- `data drift`
 - `prediction drift`
 - PSI por feature
 - PSI das probabilidades previstas
-- elegibilidade operacional da decisão com base no tamanho da amostra
+- tamanho minimo de amostra para decisao operacional
 
-Os artefatos gerados por esse processo incluem:
+### 4. Retreino e champion-challenger
 
-- `artifacts/evaluation/model/drift/drift_report.html`
-- `artifacts/evaluation/model/drift/drift_metrics.json`
-- `artifacts/evaluation/model/drift/drift_status.json`
-- `artifacts/evaluation/model/drift/drift_runs.jsonl`
-
-Essa camada não mede “qualidade supervisionada” no sentido clássico. Ela mede:
-
-- se os dados correntes continuam compatíveis com o domínio treinado
-- se há mudança suficiente para justificar atenção ou retreino
-
-### 4. Avaliação de retreino e comparação champion-challenger
-
-Quando o drift justifica retreino, o projeto entra em uma avaliação de
-substituição de modelo.
-
-Esse fluxo acontece em:
+Quando o drift justifica acao, o projeto avalia se um challenger deve substituir
+o champion:
 
 - [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
 - [src/model_lifecycle/promotion.py](../src/model_lifecycle/promotion.py)
 
-Os artefatos principais são:
+A decisao de promocao considera a metrica principal configurada e um ganho minimo
+explicito, mantendo a promocao final auditavel.
 
-- `artifacts/evaluation/model/retraining/retrain_request.json`
-- `artifacts/evaluation/model/retraining/retrain_run.json`
-- `artifacts/evaluation/model/retraining/promotion_decision.json`
+### 5. Avaliacao RAG/LLM
 
-Aqui a avaliação não é mais apenas “o modelo treinou”. Ela passa a responder:
-
-- o challenger foi gerado com sucesso?
-- ele manteve ou melhorou a métrica principal?
-- ele ficou elegível para promoção?
-- o champion deve ser mantido?
-
-Hoje, a regra inicial de promoção usa:
-
-- `auc` como métrica principal
-- `minimum_improvement` explícito na configuração
-
-Isso transforma a avaliação em uma parte ativa do fluxo de governança, e não
-apenas em documentação.
-
-### 5. Avaliação sintética de robustez sob drift
-
-O projeto também possui uma trilha de avaliação sintética, útil para demonstração
-e teste do comportamento do monitoramento.
-
-Esse fluxo acontece em:
-
-- [src/evaluation/model/drift/synthetic_drifts.py](../src/evaluation/model/drift/synthetic_drifts.py)
-
-Ele permite:
-
-- gerar lotes artificiais com diferentes perfis de drift
-- produzir relatórios HTML específicos por cenário
-- verificar como o pipeline reage a mudanças controladas
-
-Essa camada é importante porque ajuda a validar o software de monitoramento sem
-depender apenas de tráfego real.
-
-### 6. Avaliação para trilhas com LLM
-
-A pasta `src/evaluation/llm_agent/` agora concentra três trilhas complementares de avaliação
-para IA generativa:
+A avaliacao generativa fica concentrada em:
 
 - [src/evaluation/llm_agent/ragas_eval.py](../src/evaluation/llm_agent/ragas_eval.py)
 - [src/evaluation/llm_agent/llm_judge.py](../src/evaluation/llm_agent/llm_judge.py)
 - [src/evaluation/llm_agent/ab_test_prompts.py](../src/evaluation/llm_agent/ab_test_prompts.py)
 
-Esses módulos não fazem parte do fluxo online do agente. Eles funcionam como
-gatilhos offline de benchmark e controle de qualidade:
+Ela cobre os requisitos:
 
-- RAGAS
-- LLM-as-judge
-- A/B test de prompts
+- golden set com pelo menos 20 pares relevantes ao dominio
+- RAGAS com 4 metricas calculadas e reportadas
+- LLM-as-judge com pelo menos 3 criterios, incluindo criterio de negocio
+- benchmark de prompts com 3 configuracoes
 
-Hoje a leitura correta do projeto é:
+A explicacao completa esta em [EVALUATION_RAGAS.md](EVALUATION_RAGAS.md).
 
-- a avaliação tabular já existe e está viva
-- a avaliação operacional de drift já existe e está viva
-- a avaliação champion-challenger já existe e está viva
-- a avaliação de LLM já existe como benchmark offline sobre o golden set
+## Artefatos principais
 
-#### 6.1 Prompt A/B
+Modelo e drift:
 
-O benchmark A/B de prompts acontece em:
+- `artifacts/evaluation/model/drift/drift_report.html`
+- `artifacts/evaluation/model/drift/drift_metrics.json`
+- `artifacts/evaluation/model/drift/drift_status.json`
+- `artifacts/evaluation/model/drift/drift_runs.jsonl`
+- `artifacts/evaluation/model/retraining/retrain_request.json`
+- `artifacts/evaluation/model/retraining/retrain_run.json`
+- `artifacts/evaluation/model/retraining/promotion_decision.json`
 
-- [src/evaluation/llm_agent/ab_test_prompts.py](../src/evaluation/llm_agent/ab_test_prompts.py)
+LLM/RAG:
 
-Ele compara tres variantes de prompt sobre o mesmo golden set, sempre com o
-mesmo `retrieve_contexts()` e o mesmo `llm_provider` configurado, para responder:
-
-- qual prompt cobre melhor os termos esperados da referência?
-- qual variante se sai melhor quando enriquecida com `LLM-as-judge`?
-- qual prompt vale promover como candidato principal para a trilha RAG/LLM?
-
-O fluxo gera:
-
+- `data/golden-set.json`
+- `artifacts/evaluation/llm_agent/results/ragas_scores.json`
+- `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`
 - `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`
-- `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`
+- `artifacts/evaluation/llm_agent/runs/*.jsonl`
 
-Métricas usadas hoje:
+## Como reproduzir
 
-- `keyword_coverage` determinística contra a referência
-- `mean_judge_score` opcional, quando o benchmark é executado com `--with-judge`
+Modelo e operacao:
 
-Isso permite transformar “troca de prompt” em benchmark reproduzível, e não em
-ajuste subjetivo manual.
+```bash
+poetry run task mlflowrunexperiments
+poetry run task mldriftdemo
+```
 
-## Resumo Executivo
+RAGAS precisa do serving ativo, porque chama o endpoint real `POST /llm/chat`:
 
-Hoje o projeto já possui avaliação real em pelo menos quatro frentes:
+```bash
+poetry run task appstack
+poetry run task eval_ragas
+poetry run task eval_llm_judge
+poetry run task eval_ab_test_prompts
+```
 
-1. desempenho supervisionado do classificador
-2. cenários de negócio para inferência
-3. avaliação operacional via drift
-4. avaliação de promoção via champion-challenger
+Em Docker, o RAGAS usa `RAGAS_SERVING_BASE_URL=http://serving:8000` nas tasks
+`eval_ragas_docker`, `eval_ragas_sample_docker`, `eval_all_docker` e
+`eval_all_sample_docker`.
 
-A pasta `src/evaluation/llm_agent/` ainda não é o centro de toda avaliação do projeto.
-Ela está mais associada à trilha futura de LLM evaluation. Por isso, a taxonomia
-mais correta neste momento é entender “evaluation” no projeto como um conceito
-distribuído por vários módulos, e não como uma única pasta funcional.
+## Resumo executivo
+
+O projeto possui avaliacao em camadas: qualidade supervisionada do modelo,
+sanidade por cenarios, saude operacional por drift, decisao de retreino e
+avaliacao RAG/LLM. A leitura recomendada para banca e:
+
+- [EVALUATION_MODEL_METRICS.md](EVALUATION_MODEL_METRICS.md) para defender o modelo
+- [EVALUATION_RAGAS.md](EVALUATION_RAGAS.md) para defender golden set, RAGAS e judge
+- [DRIFT_MONITORING.md](DRIFT_MONITORING.md) para defender observabilidade e retreino

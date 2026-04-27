@@ -3,9 +3,8 @@
 Referência: Es et al. (2024) — RAGAS: Automated Evaluation of Retrieval
             Augmented Generation. https://arxiv.org/abs/2309.15217
 
-Requer um provider LLM ativo (para metricas e geracao de respostas) e,
-para embeddings usados pelo RAGAS, o pacote sentence-transformers
-(modelo multilingual configuravel abaixo).
+Requer um provider LLM ativo (para metricas e geracao de respostas) e usa
+FastEmbed para embeddings locais, alinhado ao runtime do RAG no serving.
 
 RAGAS 0.4 — métricas ``collections.*`` (Faithfulness instanciada etc.) herdam de
 ``SimpleBaseMetric``, mas ``evaluate()`` só aceita instâncias de
@@ -13,8 +12,8 @@ RAGAS 0.4 — métricas ``collections.*`` (Faithfulness instanciada etc.) herdam
 (``faithfulness``, ``answer_relevancy``, …), que são ``Metric`` e funcionam com
 ``InstructorLLM``. O LLM para metricas usa o SDK adequado ao provider ativo.
 
-Embeddings: métricas legadas exigem interface LangChain; usamos
-``LangchainEmbeddingsWrapper(HuggingFaceEmbeddings)``. Variáveis opcionais:
+Embeddings: métricas legadas exigem interface LangChain; usamos um adaptador
+leve sobre ``fastembed.TextEmbedding``. Variáveis opcionais:
 ``RAGAS_LLM_MAX_TOKENS`` (default 4096, JSON estruturado),
 ``RAGAS_ANSWER_RELEVANCY_STRICTNESS`` (default 1 para modelos pequenos).
 ``RAGAS_FAITHFULNESS_NLI_BATCH_SIZE`` (default 2): NLI em lotes para JSON estável em
@@ -31,12 +30,14 @@ from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
+import numpy as np
 import pandas as pd
 from datasets import Dataset
-from langchain_community.embeddings import (
-    HuggingFaceEmbeddings as LangChainHuggingFaceEmbeddings,
-)
+from fastembed import TextEmbedding
+from langchain_core.embeddings import Embeddings
 from openai import OpenAI
 from ragas import evaluate
 from ragas.embeddings.base import LangchainEmbeddingsWrapper
@@ -51,10 +52,6 @@ from ragas.metrics._faithfulness import (  # noqa: PLC2701
 )
 from ragas.run_config import RunConfig
 
-from agent.llm_gateway.factory import build_llm_client
-
-# Imports do projeto (pacote instalado com poetry install -e .)
-from agent.rag_pipeline import retrieve_contexts
 from common.config_loader import (
     load_global_config,
     resolve_llm_api_key,
@@ -79,6 +76,7 @@ DEFAULT_GOLDEN = "data/golden-set.json"
 DEFAULT_OUT = str(RESULTS_DIR / "ragas_scores.json")
 DEFAULT_HISTORY_OUT = str(RUNS_DIR / "ragas_runs.jsonl")
 DEFAULT_EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+DEFAULT_SERVING_BASE_URL = "http://127.0.0.1:8000"
 # Ollama local (CPU) e RAGAS (várias chamadas por métrica) costumam estourar 120–180s.
 DEFAULT_TIMEOUT_SEC = 300
 
@@ -164,39 +162,54 @@ def _instructor_llm_from_provider(
     raise ValueError(f"Provider '{provider}' nao suportado pelo ragas_eval.")
 
 
-def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper:
-    """Métricas legadas (ex.: answer_relevancy) usam embed_query/embed_documents
-    (LangChain).
+class FastEmbedLangChainEmbeddings(Embeddings):
+    """Adaptador mínimo FastEmbed -> LangChain para métricas legadas do RAGAS."""
 
-    ``ragas.embeddings.HuggingFaceEmbeddings`` é outra API (embed_text) e quebra no
-    evaluate().
-    """
+    def __init__(self, model_name: str, cache_dir: str) -> None:
+        self.model_name = model_name
+        self.cache_dir = cache_dir
+        self._encoder = TextEmbedding(model_name=model_name, cache_dir=cache_dir)
+
+    @staticmethod
+    def _normalize(matrix: list[Any]) -> list[list[float]]:
+        array = np.asarray(matrix, dtype=np.float32)
+        if array.ndim == 1:
+            array = array.reshape(1, -1)
+        norms = np.linalg.norm(array, axis=1, keepdims=True)
+        norms = np.where(norms == 0, 1e-12, norms)
+        return (array / norms).astype(float).tolist()
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        if hasattr(self._encoder, "passage_embed"):
+            embeddings = list(self._encoder.passage_embed(texts))
+        else:
+            embeddings = list(self._encoder.embed(texts))
+        return self._normalize(embeddings)
+
+    def embed_query(self, text: str) -> list[float]:
+        if hasattr(self._encoder, "query_embed"):
+            embeddings = list(self._encoder.query_embed([text]))
+        else:
+            embeddings = list(self._encoder.embed([text]))
+        return self._normalize(embeddings)[0]
+
+
+def _legacy_compatible_embeddings(model_name: str) -> LangchainEmbeddingsWrapper:
+    """Métricas legadas (ex.: answer_relevancy) usam embed_query/embed_documents."""
 
     rag_cfg = load_global_config().get("rag", {})
     embedding_cache_path = Path(
         str(
             rag_cfg.get(
-                "ragas_embedding_cache_dir",
-                "artifacts/rag/ragas_embedding_model_cache",
+                "embedding_cache_dir",
+                "artifacts/rag/fastembed_model_cache",
             )
         )
     )
     embedding_cache_dir = str(embedding_cache_path)
-    local_files_only = os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    } or os.environ.get("TRANSFORMERS_OFFLINE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    embedder = LangChainHuggingFaceEmbeddings(
+    embedder = FastEmbedLangChainEmbeddings(
         model_name=model_name,
-        cache_folder=embedding_cache_dir,
-        model_kwargs={"local_files_only": local_files_only},
+        cache_dir=embedding_cache_dir,
     )
     return LangchainEmbeddingsWrapper(embedder)
 
@@ -259,54 +272,156 @@ def load_golden_items(path: str | Path) -> list[dict[str, Any]]:
     return items
 
 
-def generate_rag_answer(
-    question: str,
-    contexts: list[str],
-) -> str:
-    """Gera resposta condicionada aos contextos recuperados (avaliação RAG)."""
+@dataclass(frozen=True)
+class ServingChatEvaluation:
+    """Resposta do endpoint /llm/chat normalizada para o dataset RAGAS."""
 
-    system = (
-        "Você é um assistente técnico do projeto de churn/MLOps. "
-        "Responda em português, de forma objetiva, usando preferencialmente "
-        "apenas as informações dos contextos fornecidos."
+    answer: str
+    retrieved_contexts: list[str]
+    used_tools: list[str]
+    trace_steps: int
+
+
+def _serving_base_url(override: str | None = None) -> str:
+    raw = override or os.environ.get("RAGAS_SERVING_BASE_URL", DEFAULT_SERVING_BASE_URL)
+    return raw.rstrip("/")
+
+
+def _post_llm_chat(
+    *,
+    question: str,
+    serving_base_url: str,
+    timeout_sec: int,
+) -> dict[str, Any]:
+    """Chama o endpoint real do serving para gerar a resposta avaliada pelo RAGAS."""
+
+    payload = json.dumps(
+        {
+            "message": question,
+            "include_trace": True,
+            "answer_style": "medium",
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    request = Request(
+        f"{serving_base_url}/llm/chat",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
-    empty_ctx = "(nenhum contexto recuperado)"
-    ctx_block = "\n\n---\n\n".join(contexts) if contexts else empty_ctx
-    user = f"Contextos:\n{ctx_block}\n\nPergunta: {question}"
-    client = build_llm_client()
-    return client.chat(
-        [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ]
+    try:
+        with urlopen(request, timeout=float(timeout_sec)) as response:  # noqa: S310
+            raw = response.read().decode("utf-8")
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Falha HTTP ao chamar /llm/chat: status={exc.code} body={detail}"
+        ) from exc
+    except URLError as exc:
+        raise RuntimeError(
+            "Nao foi possivel conectar ao serving para RAGAS. "
+            f"Verifique RAGAS_SERVING_BASE_URL={serving_base_url}."
+        ) from exc
+
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError("Resposta de /llm/chat nao e um objeto JSON.")
+    return parsed
+
+
+def _parse_observation_payload(observation: object) -> dict[str, Any]:
+    if isinstance(observation, dict):
+        return observation
+    if not isinstance(observation, str):
+        return {}
+    try:
+        parsed = json.loads(observation)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _extract_rag_contexts_from_trace(trace: object) -> list[str]:
+    """Extrai contextos observados pela tool rag_search na trace do endpoint."""
+
+    if not isinstance(trace, list):
+        return []
+
+    contexts: list[str] = []
+    for step in trace:
+        if not isinstance(step, dict) or step.get("action") != "rag_search":
+            continue
+        payload = _parse_observation_payload(step.get("observation"))
+        retrieved = payload.get("retrieved_contexts")
+        if isinstance(retrieved, list):
+            contexts.extend(str(context).strip() for context in retrieved if context)
+            continue
+        evidence = payload.get("evidence")
+        if isinstance(evidence, list):
+            contexts.extend(str(context).strip() for context in evidence if context)
+    return [context for context in contexts if context]
+
+
+def generate_serving_chat_answer(
+    *,
+    question: str,
+    serving_base_url: str,
+    timeout_sec: int,
+) -> ServingChatEvaluation:
+    """Gera resposta pelo endpoint real /llm/chat e preserva contextos da trace."""
+
+    payload = _post_llm_chat(
+        question=question,
+        serving_base_url=serving_base_url,
+        timeout_sec=timeout_sec,
+    )
+    trace = payload.get("trace", [])
+    used_tools_raw = payload.get("used_tools", [])
+    used_tools = (
+        [str(tool) for tool in used_tools_raw]
+        if isinstance(used_tools_raw, list)
+        else []
+    )
+    trace_steps = len(trace) if isinstance(trace, list) else 0
+    return ServingChatEvaluation(
+        answer=str(payload.get("answer", "")).strip(),
+        retrieved_contexts=_extract_rag_contexts_from_trace(trace),
+        used_tools=used_tools,
+        trace_steps=trace_steps,
     )
 
 
 def build_dataset(  # noqa: PLR0913
     items: list[dict[str, Any]],
     *,
-    top_k: int,
     max_rows: int | None,
+    serving_base_url: str,
+    timeout_sec: int,
 ) -> Dataset:
-    """Monta o Dataset HuggingFace com colunas exigidas pelo RAGAS."""
+    """Monta o Dataset HuggingFace chamando o endpoint real /llm/chat."""
 
     rows: list[dict[str, Any]] = []
     limit = max_rows if max_rows is not None else len(items)
     for item in items[:limit]:
         q = str(item["query"]).strip()
         reference = str(item["expected_answer"]).strip()
-        retrieved = retrieve_contexts(q, top_k=top_k)
-        response = generate_rag_answer(q, retrieved)
+        serving_response = generate_serving_chat_answer(
+            question=q,
+            serving_base_url=serving_base_url,
+            timeout_sec=timeout_sec,
+        )
         curated_contexts = item.get("contexts", [])
         rows.append(
             {
                 "user_input": q,
-                "retrieved_contexts": retrieved,
+                "retrieved_contexts": serving_response.retrieved_contexts,
                 "reference_contexts": curated_contexts,
-                "response": response,
+                "response": serving_response.answer,
                 "reference": reference,
                 "golden_item_id": item.get("id", ""),
                 "golden_category": item.get("category"),
+                "serving_used_tools": serving_response.used_tools,
+                "serving_trace_steps": serving_response.trace_steps,
             }
         )
     return Dataset.from_list(rows)
@@ -319,19 +434,23 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     max_rows: int | None = None,
     embed_model: str = DEFAULT_EMBED_MODEL,
     timeout_sec: int | None = None,
+    serving_base_url: str | None = None,
 ) -> dict[str, float]:
     """Executa RAGAS com faithfulness, answer_relevancy, context_precision,
     context_recall."""
 
+    _ = top_k
     t = _timeout_seconds(timeout_sec)
+    serving_url = _serving_base_url(serving_base_url)
     provider = resolve_llm_provider()
     model = resolve_llm_model_name(provider)
 
     items = load_golden_items(golden_path)
     dataset = build_dataset(
         items,
-        top_k=top_k,
         max_rows=max_rows,
+        serving_base_url=serving_url,
+        timeout_sec=t,
     )
 
     llm = _instructor_llm_from_provider(provider, model, t)
@@ -352,9 +471,10 @@ def run_ragas_evaluation(  # noqa: PLR0913, PLR0914
     run_config = RunConfig(timeout=float(t), max_retries=3)
 
     logger.info(
-        "RAGAS: %d linhas | provider=%s | model=%s | embed=%s | timeout=%ss | "
-        "NLI batch=%d",
+        "RAGAS: %d linhas | endpoint=%s/llm/chat | provider=%s | model=%s | "
+        "embed=%s | timeout=%ss | NLI batch=%d",
         len(dataset),
+        serving_url,
         provider,
         model,
         embed_model,
@@ -426,7 +546,16 @@ def main() -> None:
         default=DEFAULT_GOLDEN,
         help="Caminho para golden-set.json",
     )
-    parser.add_argument("--top-k", type=int, default=3, dest="top_k")
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        dest="top_k",
+        help=(
+            "Metadado legado do relatório. Na avaliação end-to-end, o top_k efetivo "
+            "vem da configuração do serving chamado em /llm/chat."
+        ),
+    )
     parser.add_argument(
         "--max-rows",
         type=int,
@@ -447,7 +576,15 @@ def main() -> None:
     parser.add_argument(
         "--embed-model",
         default=os.environ.get("RAGAS_EMBED_MODEL", DEFAULT_EMBED_MODEL),
-        help="Modelo sentence-transformers para embeddings do RAGAS",
+        help="Modelo FastEmbed para embeddings do RAGAS",
+    )
+    parser.add_argument(
+        "--serving-base-url",
+        default=os.environ.get("RAGAS_SERVING_BASE_URL", DEFAULT_SERVING_BASE_URL),
+        help=(
+            "Base URL do serving avaliado. O RAGAS chama POST /llm/chat "
+            "(default: env RAGAS_SERVING_BASE_URL ou http://127.0.0.1:8000)."
+        ),
     )
     parser.add_argument(
         "--timeout",
@@ -468,6 +605,7 @@ def main() -> None:
             max_rows=args.max_rows,
             embed_model=args.embed_model,
             timeout_sec=args.timeout,
+            serving_base_url=args.serving_base_url,
         )
     except Exception:
         logger.exception("Falha na avaliação RAGAS")
@@ -480,8 +618,10 @@ def main() -> None:
                 "status": "failed",
                 "golden": relative_path(args.golden),
                 "top_k": args.top_k,
+                "top_k_source": "serving_config",
                 "embed_model": args.embed_model,
                 "timeout_sec": _timeout_seconds(args.timeout),
+                "serving_base_url": _serving_base_url(args.serving_base_url),
             },
         )
         append_jsonl(
@@ -505,9 +645,13 @@ def main() -> None:
         "metrics_mean": scores,
         "golden": relative_path(args.golden),
         "top_k": args.top_k,
+        "top_k_source": "serving_config",
         "n_items": item_count,
         "embed_model": args.embed_model,
         "timeout_sec": _timeout_seconds(args.timeout),
+        "serving_base_url": _serving_base_url(args.serving_base_url),
+        "serving_endpoint": "/llm/chat",
+        "dataset_source": "serving_http",
         "llm_provider": resolve_llm_provider(),
         "llm_model": resolve_llm_model_name(resolve_llm_provider()),
     }
@@ -519,7 +663,9 @@ def main() -> None:
         "output_path": relative_path(args.output),
         "golden": relative_path(args.golden),
         "top_k": args.top_k,
+        "top_k_source": "serving_config",
         "n_items": item_count,
+        "serving_base_url": _serving_base_url(args.serving_base_url),
         **scores,
     }
     persist_result_with_history(

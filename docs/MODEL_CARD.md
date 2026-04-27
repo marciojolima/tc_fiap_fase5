@@ -85,7 +85,7 @@ não foi concluída de forma automatizada e versionada no pipeline atual.
 
 Essas métricas mostram um modelo equilibrado para a trilha tabular do projeto,
 com boa separação de risco e comportamento razoável entre precision e recall.
-Como já documentado em [EVALUATION_METRICS.md](EVALUATION_METRICS.md), a
+Como ja documentado em [EVALUATION_MODEL_METRICS.md](EVALUATION_MODEL_METRICS.md), a
 leitura de churn deve dar mais peso a recall, AUC e F1 do que à accuracy
 isolada.
 
