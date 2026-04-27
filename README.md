@@ -690,7 +690,7 @@ As métricas expostas pela aplicação permitem acompanhar o comportamento da AP
 - taxa de erro
 - requisições em andamento
 
-Essas métricas são consumidas pela stack local configurada em `configs/monitoring/`, agora orquestrada pelo Docker Compose junto com o serving e o MLflow.
+Essas métricas são consumidas pela stack local configurada em `configs/monitoring/`, e agora orquestrada pelo Docker Compose junto com o serving e o MLflow.
 
 #### Logging de inferências
 
