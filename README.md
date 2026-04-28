@@ -13,6 +13,7 @@
 
 Projeto integrador da Fase 05 do curso MLET da FIAP, desenvolvido no formato de Datathon. O repositório implementa uma solução de predição de churn bancário com foco em MLOps, rastreabilidade, observabilidade e evolução arquitetural para componentes com LLMs e agentes.
 
+
 O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompanhamento de aderência aos requisitos, entregas concluídas e pendências fica centralizado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
 
 ## Sumário
