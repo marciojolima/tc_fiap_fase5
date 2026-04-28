@@ -150,4 +150,4 @@ pre_test = 'task lint'
 serving_reload = 'docker compose -f docker-compose.yml -f docker-compose.dev.yml restart serving'
 test = 'pytest -s -x --cov=src -vv'
 
-infra_up = "bash -c 'HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml up -d redis mlflow && echo \"⏳ Aguardando Redis...\" && until docker exec tc-fiap-redis redis-cli ping 2>/dev/null | grep -q PONG; do sleep 1; done && echo \"⏳ Aguardando MLflow...\" && until curl -fsS http://127.0.0.1:5000 >/dev/null 2>&1; do sleep 2; done && echo \"✅ Redis e MLflow prontos — pode executar: poetry run dvc repro\"'"
+infra_up = "bash -c 'umask 0002 && mkdir -p mlruns/artifacts && chmod -R u+rwX mlruns && HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker-compose.yml up -d redis mlflow && echo \"⏳ Aguardando Redis...\" && until docker exec tc-fiap-redis redis-cli ping 2>/dev/null | grep -q PONG; do sleep 1; done && echo \"⏳ Aguardando MLflow...\" && until curl -fsS http://127.0.0.1:5000 >/dev/null 2>&1; do sleep 2; done && echo \"✅ Redis e MLflow prontos — pode executar: poetry run dvc repro\"'"

@@ -138,9 +138,9 @@ services:
       - --port
       - "5000"
       - --backend-store-uri
-      - file:/app/mlruns
+      - sqlite:////app/mlruns/mlflow.db
       - --default-artifact-root
-      - /app/mlruns
+      - /app/mlruns/artifacts
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
     environment:
