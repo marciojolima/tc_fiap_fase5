@@ -20,6 +20,8 @@ o golden set, o RAGAS, o LLM-as-judge e o benchmark de prompts se conectam aos
 requisitos da entrega.
 
 A visao consolidada da avaliacao do projeto fica em [EVALUATION.md](EVALUATION.md).
+Para a arquitetura e a operacao da trilha conversacional, veja tambem
+[AGENT_REACT.md](AGENT_REACT.md).
 
 ## Requisitos atendidos
 
@@ -57,6 +59,10 @@ Validador:
 
 O RAGAS nao avalia uma resposta isolada escrita manualmente. Ele monta um dataset
 a partir do golden set e das respostas geradas pelo serving real.
+
+Em outras palavras, a avaliacao passa pelo mesmo fluxo documentado em
+[AGENT_REACT.md](AGENT_REACT.md): provider ativo, agente ReAct, tools,
+guardrails e RAG.
 
 Fluxo atual:
 

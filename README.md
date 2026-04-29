@@ -37,7 +37,7 @@ Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritm
 - [Arquitetura da Solução](#arquitetura-da-solução)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
+- [LLM, agente ReAct e llm_provider](docs/AGENT_REACT.md)
 - [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
@@ -522,19 +522,13 @@ poetry run task test
 
 ## LLM, agente ReAct e llm_provider
 
-Este tópico resume o que foi implementado na trilha LLM e como operar em conjunto com o Docker Compose. O detalhamento por arquivo e endpoint está na subseção **6. LLM, agente ReAct, RAG e segurança**, em [O que o Projeto Entrega](#o-que-o-projeto-entrega).
+O detalhamento da trilha de LLM foi extraído para
+[docs/AGENT_REACT.md](docs/AGENT_REACT.md), com a visão do agente ReAct, das
+tools, do RAG, da configuração por provider e da operação local com Docker.
 
-- **Integração:** a API usa o `llm_provider` ativo definido em `configs/pipeline_global_config.yaml`, com implementação para `ollama`, `openai` e `claude`.
-- **Tamanho da resposta:** `POST /llm/chat` aceita `answer_style` com `short`, `medium` (default) ou `long` para controlar a extensão da resposta final do agente.
-- **Segredos:** providers externos leem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY` do `.env`.
-- **Compose base:** `poetry run task appstack` sobe apenas a stack comum, sem carregar container local de modelo.
-- **Índice RAG:** `poetry run task rag_index_rebuild_docker` gera o cache vetorial em `artifacts/rag/cache/index.joblib` usando a imagem leve do serving antes de subir a API.
-- **Avaliação LLM isolada:** `poetry run task eval_ragas_docker` e `poetry run task eval_all_docker` usam a imagem `tc-fiap-evaluation`, mantendo a execução de avaliação separada do serving.
-- **Compose com Ollama:** `poetry run task appstack_ollama` adiciona `ollama` e `ollama-pull`. Esse é o modo indicado quando `llm.active_provider=ollama`.
-- **Base URL no Docker:** no cenário com Ollama local, o override do Compose injeta `LLM_BASE_URL=http://ollama:11434` no `serving`, porque `127.0.0.1` dentro do container apontaria para o próprio container da API.
-- **Modelo Ollama:** use uma **tag válida** na biblioteca Ollama (por exemplo `gemma3:270m`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
-- **Container `ollama-pull`:** ao subir a stack com override Ollama, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
-- **Rebuild da imagem da app:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo `serving` com Uvicorn `--reload`. Rebuild fica reservado para mudanças em Dockerfile, `pyproject.toml`, `poetry.lock`, dependências ou estrutura relevante de build.
+Para a avaliação dessa trilha em execução real, veja também
+[docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md), que documenta RAGAS,
+LLM-as-judge e benchmark de prompts sobre o endpoint `/llm/chat`.
 
 ## Monitoramento e Observabilidade
 
@@ -673,6 +667,7 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
 - [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
 - [docs/EVALUATION_MODEL_METRICS.md](docs/EVALUATION_MODEL_METRICS.md)
+- [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
 - [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md)
 - [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
 - [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
