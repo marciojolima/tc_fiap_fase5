@@ -11,8 +11,10 @@ from model_lifecycle.train import (
     ModelSpec,
     RetrainingMlflowContext,
     build_experiment_training_config,
+    build_mlflow_experiment_artifact_location,
     build_model_spec,
     compute_training_data_version,
+    configure_mlflow,
     evaluate_model,
     load_experiment_training_config,
     log_run_metadata,
@@ -58,6 +60,18 @@ class DummyRun:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         return None
+
+
+class DummyExperiment:
+    def __init__(
+        self,
+        experiment_id: str,
+        name: str,
+        artifact_location: str,
+    ) -> None:
+        self.experiment_id = experiment_id
+        self.name = name
+        self.artifact_location = artifact_location
 
 
 def build_training_config_fixture(model_path: Path) -> ExperimentTrainingConfig:
@@ -415,6 +429,129 @@ def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
 
     assert isinstance(data_version, str)
     assert len(data_version) == 32  # noqa: PLR2004
+
+
+def test_build_mlflow_experiment_artifact_location_uses_sqlite_parent_dir() -> None:
+    artifact_location = build_mlflow_experiment_artifact_location(
+        "sqlite:////app/mlruns/mlflow.db",
+        "candidate-exp",
+    )
+
+    assert artifact_location == "/app/mlruns/candidate-exp"
+
+
+def test_configure_mlflow_creates_missing_experiment_with_stable_artifact_location(
+    monkeypatch,
+) -> None:
+    created_experiments: list[tuple[str, str | None]] = []
+    tracking_uris: list[str] = []
+    selected_experiments: list[str] = []
+
+    class DummyMlflowClient:
+        def __init__(self, tracking_uri: str) -> None:
+            tracking_uris.append(tracking_uri)
+
+        @staticmethod
+        def get_experiment_by_name(name: str) -> None:
+            return None
+
+        @staticmethod
+        def create_experiment(
+            name: str,
+            artifact_location: str | None = None,
+            tags: dict[str, object] | None = None,
+        ) -> str:
+            del tags
+            created_experiments.append((name, artifact_location))
+            return "11"
+
+    monkeypatch.setattr(
+        "model_lifecycle.train.MlflowClient",
+        DummyMlflowClient,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_tracking_uri",
+        tracking_uris.append,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_experiment",
+        selected_experiments.append,
+    )
+
+    configure_mlflow(
+        {
+            "tracking_uri": "sqlite:////app/mlruns/mlflow.db",
+            "experiment_name": "candidate-exp",
+            "tags": {},
+        }
+    )
+
+    assert created_experiments == [("candidate-exp", "/app/mlruns/candidate-exp")]
+    assert selected_experiments == ["candidate-exp"]
+
+
+def test_configure_mlflow_updates_legacy_experiment_artifact_location(
+    monkeypatch,
+) -> None:
+    selected_experiments: list[str] = []
+    updated_locations: list[tuple[str, str, str]] = []
+
+    class DummyMlflowClient:
+        def __init__(self, tracking_uri: str) -> None:
+            self.tracking_uri = tracking_uri
+
+        @staticmethod
+        def get_experiment_by_name(name: str) -> DummyExperiment:
+            return DummyExperiment(
+                experiment_id="1",
+                name=name,
+                artifact_location="/home/marcio/dev/projects/python/tc_fiap_fase5/mlruns/1",
+            )
+
+        @staticmethod
+        def create_experiment(
+            name: str,
+            artifact_location: str | None = None,
+            tags: dict[str, object] | None = None,
+        ) -> str:
+            del name, artifact_location, tags
+            raise AssertionError("Não deveria criar experimento novo")
+
+    monkeypatch.setattr(
+        "model_lifecycle.train.MlflowClient",
+        DummyMlflowClient,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.update_mlflow_experiment_artifact_location",
+        lambda tracking_uri, experiment_id, artifact_location: updated_locations.append(
+            (tracking_uri, experiment_id, artifact_location)
+        ),
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_tracking_uri",
+        lambda _: None,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_experiment",
+        selected_experiments.append,
+    )
+
+    configure_mlflow(
+        {
+            "tracking_uri": "sqlite:////app/mlruns/mlflow.db",
+            "experiment_name": "datathon-churn-baseline",
+            "tags": {},
+        }
+    )
+
+    assert updated_locations == [
+        (
+            "sqlite:////app/mlruns/mlflow.db",
+            "1",
+            "/app/mlruns/1",
+        )
+    ]
+    assert selected_experiments == ["datathon-churn-baseline"]
 
 
 def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:

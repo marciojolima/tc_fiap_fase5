@@ -5,15 +5,18 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sqlite3
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping, NamedTuple
+from urllib.parse import urlparse
 
 import mlflow
 import mlflow.sklearn
 import pandas as pd
 from joblib import dump
+from mlflow.tracking import MlflowClient
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -293,11 +296,116 @@ def configure_mlflow(mlflow_cfg: dict[str, Any]) -> None:
     """Configura o tracking e o experimento do MLflow."""
 
     mlflow.set_tracking_uri(mlflow_cfg["tracking_uri"])
+    ensure_mlflow_experiment(mlflow_cfg)
     mlflow.set_experiment(mlflow_cfg["experiment_name"])
     logger.info(
         "MLflow configurado — tracking_uri=%s | experiment=%s",
         mlflow_cfg["tracking_uri"],
         mlflow_cfg["experiment_name"],
+    )
+
+
+def resolve_sqlite_tracking_db_path(tracking_uri: str) -> Path | None:
+    """Extrai o caminho local do backend SQLite usado pelo MLflow."""
+
+    parsed_uri = urlparse(tracking_uri)
+    if parsed_uri.scheme != "sqlite":
+        return None
+
+    db_path = parsed_uri.path
+    if not db_path:
+        return None
+
+    return Path(db_path).resolve()
+
+
+def build_mlflow_experiment_artifact_root(tracking_uri: str) -> Path | None:
+    """Resolve o diretório-base de artefatos para backends SQLite locais."""
+
+    db_path = resolve_sqlite_tracking_db_path(tracking_uri)
+    if db_path is None:
+        return None
+
+    return db_path.parent
+
+
+def build_mlflow_experiment_artifact_location(
+    tracking_uri: str,
+    experiment_ref: str,
+) -> str | None:
+    """Monta o artifact_location canônico para um experimento local."""
+
+    artifact_root = build_mlflow_experiment_artifact_root(tracking_uri)
+    if artifact_root is None:
+        return None
+
+    return str((artifact_root / experiment_ref).resolve())
+
+
+def update_mlflow_experiment_artifact_location(
+    tracking_uri: str,
+    experiment_id: str,
+    artifact_location: str,
+) -> None:
+    """Atualiza o artifact_location do experimento no backend SQLite local."""
+
+    db_path = resolve_sqlite_tracking_db_path(tracking_uri)
+    if db_path is None:
+        raise ValueError(
+            "Atualização de artifact_location só é suportada para tracking URI SQLite."
+        )
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
+            (artifact_location, int(experiment_id)),
+        )
+        connection.commit()
+
+
+def ensure_mlflow_experiment(mlflow_cfg: dict[str, Any]) -> None:
+    """Garante experimento MLflow compatível com o ambiente atual."""
+
+    tracking_uri = mlflow_cfg["tracking_uri"]
+    experiment_name = mlflow_cfg["experiment_name"]
+    client = MlflowClient(tracking_uri=tracking_uri)
+    experiment = client.get_experiment_by_name(experiment_name)
+
+    if experiment is None:
+        artifact_location = build_mlflow_experiment_artifact_location(
+            tracking_uri,
+            experiment_name,
+        )
+        client.create_experiment(
+            experiment_name,
+            artifact_location=artifact_location,
+        )
+        logger.info(
+            "Experimento MLflow criado | experiment=%s | artifact_location=%s",
+            experiment_name,
+            artifact_location,
+        )
+        return
+
+    desired_artifact_location = build_mlflow_experiment_artifact_location(
+        tracking_uri,
+        str(experiment.experiment_id),
+    )
+    if desired_artifact_location is None:
+        return
+    if experiment.artifact_location == desired_artifact_location:
+        return
+
+    update_mlflow_experiment_artifact_location(
+        tracking_uri,
+        str(experiment.experiment_id),
+        desired_artifact_location,
+    )
+    logger.info(
+        "Experimento MLflow ajustado | experiment=%s | de=%s | para=%s",
+        experiment_name,
+        experiment.artifact_location,
+        desired_artifact_location,
     )
 
 
