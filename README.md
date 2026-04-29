@@ -32,11 +32,11 @@ Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritm
 ## Sumário
 
 - [Sobre o Projeto](#sobre-o-projeto)
+- [Instalação e Execução](#instalação-e-execução)
 - [O que o Projeto Entrega](#o-que-o-projeto-entrega)
 - [Arquitetura da Solução](#arquitetura-da-solução)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-- [Instalação e Execução](#instalação-e-execução)
 - [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
 - [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
@@ -222,91 +222,92 @@ tc_fiap_fase5/
 ### Pré-requisitos
 
 - Python 3.13
-- Poetry 2.x
-- Docker e Docker Compose, para Redis, serving, MLflow, Prometheus, Grafana e, opcionalmente, Ollama
-- acesso ao remote DVC no Google Drive, caso vá baixar os dados versionados em vez de reconstruir a partir de arquivos locais
+- Poetry 2.x (obrigatório)
+- NVIDIA GPU com CUDA 12.x (recomendado)
+- Docker
 
 ### 1. Clone do repositório
 
-Comece clonando o projeto e entrando na raiz do repositório:
+Clone o repositório e acesse a pasta do projeto:
 
 ```bash
 git clone https://github.com/marciojolima/tc_fiap_fase5.git
 cd tc_fiap_fase5
 ```
 
-Se estiver validando uma branch específica, troque para ela antes da instalação:
-
-```bash
-git checkout <nome-da-branch>
-```
-
 ### 2. Instalação completa do ambiente
 
-Entre na raiz do repositório e instale as dependências do projeto. Para gerar todos os artefatos documentados neste README, use os extras opcionais de treino, serving, monitoramento, avaliação e operações:
+Informe ao Poetry qual versão do Python deve ser usada no ambiente virtual:
+
+```bash
+poetry env use python3.13
+```
+
+Instale todas as dependências do projeto. Se o ambiente virtual ainda não existir, ele será criado automaticamente:
 
 ```bash
 poetry install --all-extras
 ```
 
-Se a intenção for apenas trabalhar no núcleo Python sem DVC, Feast, MLflow, Evidently ou avaliação LLM, a instalação mínima também funciona:
+Se quiser ativar um shell já dentro do ambiente virtual, instale o plugin `poetry-plugin-shell`:
 
 ```bash
-poetry install
+poetry self add poetry-plugin-shell
 ```
 
-Se o Poetry informar que o `pyproject.toml` mudou significativamente desde a última geração do `poetry.lock`, a branch clonada está com o lock file desatualizado. Nesse caso, regenere o lock e repita a instalação:
-
-```bash
-poetry lock
-poetry install --all-extras
-```
-
-Depois da instalação, valide se as tasks do projeto estão disponíveis:
-
-```bash
-poetry run task --list
-```
-
-Os comandos deste README usam `poetry run`, então não é obrigatório ativar o ambiente virtual manualmente. Se preferir trabalhar com o ambiente ativado no shell atual, use:
-
-```bash
-eval "$(poetry env activate)"
-```
-
-Em ambientes com o plugin `poetry-plugin-shell` instalado, a alternativa equivalente é:
+Depois, abra o shell do Poetry:
 
 ```bash
 poetry shell
 ```
 
-Crie também o arquivo `.env` local usado pelo Docker Compose e pelos providers externos de LLM:
+Crie também o arquivo `.env` a partir do modelo de referência:
 
 ```bash
 cp .env.example .env
 ```
 
-Quando usar OpenAI ou Claude como provider ativo, preencha no `.env` as variáveis correspondentes:
+O provider do modelo LLM usado pelo agente ReAct é definido em `configs/pipeline_global_config.yaml`, na chave `llm.active_provider`. As opções válidas atualmente são `ollama`, `claude` e `openai`.
+
+Exemplo:
+
+```yaml
+llm:
+  active_provider: claude
+```
+
+Se o provider ativo for externo, preencha no `.env` a chave correspondente:
 
 ```bash
 OPENAI_API_KEY=<sua-chave>
 ANTHROPIC_API_KEY=<sua-chave>
 ```
 
-#### Poetry ainda é necessário se eu usar Docker?
+Observações importantes:
 
-Para subir apenas a stack já construída com `docker compose`, o Docker executa a API e os serviços de apoio em containers. Mesmo assim, o fluxo completo do projeto ainda usa Poetry no host para os comandos batch e de produção de artefatos, como:
+- `openai` usa `OPENAI_API_KEY`
+- `claude` usa `ANTHROPIC_API_KEY`
+- `ollama` não exige chave de API, mas requer uma instância do Ollama acessível pela `base_url` configurada
 
-- `poetry run dvc pull`
-- `poetry run dvc repro featurize`
-- `poetry run dvc repro train`
-- `poetry run dvc repro export_feature_store`
-- `poetry run task feastapply`
-- `poetry run task feastmaterialize`
-- `poetry run task mldrift`
-- `poetry run task eval_all`
+#### Carga inicial de dados e geração de artefatos
 
-Na prática: Docker cobre serving, Redis, MLflow, Prometheus, Grafana e Ollama. Poetry cobre a orquestração local dos pipelines, DVC, geração de datasets, treino, avaliação e manutenção dos artefatos que a stack monta por volume.
+Faça o pull dos dados versionados no storage via DVC, incluindo arquivos como `data/raw/Customer-Churn-Records.csv`:
+
+```bash
+poetry run dvc pull
+```
+
+Suba a infraestrutura mínima para execução local, com Redis e MLflow:
+
+```bash
+poetry run task infra_up_only_one_time
+```
+
+Execute o pipeline principal para gerar os artefatos do projeto, incluindo engenharia de features, treinamento, indexação de embeddings, experimentos pré-configurados, análise de cenários e geração de dados sintéticos para simulação de drift:
+
+```bash
+poetry run dvc repro
+```
 
 ### 3. Sincronização de dados versionados
 
