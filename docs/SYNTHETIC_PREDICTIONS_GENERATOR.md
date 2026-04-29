@@ -35,10 +35,10 @@ incluindo:
 - `feature_source`
 - features transformadas monitoráveis compatíveis com o drift batch
 
-Na prática, o gerador foi alinhado ao contrato de monitoramento
+O gerador foi alinhado ao contrato de monitoramento
 `transformed_features_v1`. Isso o torna compatível com o pipeline batch de
-drift, mas não necessariamente idêntico ao fluxo operacional do endpoint
-`/predict` baseado em Feast.
+drift, mas não idêntico ao fluxo operacional do endpoint `/predict` baseado em
+Feast.
 
 ## Módulo
 
@@ -139,7 +139,7 @@ As principais mudanças aplicadas hoje são:
 - `Card Type`: concentração em perfis mais específicos
 - `Point Earned`: deslocamento para extremos baixos e altos
 
-Na prática, isso tende a impactar:
+Esse deslocamento tende a impactar:
 
 - o PSI das features monitoradas
 - a distribuição das probabilidades previstas

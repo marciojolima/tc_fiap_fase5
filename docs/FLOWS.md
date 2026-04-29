@@ -32,7 +32,7 @@ scripts operacionais, monitoramento passivo e automações internas.
 | Métricas Prometheus | API/monitoramento | Automático passivo | `GET /metrics` e `/predict` | Expõe contadores, gauges e latência |
 | Logging de inferência | API/monitoramento | Automático passivo | `POST /predict` | Salva `predictions.jsonl` |
 | Engenharia de features | Feature engineering | Manual ou DVC | `task mlfeateng` / `dvc repro featurize` | Gera `interim`, `processed` e `feature_pipeline.joblib` |
-| Export da Feature Store | Feature store | Manual ou DVC | `task feastexport` / `dvc repro export_feature_store` | Gera parquet offline do Feast |
+| Export da Feature Store | Feature store | Manual ou DVC | `task feastexport` / `dvc repro create_fs_offline` | Gera parquet offline do Feast |
 | Feast apply | Feature store/infra | Manual | `task feastapply` | Registra definições no registry |
 | Feast materialize | Feature store/infra | Manual | `task feastmaterialize` | Materializa features no Redis |
 | Treino champion | Models | Manual ou DVC | `task mlflowrain` / `dvc repro train` | Gera `model_current.pkl` e metadados |
@@ -81,7 +81,7 @@ docs + data/golden-set.json
 | Automático interno | retreino por drift crítico | Ocorre dentro do flow batch de drift quando a configuração permite. |
 | Manual batch | feature engineering, treino, export Feast, drift, avaliações LLM, cenários | Dependem de comando local, DVC, taskipy ou container dedicado. |
 | Manual infra | `appstack`, `feastapply`, `feastmaterialize`, `mlflow`, RAG em container | Preparam serviços e stores usados pelos flows online/batch. |
-| Manual orquestrado por DVC | `featurize`, `train`, `export_feature_store` | Controla dependências e saídas, mas não substitui cron, Airflow ou scheduler. |
+| Manual orquestrado por DVC | `featurize`, `train`, `create_fs_offline` | Controla dependências e saídas, mas não substitui cron, Airflow ou scheduler. |
 
 ## Quadro de Criticidade e Ciclo Sugerido
 
@@ -382,7 +382,7 @@ ou `dvc repro featurize`
 
 **Tipo:** batch manual ou manual orquestrado por DVC
 **Start:** `python -m src.feast_ops.export`, `task feastexport` ou
-`dvc repro export_feature_store`
+`dvc repro create_fs_offline`
 
 **Cadeia**
 
@@ -408,7 +408,7 @@ ou `dvc repro featurize`
 
 **DVC**
 
-- stage `export_feature_store` em [`dvc.yaml`](../dvc.yaml)
+- stage `create_fs_offline` em [`dvc.yaml`](../dvc.yaml)
 - depois do `dvc repro`, o fluxo operacional esperado e:
   `task feastapply` -> `task feastmaterialize` -> uso do serving
 
@@ -1014,7 +1014,7 @@ O repositório **não possui**:
 - scheduler interno próprio
 - DAG operacional que encadeie todos os flows
 - promoção automática do challenger para substituir `model_current.pkl`
-- materialização automática do Feast após `dvc repro export_feature_store`
+- materialização automática do Feast após `dvc repro create_fs_offline`
 - serving responsável por bootstrapar Feast registry ou Redis
 
 ## 9. Resumo Executivo

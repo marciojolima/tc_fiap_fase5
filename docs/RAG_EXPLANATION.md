@@ -398,11 +398,7 @@ Se o agente estiver funcionando como esperado, o comportamento geral deve ser:
 
 ## Dicas de Operacao
 
-- Se o startup ficar mais lento na primeira execucao, isso e esperado por causa
-  do carregamento do modelo de embeddings e da geracao inicial do indice.
-- Se a segunda execucao nao usar cache, consulte `manifest.json` e o historico
-  em `index_build_history.jsonl` para verificar se alguma fonte mudou.
-- Se a resposta do agente ficar generica, use `include_trace=true` para confirmar
-  se `rag_search` foi realmente acionada.
-- O endpoint `GET /llm/status` tambem ajuda no diagnostico do estado do
-  RAG, alem do estado do `llm_provider` ativo.
+- O endpoint `GET /llm/status` ajuda a inspecionar o estado do RAG e do
+  `llm_provider` ativo.
+- `manifest.json` e `index_build_history.jsonl` registram o estado do cache e o
+  historico de construcao do indice.

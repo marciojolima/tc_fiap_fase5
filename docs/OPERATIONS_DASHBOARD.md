@@ -3,7 +3,6 @@
 ## Índice
 
 - [Como interpretar o dashboard](#como-interpretar-o-dashboard)
-- [Como validar rapidamente sem depender do Grafana](#como-validar-rapidamente-sem-depender-do-grafana)
 - [Como subir localmente](#como-subir-localmente)
 - [Acessos](#acessos)
 - [Observação](#observação)
@@ -130,31 +129,6 @@ de alerta aparece quando:
 - ela cresce com frequencia
 - permanece alta por muito tempo
 - isso acontece junto com piora de latencia ou aumento de erros
-
-## Como validar rapidamente sem depender do Grafana
-
-O endpoint `GET /metrics` do serving e a fonte primaria dessas metricas. Se
-houver duvida sobre o dashboard, vale consultar diretamente:
-
-```bash
-curl http://127.0.0.1:8000/metrics
-```
-
-Depois de algumas chamadas para `POST /predict`, e esperado encontrar linhas
-como:
-
-```text
-churn_serving_predict_requests_total{method="POST",status_code="200"} 8.0
-churn_serving_predict_latency_seconds_count 8.0
-churn_serving_predict_requests_in_progress 0.0
-```
-
-Se essas linhas aparecem, significa que:
-
-- o serving esta registrando as metricas corretamente
-- o Prometheus tem algo valido para coletar
-- qualquer problema restante tende a estar na camada de scrape, datasource ou
-  visualizacao do Grafana
 
 ## Como subir localmente
 
