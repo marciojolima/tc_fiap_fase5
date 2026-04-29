@@ -18,6 +18,25 @@ OPENAI_API_KEY_ENV_VAR = "OPENAI_API_KEY"
 ANTHROPIC_API_KEY_ENV_VAR = "ANTHROPIC_API_KEY"
 
 
+def normalize_mlflow_tracking_uri(tracking_uri: str) -> str:
+    """Resolve URIs SQLite relativas para caminhos absolutos no projeto."""
+
+    sqlite_relative_prefix = "sqlite:///"
+    sqlite_absolute_prefix = "sqlite:////"
+
+    if not tracking_uri.startswith(sqlite_relative_prefix):
+        return tracking_uri
+    if tracking_uri.startswith(sqlite_absolute_prefix):
+        return tracking_uri
+
+    sqlite_path = tracking_uri.removeprefix(sqlite_relative_prefix)
+    if not sqlite_path or sqlite_path.startswith("/"):
+        return tracking_uri
+
+    resolved_path = (ROOT_DIR / sqlite_path).resolve()
+    return f"sqlite:////{resolved_path.as_posix()}"
+
+
 def load_env_value(env_var: str, env_path: str | Path = ".env") -> str | None:
     """Carrega uma variável simples do `.env` local sem sobrescrever o ambiente."""
 
@@ -58,6 +77,10 @@ def load_global_config() -> dict[str, Any]:
 
     if tracking_uri_override:
         config["mlflow"]["tracking_uri"] = tracking_uri_override
+
+    config["mlflow"]["tracking_uri"] = normalize_mlflow_tracking_uri(
+        str(config["mlflow"]["tracking_uri"])
+    )
 
     return config
 
