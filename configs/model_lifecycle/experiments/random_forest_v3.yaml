@@ -1,6 +1,6 @@
 experiment:
-  name: random_forest_v3
-  run_name: random_forest_v3
+  name: random_forest_v3_recall
+  run_name: random_forest_v3_recall
   version: 0.3.0
   algorithm: random_forest
   flavor: sklearn

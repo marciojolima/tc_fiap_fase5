@@ -7,8 +7,8 @@
 - [Origem de cada campo](#origem-de-cada-campo)
 - [Como interpretar](#como-interpretar)
 - [Objetivo desta abordagem](#objetivo-desta-abordagem)
-- [Conexao com o que ja foi implementado](#conexao-com-o-que-ja-foi-implementado)
-- [Limite atual da implementacao](#limite-atual-da-implementacao)
+- [Conexao com o fluxo do projeto](#conexao-com-o-fluxo-do-projeto)
+- [Limites da implementacao](#limites-da-implementacao)
 
 Este projeto registra metadados minimos de governanca no fluxo de treino
 para atender ao requisito de rastreabilidade esperado no Datathon.
@@ -72,7 +72,7 @@ Campos vindos do contrato:
 - `training_data_version`
   - hash MD5 dos arquivos `data/processed/train.parquet` e `data/processed/test.parquet`
 - `git_sha`
-  - commit atual obtido via `git rev-parse HEAD`
+  - commit obtido via `git rev-parse HEAD`
 
 ## Como interpretar
 
@@ -105,7 +105,7 @@ Valores sugeridos:
 ### `fairness_checked`
 
 Indica se houve verificacao explicita de fairness/bias para a versao treinada.
-Hoje o campo existe para governanca e preparo de evolucao futura.
+O campo atende a governanca e ao preparo de evolucao futura.
 
 ## Objetivo desta abordagem
 
@@ -116,35 +116,34 @@ necessaria para:
 - champion/challenger com metadata confiavel
 - compliance com os requisitos de governanca do Datathon
 
-## Conexao com o que ja foi implementado
+## Conexao com o fluxo do projeto
 
-No estado atual do projeto, esse versionamento ja sustenta partes reais do
-fluxo operacional:
+Esse versionamento sustenta partes do fluxo operacional:
 
-- o champion atual possui sidecar de metadados em
+- o champion possui sidecar de metadados em
   `artifacts/models/model_current_metadata.json`
 - o retreino gera challengers em `artifacts/models/challengers/`
 - o monitoramento de drift pode abrir um retreino auditavel
 - a comparacao champion-challenger produz `promotion_decision.json`
 
-Ou seja, a metadata ja nao e apenas decorativa. Ela participa da trilha de:
+Ou seja, a metadata nao e apenas decorativa. Ela participa da trilha de:
 
 - reproducao
 - auditoria
 - comparacao entre versoes
 - decisao de manutencao do champion
 
-## Limite atual da implementacao
+## Limites da implementacao
 
-Ainda nao existe um Model Registry completo com:
+Nao existe um Model Registry completo com:
 
 - approval workflow formal
 - aliases de producao gerenciados por registry
 - promocao automatica entre ambientes
 - rollback operacional baseado em registry externo
 
-Por isso, a situacao atual deve ser lida como:
+Por isso, a implementacao deve ser lida como:
 
 - boa base de governanca e rastreabilidade
 - promotion workflow inicial e auditavel
-- maturidade ainda abaixo de um registry operacional completo
+- maturidade abaixo de um registry operacional completo

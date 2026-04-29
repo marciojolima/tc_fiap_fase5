@@ -13,7 +13,7 @@
 - [5. Flows do Agente LLM ReAct e RAG](#5-flows-do-agente-llm-react-e-rag)
 - [6. Flows de Avaliação e Monitoramento](#6-flows-de-avaliação-e-monitoramento)
 - [7. Flows Utilitários e Infraestrutura Local](#7-flows-utilitários-e-infraestrutura-local)
-- [8. O Que Não Existe Hoje](#8-o-que-não-existe-hoje)
+- [8. O Que Não Existe](#8-o-que-não-existe)
 - [9. Resumo Executivo](#9-resumo-executivo)
 
 Este documento mapeia os principais **flows** do projeto: pontos de entrada,
@@ -77,7 +77,7 @@ docs + data/golden-set.json
 | Automático online | `/health`, `/predict`, `/predict/raw`, `/metrics`, rotas LLM | Acontecem quando a API recebe chamadas HTTP. |
 | Automático passivo | métricas Prometheus e logging de inferência | São efeitos colaterais do serving; não iniciam treino nem drift sozinhos. |
 | Automático interno | retreino por drift crítico | Ocorre dentro do flow batch de drift quando a configuração permite. |
-| Manual batch | feature engineering, treino, export Feast, drift, avaliações LLM, cenários | Hoje dependem de comando local, DVC, taskipy ou container dedicado. |
+| Manual batch | feature engineering, treino, export Feast, drift, avaliações LLM, cenários | Dependem de comando local, DVC, taskipy ou container dedicado. |
 | Manual infra | `appstack`, `feastapply`, `feastmaterialize`, `mlflow`, RAG em container | Preparam serviços e stores usados pelos flows online/batch. |
 | Manual orquestrado por DVC | `featurize`, `train`, `export_feature_store` | Controla dependências e saídas, mas não substitui cron, Airflow ou scheduler. |
 
@@ -166,7 +166,7 @@ docs + data/golden-set.json
 
 - O serving não recalcula features na requisição.
 - Este é o flow preferencial de inferência online.
-- A API depende de Feast registry e Redis já preparados pelos flows de Feature Store.
+- A API depende de Feast registry e Redis preparados pelos flows de Feature Store.
 
 ### 1.3 Predição legada por payload bruto
 
@@ -369,7 +369,7 @@ ou `dvc repro featurize`
 **DVC**
 
 - stage `export_feature_store` em [`dvc.yaml`](../dvc.yaml)
-- depois do `dvc repro`, o fluxo operacional esperado continua sendo:
+- depois do `dvc repro`, o fluxo operacional esperado e:
   `task feastapply` -> `task feastmaterialize` -> uso do serving
 
 ### 2.3 Feast apply
@@ -419,7 +419,7 @@ ou `dvc repro featurize`
 
 **Observações**
 
-- Este flow é manual no projeto atual.
+- Este flow e manual.
 - A online store não é atualizada automaticamente a cada `dvc repro`.
 - O serving depende de o registry existir e de a online store estar materializada.
 
@@ -492,7 +492,7 @@ ou `dvc repro featurize`
 -> função [`run_drift_monitoring`](../src/evaluation/model/drift/drift.py)
 -> função [`maybe_trigger_retraining`](../src/evaluation/model/drift/drift.py)
 -> cria `artifacts/evaluation/model/retraining/retrain_request.json`
--> como `trigger_mode` atual é `auto_train_manual_promote`
+-> como `trigger_mode` e `auto_train_manual_promote`
 -> chama [`run_retraining_request`](../src/model_lifecycle/retraining.py)
 -> treina challenger
 -> avalia promoção champion-challenger
@@ -516,7 +516,7 @@ ou `dvc repro featurize`
 **Observações**
 
 - O retreino pode ser automático dentro da execução do drift.
-- A promoção do challenger para substituir o champion atual continua manual.
+- A promoção do challenger para substituir o champion permanece manual.
 
 ### 3.3 Retreino manual
 
@@ -964,9 +964,9 @@ variantes `sample`
 - O task `ollama_list` usa `scripts/list_ollama_models.py` quando o provider ativo
   é Ollama.
 
-## 8. O Que Não Existe Hoje
+## 8. O Que Não Existe
 
-Atualmente o repositório **não possui**:
+O repositório **não possui**:
 
 - Airflow
 - cron formal versionado no projeto
@@ -1008,7 +1008,7 @@ Se reduzirmos o projeto aos flows centrais, o mapa fica assim:
 -> registra MLflow
 -> salva champion
 -> retreino pode gerar challenger
--> promoção continua manual
+-> promoção permanece manual
 
 `experimentos`
 -> treinos múltiplos

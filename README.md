@@ -1,4 +1,6 @@
-# TC FIAP Fase 5
+# Datathon Fase 5
+# Previsão de Churn Bancário com Machine Learning + Agente LLM
+# FIAP Pós-Tech MLET | Grupo 30 | Maio 2026  
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python)
 ![MLflow](https://img.shields.io/badge/MLflow-3.10.1-0194E2?style=for-the-badge&logo=mlflow)
@@ -11,20 +13,31 @@
 ![Redis](https://img.shields.io/badge/Redis-online%20store-DC382D?style=for-the-badge&logo=redis)
 ![Poetry](https://img.shields.io/badge/Poetry-dependencies-60A5FA?style=for-the-badge&logo=poetry)
 
-Projeto integrador da Fase 05 do curso MLET da FIAP, desenvolvido no formato de Datathon. O repositório implementa uma solução de predição de churn bancário com foco em MLOps, rastreabilidade, observabilidade e evolução arquitetural para componentes com LLMs e agentes.
+## Problema de Negócio
+
+Identificar clientes com alta probabilidade de evasão (churn) para permitir ações de retenção proativas pelo banco.
+
+## Métrica de negócio  
+**≥ 70%** dos clientes que realmente evadem devem estar entre os 20% com maior risco previsto (recall@top20% ≥ 0.70).
 
 
-O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompanhamento de aderência aos requisitos, entregas concluídas e pendências fica centralizado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
+## Estratégia de seleção de modelo  
+A escolha do modelo não é fixa, sendo orientada pelo objetivo de negócio e pelas restrições operacionais.
+
+- Em cenários onde o objetivo é maximizar a retenção e evitar perda de clientes a qualquer custo, são priorizados modelos com **maior recall**.
+- Em cenários com limitação de capacidade operacional (ex: equipe de retenção reduzida), são priorizados modelos com **maior precisão (precision)**, garantindo maior eficiência nas ações.
+
+Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritmos) podem ser promovidos a modelo em produção conforme o critério de negócio vigente, caracterizando uma abordagem orientada a valor e não apenas a métricas técnicas isoladas.
 
 ## Sumário
 
 - [Sobre o Projeto](#sobre-o-projeto)
+- [Instalação e Execução](#instalação-e-execução)
 - [O que o Projeto Entrega](#o-que-o-projeto-entrega)
 - [Arquitetura da Solução](#arquitetura-da-solução)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-- [Instalação e Execução](#instalação-e-execução)
-- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
+- [LLM, agente ReAct e llm_provider](docs/AGENT_REACT.md)
 - [Feature Store](#feature-store)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
@@ -35,7 +48,7 @@ O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompan
 
 Este projeto foi organizado como uma plataforma de machine learning aplicada a churn bancário. A proposta é cobrir uma trilha de ponta a ponta, desde dados versionados e engenharia de features até serving, monitoramento de drift e retreino auditável.
 
-Um ponto importante da narrativa do repositório é a transformação de um experimento centrado em notebook para uma solução mais robusta de engenharia de ML. O notebook [notebooks/churn_bancario_sem_mlops.ipynb](notebooks/churn_bancario_sem_mlops.ipynb) representa essa base inicial, mais próxima de um fluxo exploratório executado em Jupyter ou Colab. A partir dele, o projeto evolui para uma estrutura com separação de responsabilidades, versionamento de dados, treino rastreável, serving, monitoramento, governança e documentação operacional.
+Um ponto importante da narrativa do repositório é a transformação de um experimento centrado em notebook em uma solução mais robusta de engenharia de ML. O notebook [notebooks/churn_bancario_sem_mlops.ipynb](notebooks/churn_bancario_sem_mlops.ipynb) representa a base exploratória executada em Jupyter ou Colab. O restante do repositório organiza essa base em uma estrutura com separação de responsabilidades, versionamento de dados, treino rastreável, serving, monitoramento, governança e documentação operacional.
 
 Em outras palavras, este repositório não busca apenas mostrar um modelo de churn funcionando, mas também evidenciar a diferença entre um experimento isolado e uma solução com preocupações reais de MLOps.
 
@@ -50,11 +63,9 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - feature store local com Feast + Redis para materialização online incremental
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
 
-Além da trilha tabular principal, o repositório inclui uma trilha **LLM** (agente ReAct, RAG, guardrails e integração com `llm_provider`) já utilizável via API; avaliação formal (RAGAS, benchmark com várias configs) e CI/CD específicos do agente são os próximos passos planejados. O andamento frente aos requisitos do Datathon continua detalhado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
-
 ## O que o Projeto Entrega
 
-Hoje o repositório já possui uma base funcional e demonstrável nas seguintes frentes:
+O repositório reúne uma base funcional e demonstrável nas seguintes frentes:
 
 ### 1. Dados, features e preparação
 
@@ -70,7 +81,7 @@ Hoje o repositório já possui uma base funcional e demonstrável nas seguintes 
 - treinamento principal em [src/model_lifecycle/train.py](src/model_lifecycle/train.py)
 - rastreamento de parâmetros, métricas e artefatos com MLflow
 - múltiplas configurações de experimento em `configs/model_lifecycle/experiments/`
-- persistência do modelo atual, challengers e metadados em `artifacts/models/`
+- persistência do modelo champion, challengers e metadados em `artifacts/models/`
 - apoio a promoção champion-challenger em [src/model_lifecycle/promotion.py](src/model_lifecycle/promotion.py)
 
 ### 3. Serving e inferência
@@ -138,7 +149,7 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
   sudo chown -R "$(id -u):$(id -g)" artifacts/rag
   ```
 
-**Próximos passos planejados (ainda não concluídos no repositório):** extensão do CI/CD para essa trilha e documentação agregada de resultados de avaliação.
+**Extensões previstas para essa trilha:** ampliação do CI/CD e documentação agregada de resultados de avaliação.
 
 ## Arquitetura da Solução
 
@@ -211,97 +222,98 @@ tc_fiap_fase5/
 ### Pré-requisitos
 
 - Python 3.13
-- Poetry 2.x
-- Docker e Docker Compose, para Redis, serving, MLflow, Prometheus, Grafana e, opcionalmente, Ollama
-- acesso ao remote DVC no Google Drive, caso vá baixar os dados versionados em vez de reconstruir a partir de arquivos locais
+- Poetry 2.x (obrigatório)
+- NVIDIA GPU com CUDA 12.x (recomendado)
+- Docker
 
 ### 1. Clone do repositório
 
-Comece clonando o projeto e entrando na raiz do repositório:
+Clone o repositório e acesse a pasta do projeto:
 
 ```bash
 git clone https://github.com/marciojolima/tc_fiap_fase5.git
 cd tc_fiap_fase5
 ```
 
-Se estiver validando uma branch específica, troque para ela antes da instalação:
-
-```bash
-git checkout <nome-da-branch>
-```
-
 ### 2. Instalação completa do ambiente
 
-Entre na raiz do repositório e instale as dependências do projeto. Para gerar todos os artefatos documentados neste README, use os extras opcionais de treino, serving, monitoramento, avaliação e operações:
+Informe ao Poetry qual versão do Python deve ser usada no ambiente virtual:
+
+```bash
+poetry env use python3.13
+```
+
+Instale todas as dependências do projeto. O ambiente virtual é criado automaticamente quando necessário:
 
 ```bash
 poetry install --all-extras
 ```
 
-Se a intenção for apenas trabalhar no núcleo Python sem DVC, Feast, MLflow, Evidently ou avaliação LLM, a instalação mínima também funciona:
+Se quiser ativar um shell dentro do ambiente virtual, instale o plugin `poetry-plugin-shell`:
 
 ```bash
-poetry install
+poetry self add poetry-plugin-shell
 ```
 
-Se o Poetry informar que o `pyproject.toml` mudou significativamente desde a última geração do `poetry.lock`, a branch clonada está com o lock file desatualizado. Nesse caso, regenere o lock e repita a instalação:
-
-```bash
-poetry lock
-poetry install --all-extras
-```
-
-Depois da instalação, valide se as tasks do projeto estão disponíveis:
-
-```bash
-poetry run task --list
-```
-
-Os comandos deste README usam `poetry run`, então não é obrigatório ativar o ambiente virtual manualmente. Se preferir trabalhar com o ambiente ativado no shell atual, use:
-
-```bash
-eval "$(poetry env activate)"
-```
-
-Em ambientes com o plugin `poetry-plugin-shell` instalado, a alternativa equivalente é:
+Depois, abra o shell do Poetry:
 
 ```bash
 poetry shell
 ```
 
-Crie também o arquivo `.env` local usado pelo Docker Compose e pelos providers externos de LLM:
+Crie também o arquivo `.env` a partir do modelo de referência:
 
 ```bash
 cp .env.example .env
 ```
 
-Quando usar OpenAI ou Claude como provider ativo, preencha no `.env` as variáveis correspondentes:
+O provider do modelo LLM usado pelo agente ReAct é definido em `configs/pipeline_global_config.yaml`, na chave `llm.active_provider`. As opções válidas são `ollama`, `claude` e `openai`.
+
+Exemplo:
+
+```yaml
+llm:
+  active_provider: claude
+```
+
+Se o provider ativo for externo, preencha no `.env` a chave correspondente:
 
 ```bash
 OPENAI_API_KEY=<sua-chave>
 ANTHROPIC_API_KEY=<sua-chave>
 ```
 
-#### Poetry ainda é necessário se eu usar Docker?
+Observações importantes:
 
-Para subir apenas a stack já construída com `docker compose`, o Docker executa a API e os serviços de apoio em containers. Mesmo assim, o fluxo completo do projeto ainda usa Poetry no host para os comandos batch e de produção de artefatos, como:
+- `openai` usa `OPENAI_API_KEY`
+- `claude` usa `ANTHROPIC_API_KEY`
+- `ollama` não exige chave de API, mas requer uma instância do Ollama acessível pela `base_url` configurada
 
-- `poetry run dvc pull`
-- `poetry run dvc repro featurize`
-- `poetry run dvc repro train`
-- `poetry run dvc repro export_feature_store`
-- `poetry run task feastapply`
-- `poetry run task feastmaterialize`
-- `poetry run task mldrift`
-- `poetry run task eval_all`
+#### Carga inicial de dados e geração de artefatos
 
-Na prática: Docker cobre serving, Redis, MLflow, Prometheus, Grafana e Ollama. Poetry cobre a orquestração local dos pipelines, DVC, geração de datasets, treino, avaliação e manutenção dos artefatos que a stack monta por volume.
+Faça o pull dos dados versionados no storage via DVC, incluindo arquivos como `data/raw/Customer-Churn-Records.csv`:
+
+```bash
+poetry run dvc pull
+```
+
+Suba a infraestrutura mínima para execução local, com Redis e MLflow:
+
+```bash
+poetry run task infra_up_only_one_time
+```
+
+Execute o pipeline principal para gerar os artefatos do projeto, incluindo engenharia de features, treinamento, indexação de embeddings, experimentos pré-configurados, análise de cenários e geração de dados sintéticos para simulação de drift:
+
+```bash
+poetry run dvc repro
+```
 
 ### 3. Sincronização de dados versionados
 
-O projeto utiliza DVC para dados e artefatos versionados. No repositório atual, o remote padrão já está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
+O projeto utiliza DVC para dados e artefatos versionados. O remote padrão está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
 
-Se o DVC já estiver instalado no ambiente, você pode usar `dvc ...` diretamente. Se preferir usar as dependências gerenciadas pelo projeto, utilize `poetry run dvc ...`.
+Se o DVC estiver instalado no ambiente, você pode usar `dvc ...` diretamente. Se preferir usar as dependências gerenciadas pelo projeto, utilize `poetry run dvc ...`.
 
 #### Como a configuração está organizada
 
@@ -313,9 +325,9 @@ Em outras palavras:
 - o time pode versionar em `.dvc/config` que o remote se chama `datathon_remote`
 - cada pessoa configura em `.dvc/config.local` suas próprias credenciais de acesso
 
-#### 1. Verifique ou configure o remote
+#### 1. Configure o remote
 
-No projeto atual, a configuração compartilhada já aponta para o remote `datathon_remote`. Se você precisar recriá-lo manualmente em outra máquina, o fluxo é:
+A configuração compartilhada aponta para o remote `datathon_remote`. Para recriá-lo manualmente em outra máquina, o fluxo é:
 
 ```bash
 dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
@@ -394,161 +406,9 @@ dvc pull
 - não publique `client_id` e `client_secret` em README, issue, commit ou pull request
 - se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
 - `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
-
-### 4. Produção dos artefatos principais
-
-Esta é a sequência recomendada para sair de um clone novo do repositório e produzir os artefatos necessários para treino, serving, Feature Store e monitoramento.
-
-#### 4.1 Preparar dados, features e modelo champion
-
-Execute os stages do DVC na ordem de dependência:
-
-```bash
-poetry run dvc repro featurize
-poetry run dvc repro train
-poetry run dvc repro export_feature_store
-```
-
-Responsabilidade de cada gatilho:
-
-- `dvc repro featurize`: gera `data/interim/cleaned.parquet`, `data/processed/train.parquet`, `data/processed/test.parquet`, `data/processed/feature_columns.json`, `data/processed/schema_report.json` e `artifacts/models/feature_pipeline.joblib`
-- `dvc repro train`: treina o modelo champion e gera `artifacts/models/model_current.pkl` e `artifacts/models/model_current_metadata.json`
-- `dvc repro export_feature_store`: usa `artifacts/models/feature_pipeline.joblib` para gerar `data/feature_store/customer_features.parquet` e `data/feature_store/export_metadata.json`
-
-Observações importantes:
-
-- `dvc repro export_feature_store` depende do artefato `artifacts/models/feature_pipeline.joblib`, gerado no stage `featurize`
-- a API de predição completa também depende de `artifacts/models/model_current.pkl`, gerado no stage `train`
-
-#### 4.2 Registrar e materializar a Feature Store
-
-A materialização online depende do Redis. Para subir apenas o Redis:
-
-```bash
-docker compose up -d redis
-```
-
-Depois registre as definições do Feast e materialize os dados para a online store:
-
-```bash
-poetry run task feastapply
-poetry run task feastmaterialize
-```
-
-Responsabilidade de cada comando:
-
-- `task feastapply`: registra `Entity`, `FeatureView` e `FeatureServices` no registry local do Feast, gerando `feature_store/data/registry.db`
-- `task feastmaterialize`: lê `data/feature_store/customer_features.parquet` e materializa incrementalmente as features na online store Redis
-- `task feastdemo`: valida uma leitura online de exemplo para o cliente `15634602`
-
-Validação opcional:
-
-```bash
-poetry run task feastdemo
-```
-
-#### 4.3 Produzir experimentos, cenários e trilha MLflow
-
-Para executar o champion, os challengers configurados e a suíte de cenários de negócio em uma única sequência:
-
-```bash
-poetry run task mlrunall
-```
-
-Esse comando registra runs no MLflow local configurado em `file:./mlruns` quando nenhum `MLFLOW_TRACKING_URI` externo é informado. Ele também gera modelos experimentais em `artifacts/models/` conforme os caminhos declarados em `configs/model_lifecycle/experiments/`.
-
-Também é possível executar partes isoladas:
-
-```bash
-poetry run task mltrain
-poetry run task mlrunexperiments
-poetry run task mlscenarios
-```
-
-#### 4.4 Produzir artefatos de monitoramento e drift
-
-Com o modelo e os dados processados disponíveis, gere uma execução demonstrável de drift usando a base de teste como base corrente:
-
-```bash
-poetry run task mldriftdemo
-```
-
-Para executar o monitoramento sobre o log real de inferências da API, primeiro suba a stack, gere predições no endpoint `/predict` e depois rode:
-
-```bash
-poetry run task mldrift
-```
-
-Os principais artefatos gerados ficam em:
-
-- `artifacts/logs/inference/predictions.jsonl`
-- `artifacts/evaluation/model/drift/drift_report.html`
-- `artifacts/evaluation/model/drift/drift_report_evidently.html`
-- `artifacts/evaluation/model/drift/drift_metrics.json`
-- `artifacts/evaluation/model/drift/drift_status.json`
-- `artifacts/evaluation/model/drift/drift_runs.jsonl`
-- `artifacts/evaluation/model/retraining/`, quando o gatilho de retreino é acionado
-
-#### 4.5 Produzir artefatos de avaliação LLM
-
-As avaliações LLM usam o provider configurado em `configs/pipeline_global_config.yaml`.
-Para RAGAS, suba o serving antes, porque a avaliação chama `POST /llm/chat`.
-Com o provider pronto, rode:
-
-```bash
-poetry run task eval_ragas
-poetry run task eval_llm_judge
-poetry run task eval_ab_test_prompts
-```
-
-Para executar a trilha de avaliação em container dedicado, use a imagem de
-avaliação:
-
-```bash
-poetry run task eval_ragas_docker
-poetry run task eval_all_sample_docker
-```
-
-Ou execute tudo em sequência:
-
-```bash
-poetry run task eval_all
-```
-
-Saídas esperadas:
-
-- `artifacts/evaluation/llm_agent/results/ragas_scores.json`
-- `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`
-- `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`
-- `artifacts/evaluation/llm_agent/runs/*.jsonl`
-
-#### 4.6 Sequência curta para reproduzir os artefatos essenciais
-
-Para uma execução local completa e objetiva:
-
-```bash
-poetry install --all-extras
-cp .env.example .env
-poetry run dvc pull
-poetry run dvc repro featurize
-poetry run dvc repro train
-poetry run dvc repro export_feature_store
-docker compose up -d redis
-poetry run task feastapply
-poetry run task feastmaterialize
-poetry run task mldriftdemo
-```
-
-Se quiser validar também serving, dashboards e MLflow:
-
-```bash
-poetry run task appstack
-```
+- ** para maiores detalhes consulte o arquivo: [`dvc.yaml`](dvc.yaml)**
 
 ### 5. Stack local com Docker Compose
-
-O arquivo `.env.example` é apenas um modelo versionado com valores de referência.
-O arquivo efetivamente lido pelo `docker compose` é o `.env`, que você cria a partir dele.
 
 ```bash
 cp .env.example .env
@@ -580,7 +440,7 @@ Com a stack em execução, a documentação interativa do FastAPI fica disponív
 
 **Quando usar rebuild:** reconstrua a stack apenas quando mudar Dockerfile, `pyproject.toml`, `poetry.lock`, dependências ou alguma estrutura relevante de build. Para a stack base, use `poetry run task appstack_rebuild`; para desenvolvimento, use `poetry run task appstack_dev_rebuild`; para o cenário com Ollama local, use `poetry run task appstack_ollama_rebuild`.
 
-**Quando não precisa rebuild:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo Uvicorn. Configurações, dados e artefatos também já ficam disponíveis por volumes do Compose principal, incluindo `configs/`, `data/processed/`, `data/feature_store/`, `artifacts/` e `feature_store/`.
+**Quando não precisa rebuild:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo Uvicorn. Configurações, dados e artefatos ficam disponíveis por volumes do Compose principal, incluindo `configs/`, `data/processed/`, `data/feature_store/`, `artifacts/` e `feature_store/`.
 
 **Diagnóstico LLM:** com a stack no ar, abra `http://127.0.0.1:8000/llm/status` para ver o `llm_provider` ativo, o modelo esperado e o diagnóstico específico do provider. Se o provider for `ollama`, `poetry run task ollama_list` ajuda a confirmar os modelos instalados nessa instância.
 
@@ -596,9 +456,9 @@ Se você quiser subir somente um componente fora do Compose durante desenvolvime
 
 ### Feature Store
 
-O projeto agora possui uma Feature Store local baseada em Feast, com Redis como online store. O objetivo é separar claramente a camada offline, usada para preparo e materialização, da camada online, usada para consulta de baixa latência.
+Uma Feature Store local baseada em Feast, com Redis como online store, separa a camada offline, usada para preparo e materialização, da camada online, usada para consulta de baixa latência.
 
-Além disso, a governança de consumo foi refinada com `FeatureServices` por versão de modelo. Isso deixa explícito qual contrato de features cada modelo usa no treino e no serving, mesmo quando diferentes versões ainda compartilham a mesma `FeatureView` base.
+O consumo é governado por `FeatureServices` por versão de modelo. Isso deixa explícito qual contrato de features cada modelo usa no treino e no serving, mesmo quando diferentes versões compartilham a mesma `FeatureView` base.
 
 Fluxo recomendado:
 
@@ -662,25 +522,19 @@ poetry run task test
 
 ## LLM, agente ReAct e llm_provider
 
-Este tópico resume o que foi implementado na trilha LLM e como operar em conjunto com o Docker Compose. O detalhamento por arquivo e endpoint está na subseção **6. LLM, agente ReAct, RAG e segurança**, em [O que o Projeto Entrega](#o-que-o-projeto-entrega).
+O detalhamento da trilha de LLM foi extraído para
+[docs/AGENT_REACT.md](docs/AGENT_REACT.md), com a visão do agente ReAct, das
+tools, do RAG, da configuração por provider e da operação local com Docker.
 
-- **Integração:** a API usa o `llm_provider` ativo definido em `configs/pipeline_global_config.yaml`, com implementação para `ollama`, `openai` e `claude`.
-- **Tamanho da resposta:** `POST /llm/chat` aceita `answer_style` com `short`, `medium` (default) ou `long` para controlar a extensão da resposta final do agente.
-- **Segredos:** providers externos leem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY` do `.env`.
-- **Compose base:** `poetry run task appstack` sobe apenas a stack comum, sem carregar container local de modelo.
-- **Índice RAG:** `poetry run task rag_index_rebuild_docker` gera o cache vetorial em `artifacts/rag/cache/index.joblib` usando a imagem leve do serving antes de subir a API.
-- **Avaliação LLM isolada:** `poetry run task eval_ragas_docker` e `poetry run task eval_all_docker` usam a imagem `tc-fiap-evaluation`, mantendo a execução de avaliação separada do serving.
-- **Compose com Ollama:** `poetry run task appstack_ollama` adiciona `ollama` e `ollama-pull`. Esse é o modo indicado quando `llm.active_provider=ollama`.
-- **Base URL no Docker:** no cenário com Ollama local, o override do Compose injeta `LLM_BASE_URL=http://ollama:11434` no `serving`, porque `127.0.0.1` dentro do container apontaria para o próprio container da API.
-- **Modelo Ollama:** use uma **tag válida** na biblioteca Ollama (por exemplo `gemma3:270m`). Nomes estilo arquivo GGUF não são tags do `ollama pull`.
-- **Container `ollama-pull`:** ao subir a stack com override Ollama, ele termina com estado **Exited** após o pull — comportamento esperado para um job único. Em caso de dúvida, use `docker logs tc-fiap-ollama-pull`.
-- **Rebuild da imagem da app:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo `serving` com Uvicorn `--reload`. Rebuild fica reservado para mudanças em Dockerfile, `pyproject.toml`, `poetry.lock`, dependências ou estrutura relevante de build.
+Para a avaliação dessa trilha em execução real, veja também
+[docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md), que documenta RAGAS,
+LLM-as-judge e benchmark de prompts sobre o endpoint `/llm/chat`.
 
 ## Monitoramento e Observabilidade
 
-O projeto já implementa uma trilha concreta de monitoramento técnico para a solução tabular de churn, combinando métricas operacionais, logging de inferências, detecção de drift e fluxo de retreino auditável.
+Monitoramento técnico para a solução tabular de churn, combinando métricas operacionais, logging de inferências, detecção de drift e fluxo de retreino auditável.
 
-### O que já é monitorado
+### Escopo de monitoramento
 
 #### Métricas operacionais do serving
 
@@ -691,7 +545,7 @@ As métricas expostas pela aplicação permitem acompanhar o comportamento da AP
 - taxa de erro
 - requisições em andamento
 
-Essas métricas são consumidas pela stack local configurada em `configs/monitoring/`, e agora orquestrada pelo Docker Compose junto com o serving e o MLflow.
+Essas métricas são consumidas pela stack local configurada em `configs/monitoring/` e orquestrada pelo Docker Compose junto com o serving e o MLflow.
 
 #### Logging de inferências
 
@@ -702,7 +556,7 @@ As inferências podem ser registradas em `artifacts/logs/inference/predictions.j
 - análise posterior de drift
 - apoio a ciclos de retreino
 
-O contrato atual desse arquivo prioriza as features transformadas e monitoráveis
+O contrato desse arquivo prioriza as features transformadas e monitoráveis
 consumidas pelo modelo em produção, com metadados mínimos de predição e origem.
 
 #### Monitoramento batch de drift
@@ -721,16 +575,16 @@ Na prática, isso permite:
 - consolidar um status geral de drift
 - manter histórico das execuções de monitoramento
 
-O relatório HTML agora também destaca no topo o resumo operacional do projeto,
+O relatório HTML destaca no topo o resumo operacional do projeto,
 incluindo thresholds de `warning` e `critical` definidos no YAML e o status
-final calculado pelo pipeline batch. Esse arquivo passou a representar a visão
+final calculado pelo pipeline batch. Esse arquivo representa a visão
 oficial do projeto para drift, baseada no PSI persistido em
 `drift_metrics.json`, enquanto o Evidently fica disponível em um relatório
 auxiliar separado para diagnóstico complementar.
 
 #### Gatilho auditável de retreino
 
-Quando o monitoramento identifica condição crítica, o projeto já suporta uma trilha auditável de retreino, com artefatos como:
+Quando o monitoramento identifica condição crítica, o fluxo abre uma trilha auditável de retreino, com artefatos como:
 
 - `artifacts/evaluation/model/retraining/retrain_request.json`
 - `artifacts/evaluation/model/retraining/retrain_run.json`
@@ -756,7 +610,7 @@ Quando a stack é iniciada com `poetry run task appstack`, os serviços ficam di
 | Prometheus | `http://localhost:9090` | Coleta e exploração das métricas |
 | Grafana | `http://localhost:3000` | Dashboards operacionais |
 
-O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis com o código do projeto. Com isso, o serving carrega o mesmo modelo champion e o mesmo pipeline de features já materializados localmente, enquanto o MLflow expõe os experimentos rastreados em `mlruns/`.
+O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis com o código do projeto. Com isso, o serving carrega o mesmo modelo champion e o mesmo pipeline de features materializados localmente, enquanto o MLflow expõe os experimentos rastreados em `mlruns/`.
 
 ### Fluxo sugerido para validação local
 
@@ -776,20 +630,20 @@ Resumo rápido:
 
 ## Artefatos Relevantes
 
-Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e operação do projeto. Eles também servem como evidência objetiva do que já foi implementado.
+Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e operação do projeto. Eles também servem como evidência objetiva da estrutura e dos fluxos documentados no repositório.
 
 | Artefato | Papel no projeto |
 |---|---|
-| `data/interim/cleaned.parquet` | Base saneada da camada `interim`: já teve identificadores diretos removidos, passou por deduplicação, remoção de nulos e validação de schema, mas ainda não foi convertida para o formato final de modelagem. |
-| `data/processed/train.parquet` | Base final de treino da camada `processed`: já passou por split, criação de features derivadas, remoção de leakage, encoding e scaling, ficando pronta para consumo pelos algoritmos. |
+| `data/interim/cleaned.parquet` | Base saneada da camada `interim`, com remoção de identificadores diretos, deduplicação, tratamento de nulos e validação de schema, antes da conversão para o formato final de modelagem. |
+| `data/processed/train.parquet` | Base final de treino da camada `processed`, com split, criação de features derivadas, remoção de leakage, encoding e scaling, pronta para consumo pelos algoritmos. |
 | `data/processed/test.parquet` | Base final de teste da camada `processed`, gerada com o mesmo pipeline do treino e mantida separada para validação sem vazamento. |
 | `data/processed/feature_columns.json` | Registra a ordem e os nomes finais das features, ajudando a manter consistência entre treino e inferência. |
 | `data/processed/schema_report.json` | Evidência da validação estrutural dos dados processados, reforçando a etapa de qualidade de dados. |
 | `artifacts/models/feature_pipeline.joblib` | Pipeline de transformação persistido para reutilização no serving, evitando divergência entre treino e produção. |
-| `artifacts/models/model_current.pkl` | Modelo champion atualmente mantido como versão principal para inferência. |
-| `artifacts/models/model_current_metadata.json` | Metadados do champion atual, incluindo informações de versão, configuração e métricas relevantes. |
+| `artifacts/models/model_current.pkl` | Modelo champion mantido como versão principal para inferência. |
+| `artifacts/models/model_current_metadata.json` | Metadados do champion, incluindo informações de versão, configuração e métricas relevantes. |
 | `artifacts/models/challengers/` | Diretório reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promoção. |
-| `artifacts/logs/inference/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. No contrato atual, ele registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
+| `artifacts/logs/inference/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. O contrato registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
 | `artifacts/evaluation/model/drift/drift_report.html` | Relatório HTML oficial do projeto para drift, coerente com `drift_metrics.json` e com a decisão operacional baseada em PSI. |
 | `artifacts/evaluation/model/drift/drift_report_evidently.html` | Relatório auxiliar do Evidently, mantido para diagnóstico visual complementar das distribuições e widgets estatísticos. |
 | `artifacts/evaluation/model/drift/drift_metrics.json` | Consolidação das métricas de drift, incluindo PSI por feature e resumo para automação de decisão. |
@@ -813,6 +667,7 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
 - [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
 - [docs/EVALUATION_MODEL_METRICS.md](docs/EVALUATION_MODEL_METRICS.md)
+- [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
 - [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md)
 - [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
 - [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)

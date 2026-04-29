@@ -17,18 +17,17 @@
 
 ## Objetivo
 
-Este documento descreve como a trilha de RAG do projeto funciona hoje, como o
+Este documento descreve como a trilha de RAG do projeto funciona, como o
 indice e carregado, como o cache acelera reinicios e como interpretar o uso do
 endpoint `POST /llm/chat`.
 
-O desenho foi atualizado para ficar aderente ao que a Datathon cobra nas etapas
-de:
+O desenho atende ao que a Datathon cobra nas etapas de:
 
 - agente com tools de negocio
 - RAG retornando contexto relevante do repositorio
 - observabilidade da trilha de LLM
 
-As referencias principais de requisito continuam sendo:
+As referencias principais de requisito sao:
 
 - [README.md](../README.md)
 - [STATUS_ATUAL_PROJETO.md](../STATUS_ATUAL_PROJETO.md)
@@ -43,11 +42,11 @@ fontes:
 - todos os arquivos [`docs/**/*.md`](./)
 - um conjunto pequeno de JSON relevantes definidos em codigo
 
-Os JSON continuam hardcoded por design para manter governanca e evitar que
+Os JSON ficam hardcoded por design para manter governanca e evitar que
 artefatos temporarios, dashboards e saidas repetitivas do MLflow entrem no
 indice por engano.
 
-Hoje os JSON mais importantes indexados sao:
+Os JSON mais importantes indexados sao:
 
 - `data/processed/feature_columns.json`
 - `data/processed/schema_report.json`
@@ -96,7 +95,7 @@ Os chunks sao mantidos com:
 
 O runtime do RAG usa embeddings locais com FastEmbed, que executa modelos ONNX
 quantizados sem carregar PyTorch no container de serving. O backend e o modelo
-padrao atual sao configurados em
+padrao sao configurados em
 [configs/pipeline_global_config.yaml](../configs/pipeline_global_config.yaml).
 
 O fluxo de consulta faz:
@@ -106,7 +105,7 @@ O fluxo de consulta faz:
 3. rerank lexical leve nos melhores candidatos
 4. retorno do `top_k` com fonte e identificacao do chunk
 
-Isso significa que a busca ja nao depende mais apenas de overlap lexical bruto.
+Isso significa que a busca nao depende apenas de overlap lexical bruto.
 
 ## Cache Persistido
 
@@ -147,7 +146,7 @@ O RAG usa memoria principalmente em tres componentes:
 - textos dos chunks em memoria
 - matriz de embeddings normalizada usada na busca vetorial
 
-Nao ha banco vetorial separado neste desenho atual. O indice fica no proprio
+Nao ha banco vetorial separado nesse desenho. O indice fica no proprio
 processo Python do serving.
 
 As metricas expostas incluem:
@@ -405,5 +404,5 @@ Se o agente estiver funcionando como esperado, o comportamento geral deve ser:
   em `index_build_history.jsonl` para verificar se alguma fonte mudou.
 - Se a resposta do agente ficar generica, use `include_trace=true` para confirmar
   se `rag_search` foi realmente acionada.
-- O endpoint `GET /llm/status` agora tambem ajuda no diagnostico do estado do
+- O endpoint `GET /llm/status` tambem ajuda no diagnostico do estado do
   RAG, alem do estado do `llm_provider` ativo.

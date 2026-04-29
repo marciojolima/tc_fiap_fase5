@@ -1,6 +1,6 @@
 experiment:
-  name: random_forest_v2
-  run_name: random_forest_v2
+  name: random_forest_v2_precision
+  run_name: random_forest_v2_precision
   version: 0.2.0
   algorithm: random_forest
   flavor: sklearn
