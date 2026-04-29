@@ -20,12 +20,12 @@
 
 ## Objetivo no contexto do projeto
 
-Esta evolução adiciona uma Feature Store ao projeto de churn bancário sem reescrever o pipeline já existente. A ideia é aproximar a arquitetura de um cenário produtivo, mantendo a execução local simples, didática e defensável em banca.
+Este documento descreve a Feature Store do projeto de churn bancário sem reescrever o pipeline existente. A arquitetura aproxima a solução de um cenário produtivo, mantendo a execução local simples, didática e defensável em banca.
 
-No desenho atual:
+No desenho da solução:
 
-- o pipeline principal continua gerando os datasets de treino em `data/processed/`
-- uma camada-ponte exporta as features já prontas para `data/feature_store/customer_features.parquet`
+- o pipeline principal gera os datasets de treino em `data/processed/`
+- uma camada-ponte exporta as features prontas para `data/feature_store/customer_features.parquet`
 - o Feast usa esse parquet como offline source
 - o Redis, em container, funciona como online store para serving de baixa latência
 - `FeatureServices` versionados por modelo explicitam o contrato de consumo
@@ -36,7 +36,7 @@ Visão arquitetural resumida:
 
 ## Por que esta abordagem foi escolhida
 
-O projeto já possui um pipeline de feature engineering centralizado e persistido em `artifacts/models/feature_pipeline.joblib`. Em vez de duplicar regras em um segundo fluxo, a integração com o Feast reaproveita esse pipeline para produzir um dataset offline compatível com feature store.
+O projeto usa um pipeline de feature engineering centralizado e persistido em `artifacts/models/feature_pipeline.joblib`. Em vez de duplicar regras em um segundo fluxo, a integração com o Feast reaproveita esse pipeline para produzir um dataset offline compatível com feature store.
 
 Isso atende a dois objetivos importantes do Datathon:
 
@@ -53,7 +53,7 @@ Esse dataset contém:
 
 - `customer_id` como chave da entidade
 - `event_timestamp` e `created_timestamp`
-- as features já transformadas e alinhadas com o modelo atual
+- as features transformadas e alinhadas com o modelo champion
 
 O Feast usa essa fonte para registrar as definições e materializar dados para a camada online.
 
@@ -65,7 +65,7 @@ O Redis armazena apenas o estado mais recente das features materializadas. Isso 
 
 ## Features expostas na Feature Store
 
-Foi decidido publicar na Feature Store as features já usadas pelo modelo atual:
+As features publicadas na Feature Store são as usadas pelo modelo champion:
 
 - `CreditScore`
 - `Age`
@@ -85,22 +85,22 @@ Foi decidido publicar na Feature Store as features já usadas pelo modelo atual:
 
 Justificativa:
 
-- são exatamente as features consumidas pelo modelo hoje
-- já passaram pelo pipeline oficial de transformação
+- são as features consumidas pelo modelo
+- passam pelo pipeline oficial de transformação
 - evitam expor na online store colunas que não entram na inferência, como target, leakage e identificadores diretos
 
 Observação importante:
 
-- `Gender` e `Card Type` ficam armazenadas em formato numérico porque o pipeline atual aplica `OrdinalEncoder`
-- `Geo_Germany` e `Geo_Spain` já representam a versão one-hot de `Geography`
+- `Gender` e `Card Type` ficam armazenadas em formato numérico porque o pipeline aplica `OrdinalEncoder`
+- `Geo_Germany` e `Geo_Spain` representam a versão one-hot de `Geography`
 
 Ou seja, a Feature Store publica um conjunto de atributos pronto para inferência, e não a cópia literal das colunas brutas.
 
 ## Feature Services por versão de modelo
 
-Para reforçar governança e rastreabilidade, o projeto passou a declarar `FeatureServices` específicos por versão de modelo, mesmo reaproveitando a mesma `FeatureView` base.
+Para reforçar governança e rastreabilidade, o projeto declara `FeatureServices` específicos por versão de modelo, mesmo reaproveitando a mesma `FeatureView` base.
 
-Exemplos atuais:
+Exemplos:
 
 - `customer_churn_rf_v1`
 - `customer_churn_rf_v2`
@@ -110,7 +110,7 @@ Exemplos atuais:
 
 Na prática:
 
-- a `FeatureView` continua sendo `customer_churn_features`
+- a `FeatureView` é `customer_churn_features`
 - o `FeatureService` define qual contrato de features cada modelo consome
 - a configuração de treino aponta explicitamente para esse contrato em `feast.feature_service_name`
 - o serving resolve a leitura online pelo `FeatureService` do modelo ativo
@@ -139,7 +139,7 @@ Embora apareçam juntos no uso cotidiano, `apply` e `materialize` cumprem papéi
 Na prática:
 
 - `apply` lê `feature_store/repo.py` e registra `Entity`, `FeatureView` e `FeatureServices`
-- `materialize-incremental` lê o parquet offline já exportado e envia para o Redis apenas a janela incremental pendente
+- `materialize-incremental` lê o parquet offline exportado e envia para o Redis apenas a janela incremental pendente
 
 Isso significa que:
 
@@ -155,7 +155,7 @@ Em outras palavras:
 
 - `dvc repro` reconstrói artefatos offline do pipeline
 - `feast materialize-incremental` sincroniza esses dados com a online store
-- `/predict` apenas consulta o que já estiver materializado
+- `/predict` consulta apenas o que estiver materializado
 
 Essa separação foi mantida de propósito para deixar explícita a diferença entre:
 
@@ -164,13 +164,13 @@ Essa separação foi mantida de propósito para deixar explícita a diferença e
 
 ## Relação entre offline e online no projeto
 
-No desenho atual, a camada offline é a fonte publicada de referência da Feature Store. O Redis funciona como projeção operacional dessa base para serving de baixa latência.
+No desenho da solução, a camada offline é a fonte publicada de referência da Feature Store. O Redis funciona como projeção operacional dessa base para serving de baixa latência.
 
 Portanto:
 
 - a offline store guarda a publicação completa preparada para o Feast
 - a online store guarda apenas o estado necessário para leitura rápida
-- treino e histórico continuam mais próximos da camada offline
+- treino e histórico ficam mais próximos da camada offline
 - inferência online consulta a camada materializada no Redis
 
 Esse desenho resolve o principal gap arquitetural do projeto: evitar uma online store destrutiva baseada em limpeza total e recarga integral.
@@ -226,7 +226,7 @@ Esse comando não faz `full flush` do Redis. Ele usa a janela incremental mantid
 
 ## Fluxo operacional recomendado
 
-No estado atual do projeto, o fluxo mais seguro para preparar a Feature Store e
+O fluxo mais seguro para preparar a Feature Store e
 depois usar o serving e:
 
 ```bash
@@ -299,18 +299,18 @@ poetry run python -m src.feast_ops.demo --customer-id 15634602
 Esta evolução se conecta ao restante da plataforma desta forma:
 
 - `DVC`: rastreia o artefato offline exportado da feature store como parte do pipeline local
-- `MLflow`: continua sendo o tracking de experimentos e lineage de treino; o nome do `FeatureService` passa a ser registrado como parte do contrato do modelo
-- `Feature engineering`: segue centralizado no pipeline já existente, sem reimplementação paralela
+- `MLflow`: é o tracking de experimentos e lineage de treino; o nome do `FeatureService` passa a ser registrado como parte do contrato do modelo
+- `Feature engineering`: segue centralizado no pipeline existente, sem reimplementação paralela
 - `Serving`: consulta a online store usando o `FeatureService` compatível com o modelo ativo
 - `Docker Compose`: ganha um Redis local simples, suficiente para demonstração
 
 ## Limitações assumidas
 
 - o dataset de churn é estático, então o `event_timestamp` é sintético
-- o fluxo atual demonstra batch-to-online materialization, não streaming
+- o fluxo demonstra batch-to-online materialization, não streaming
 - não há autenticação nem TLS no Redis local, por escolha deliberada de simplicidade
-- os `FeatureServices` atuais ainda reaproveitam a mesma `FeatureView`, porque nesta etapa a ênfase é governança e versionamento do contrato, não divergência real de features
-- a atualização da online store ainda é manual; não há scheduler dedicado para `materialize`
+- os `FeatureServices` reaproveitam a mesma `FeatureView`, porque a ênfase está em governança e versionamento do contrato, não em divergência real de features
+- a atualização da online store é manual; não há scheduler dedicado para `materialize`
 
 ## Próximos passos naturais
 

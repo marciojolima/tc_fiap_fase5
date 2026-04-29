@@ -14,7 +14,7 @@
 - [Observação sobre AUC](#observação-sobre-auc)
 - [Limitações da Accuracy](#limitações-da-accuracy)
 - [Conclusões Finais](#conclusões-finais)
-- [Conexão com o Fluxo Atual de Retreino](#conexão-com-o-fluxo-atual-de-retreino)
+- [Conexão com o Fluxo de Retreino](#conexão-com-o-fluxo-de-retreino)
 
 Ordenadas da mais importante para a menos importante no contexto de churn bancário,
 onde **perder um cliente sem perceber** custa mais do que acionar um cliente fiel por engano.
@@ -25,7 +25,7 @@ onde **perder um cliente sem perceber** custa mais do que acionar um cliente fie
 | 2 | **AUC** | ★★★★☆ Alta | Qualidade do ranqueamento de risco, independente do threshold | Permite comparar modelos e ajustar o ponto de corte depois. Um AUC alto significa que o modelo *sabe quem é mais arriscado*, mesmo que você mude o threshold conforme o budget de retenção. |
 | 3 | **F1** | ★★★★☆ Alta | Equilíbrio entre precision e recall | Métrica de síntese: penaliza modelos que sacrificam um lado. Indispensável quando as classes são desbalanceadas (muito mais clientes fiéis do que churners), como é típico em churn bancário. |
 | 4 | **Precision** | ★★★☆☆ Moderada | Dos que o modelo acusou de churnar, quantos realmente foram | Controla o desperdício de orçamento de retenção. Importante, mas secundária: é melhor gastar uma oferta a mais do que perder um cliente de vez. |
-| 5 | **Accuracy** | ★☆☆☆☆ Baixa | Percentual de acertos totais (churners + fiéis) | Métrica enganosa em churn: se 80% dos clientes ficam, um modelo burro que diz "ninguém sai" já chega a 80% de accuracy — sem detectar nenhum churner. Útil só como referência geral. |
+| 5 | **Accuracy** | ★☆☆☆☆ Baixa | Percentual de acertos totais (churners + fiéis) | Métrica enganosa em churn: se 80% dos clientes ficam, um modelo burro que diz "ninguém sai" alcança 80% de accuracy sem detectar nenhum churner. Útil só como referência geral. |
 
 ---
 
@@ -41,7 +41,7 @@ recall → AUC → F1 → precision → accuracy
 custo alto por ação), a precision sobe de importância e chega perto do F1 — porque acionar
 o cliente errado tem custo real.
 
-> No projeto com `class_weight=balanced`, o modelo já compensa o desequilíbrio das classes
+> No projeto com `class_weight=balanced`, o modelo compensa o desequilíbrio das classes
 > e dá mais peso ao recall — que é a escolha certa para churn bancário.
 
 ## Análise de Modelos de Classificação — Churn Bancário
@@ -70,7 +70,7 @@ comparação champion-challenger.
 
 Todos utilizando o mesmo conjunto de dados (`processed_v1`) e divisão de treino/teste (80/20).
 
-No estado atual do projeto, o champion operacional está alinhado ao
+O champion operacional está alinhado ao
 `random_forest_current`, cuja leitura prática é próxima da família de resultados
 mais equilibrados mostrada nesta tabela.
 
@@ -196,15 +196,15 @@ Apesar de alguns modelos apresentarem alta accuracy:
   * **Precision alta → abordagem conservadora**
 * **AUC semelhante entre modelos indica que o ganho está mais na decisão (threshold) do que no modelo em si**
 
-## Conexão com o Fluxo Atual de Retreino
+## Conexão com o Fluxo de Retreino
 
-No fluxo implementado hoje, essas métricas não ficam apenas em documentação:
+No fluxo implementado, essas métricas não ficam apenas em documentação:
 
-- elas ajudam a registrar o champion atual
+- elas ajudam a registrar o champion
 - entram na análise do challenger gerado em retreino
 - sustentam a decisão auditável em `promotion_decision.json`
 
-No estágio atual, a regra de promoção usa `auc` como métrica principal com
+Na configuração de promoção, `auc` é a métrica principal, com
 delta mínimo explícito. Isso não significa que AUC seja a única métrica
 relevante para negócio, mas ela funciona bem como critério padronizado de
 comparação inicial entre versões do modelo.

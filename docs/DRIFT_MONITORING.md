@@ -3,38 +3,38 @@
 ## Índice
 
 - [Objetivo](#objetivo)
-- [Estratégia Atual](#estratégia-atual)
+- [Estratégia de Monitoramento](#estratégia-de-monitoramento)
 - [Como Pensar no Passo 1](#como-pensar-no-passo-1)
 - [Passo a Passo Operacional](#passo-a-passo-operacional)
 - [O Que Acontece em Cada Passo](#o-que-acontece-em-cada-passo)
 - [PSI em Termos Intuitivos](#psi-em-termos-intuitivos)
-- [Tipos de Drift Monitorados Hoje](#tipos-de-drift-monitorados-hoje)
-- [O Que Ainda Nao Esta Sendo Tratado](#o-que-ainda-nao-esta-sendo-tratado)
+- [Tipos de Drift Monitorados](#tipos-de-drift-monitorados)
+- [O Que Nao Esta Sendo Tratado](#o-que-nao-esta-sendo-tratado)
 - [Base de Referencia e Base Corrente](#base-de-referencia-e-base-corrente)
 - [Metricas e Ferramentas](#metricas-e-ferramentas)
 - [Consolidacao do Status](#consolidacao-do-status)
 - [Gatilho de Retreino](#gatilho-de-retreino)
-- [Estrategia Atual de Automacao](#estrategia-atual-de-automacao)
+- [Estrategia de Automacao](#estrategia-de-automacao)
 - [Estrutura da Solicitacao de Retreino](#estrutura-da-solicitacao-de-retreino)
 - [Estrutura do Resultado do Retreino](#estrutura-do-resultado-do-retreino)
 - [Comparacao Champion vs Challenger](#comparacao-champion-vs-challenger)
-- [Leitura Atual do Core](#leitura-atual-do-core)
+- [Leitura do Core](#leitura-do-core)
 
 ## Objetivo
 
-Este documento descreve a estratégia atual de monitoramento de drift do projeto,
-quais tipos de drift estão sendo observados no momento e como o gatilho de
-retreino funciona na implementação atual.
+Este documento descreve a estratégia de monitoramento de drift do projeto,
+quais tipos de drift são observados e como o gatilho de retreino funciona na
+implementação.
 
 O foco desta etapa é responder a uma pergunta central de operação:
 
-- os dados e o comportamento preditivo do modelo continuam compatíveis com o
+- os dados e o comportamento preditivo do modelo permanecem compatíveis com o
   padrão usado no treinamento?
 
 Se a resposta começar a ser "não", o sistema precisa registrar isso com
 rastreabilidade e iniciar o fluxo de retreino.
 
-## Estratégia Atual
+## Estratégia de Monitoramento
 
 O projeto utiliza uma estratégia de monitoramento batch baseada na comparação
 entre:
@@ -42,7 +42,7 @@ entre:
 - uma base de referência
 - uma base corrente
 
-Hoje, a base de referência é o conjunto processado de treino e a base corrente
+A base de referência é o conjunto processado de treino e a base corrente
 é formada a partir do log de inferências da API.
 
 Arquivos principais do fluxo:
@@ -53,13 +53,13 @@ Arquivos principais do fluxo:
 - [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
 - [src/model_lifecycle/train.py](../src/model_lifecycle/train.py)
 
-O fluxo atual é:
+O fluxo é:
 
 1. a API registra as inferências em `artifacts/logs/inference/predictions.jsonl`
 2. a rotina de drift carrega base de referência e base corrente
 3. o sistema compara distribuições de features e, quando habilitado, das
    probabilidades previstas
-4. o sistema valida se a base corrente já atingiu o tamanho mínimo para decisão
+4. o sistema valida se a base corrente atingiu o tamanho mínimo para decisão
 5. o sistema consolida um status final: `ok`, `warning`, `critical` ou
    `insufficient_data`
 6. em caso crítico e com amostra elegível, é gerada uma solicitação auditável
@@ -80,7 +80,7 @@ poetry run task appstack
 Isso é importante porque a base corrente do monitoramento não nasce sozinha.
 Ela é construída a partir das predições recebidas pela API.
 
-No desenho atual do projeto, o drift compara:
+No desenho do projeto, o drift compara:
 
 - a base de referência: `data/processed/train.parquet`
 - a base corrente: `artifacts/logs/inference/predictions.jsonl`
@@ -94,13 +94,13 @@ Mapeamento no código:
 - log de inferência que alimenta a base corrente: [src/evaluation/model/drift/prediction_logger.py](../src/evaluation/model/drift/prediction_logger.py)
 
 Esse log é justamente o insumo que depois será lido pela rotina de drift.
-No contrato atual, ele representa principalmente as features transformadas
+No contrato desse log, ele representa principalmente as features transformadas
 efetivamente servidas ao modelo, e não mais apenas o payload bruto recebido pela
 API.
 
 ## Passo a Passo Operacional
 
-O fluxo principal de análise de drift no projeto hoje pode ser resumido assim:
+O fluxo principal de análise de drift no projeto pode ser resumido assim:
 
 1. subir o serving
 2. gerar predições reais pela API
@@ -203,11 +203,11 @@ Leitura rápida:
 ### 4. Gatilho de Retreino
 
 Se o status final for `critical`, o sistema abre uma solicitação auditável de
-retreino e, no modo atual, também executa o retreino.
+retreino e, no modo configurado, também executa o retreino.
 
 Antes disso, existe uma guarda operacional importante: se a base corrente tiver
 menos linhas do que o mínimo configurado em
-`minimum_current_sample_size_for_decision`, o PSI ainda é calculado e salvo
+`minimum_current_sample_size_for_decision`, o PSI é calculado e salvo
 para observabilidade, mas o status vira `insufficient_data` e nenhum retreino é
 aberto.
 
@@ -226,7 +226,7 @@ Artefatos dessa fase:
 - `artifacts/evaluation/model/retraining/retrain_request.json`
 - `artifacts/evaluation/model/retraining/retrain_run.json`
 
-Formas atuais de acionamento:
+Formas de acionamento:
 
 - fluxo batch automático, quando o drift crítico atende a política configurada
 - chamada explícita do executor
@@ -239,11 +239,11 @@ operacional, não tirar conclusão estatística forte sobre o negócio.
 Em amostras pequenas:
 
 - o PSI pode ficar artificialmente alto
-- o projeto continua registrando métricas e histórico
+- o projeto registra métricas e histórico
 - o status operacional passa a ser `insufficient_data`
 - o retreino fica bloqueado até haver volume mínimo
 
-Hoje o mínimo operacional está configurado em:
+O mínimo operacional está configurado em:
 
 ```yaml
 minimum_current_sample_size_for_decision: 30
@@ -252,14 +252,14 @@ minimum_current_sample_size_for_decision: 30
 Isso evita que uma amostra muito pequena dispare retreino automático com base
 em um PSI estatisticamente frágil.
 
-Na prática, o pipeline já demonstra:
+Na prática, o pipeline demonstra:
 
 - captura online de inferências
 - monitoramento batch separado do serving
 - cálculo de drift com PSI
 - histórico de execuções
 - gatilho auditável de retreino
-- execução automática do retreino no modo atual
+- execução automática do retreino no modo configurado
 
 ## PSI em Termos Intuitivos
 
@@ -275,13 +275,13 @@ habilitado, das probabilidades previstas entre:
 
 De forma intuitiva, o PSI responde a uma pergunta simples:
 
-- a distribuição atual está parecida com a distribuição que o modelo viu no
+- a distribuição corrente está parecida com a distribuição que o modelo viu no
   treinamento?
 
 Se a resposta for "sim", o PSI tende a ficar baixo.
 Se a resposta for "não", o PSI sobe.
 
-Leitura prática adotada hoje:
+Leitura prática adotada:
 
 - `PSI < 0.10`: sem sinal forte de drift
 - `0.10 <= PSI < 0.20`: alerta
@@ -294,19 +294,19 @@ exploratório e não como justificativa para retreino.
 Esses thresholds são os mesmos usados pela rotina de decisão operacional e
 estão definidos em [configs/monitoring/global_monitoring.yaml](../configs/monitoring/global_monitoring.yaml).
 
-## Tipos de Drift Monitorados Hoje
+## Tipos de Drift Monitorados
 
-Atualmente o projeto monitora dois tipos principais:
+O projeto monitora dois tipos principais:
 
 ### 1. Data Drift
 
-Este é o eixo principal do monitoramento atual.
+Este é o eixo principal do monitoramento.
 
 O sistema calcula PSI por feature para verificar mudança de distribuição entre
 referência e produção. A decisão consolidada usa os thresholds configurados no
 arquivo de monitoramento.
 
-Trecho atual do YAML:
+Trecho do YAML:
 
 ```yaml
 data_drift:
@@ -326,7 +326,7 @@ Na prática:
 O projeto também monitora mudança de distribuição das probabilidades previstas
 (`churn_probability`), usando PSI.
 
-Trecho atual do YAML:
+Trecho do YAML:
 
 ```yaml
 prediction_drift:
@@ -339,11 +339,11 @@ Esse monitoramento ajuda a responder se o comportamento do modelo em produção
 está se afastando do comportamento esperado, mesmo antes de termos um ciclo
 completo de ground truth em produção.
 
-## O Que Ainda Nao Esta Sendo Tratado
+## O Que Nao Esta Sendo Tratado
 
-Neste momento, o projeto ainda nao implementa concept drift de forma completa.
+O projeto nao implementa concept drift de forma completa.
 
-Ou seja, ainda nao estamos comparando:
+Ou seja, o fluxo nao compara:
 
 - previsao feita em `T-1`
 - verdade observada em `T`
@@ -354,7 +354,7 @@ nas etapas seguintes da evolucao.
 
 ## Base de Referencia e Base Corrente
 
-Trecho central da configuracao atual:
+Trecho central da configuracao:
 
 ```yaml
 drift:
@@ -378,13 +378,13 @@ Interpretacao:
 
 ## Metricas e Ferramentas
 
-O monitoramento atual usa:
+O monitoramento usa:
 
 - `PSI` como metrica principal de estabilidade de distribuicao e decisao
   operacional
 - `Evidently` como camada auxiliar de diagnostico visual
 
-Os artefatos gerados hoje incluem:
+Os artefatos gerados incluem:
 
 - `artifacts/evaluation/model/drift/drift_report.html`
 - `artifacts/evaluation/model/drift/drift_report_evidently.html`
@@ -412,7 +412,7 @@ Esse status e a base do gatilho de retreino.
 Quando o status consolidado e `critical`, o projeto considera que ha evidencias
 suficientes para abrir um fluxo de retreino.
 
-Trecho atual do YAML:
+Trecho do YAML:
 
 ```yaml
 retraining:
@@ -437,9 +437,9 @@ Interpretacao dos campos:
 - `promotion_decision_path`: onde fica a decisao auditavel champion vs challenger
 - `promotion_rules`: regra minima para considerar o challenger elegivel
 
-## Estrategia Atual de Automacao
+## Estrategia de Automacao
 
-No estado atual, o modo configurado e:
+O modo configurado e:
 
 ```yaml
 trigger_mode: auto_train_manual_promote
@@ -450,12 +450,11 @@ Isso significa:
 - o drift critico abre a solicitacao de retreino
 - o retreino pode ser executado automaticamente
 - o retreino gera um challenger separado
-- o challenger e comparado com o champion atual
-- a promocao do novo modelo ainda nao e automatica
+- o challenger e comparado com o champion
+- a promocao do novo modelo nao e automatica
 
-Essa decisao e proposital. Ela reduz risco e combina melhor com o momento atual
-do projeto, em que o foco ainda e consolidar a base de monitoramento e
-rastreabilidade antes de automatizar a promocao do challenger.
+Essa decisao reduz risco e prioriza monitoramento e rastreabilidade antes da
+automatizacao da promocao do challenger.
 
 ## Estrutura da Solicitacao de Retreino
 
@@ -526,10 +525,10 @@ Exemplo conceitual:
 
 ## Comparacao Champion vs Challenger
 
-Depois que o retreino termina, o projeto agora executa uma comparacao auditavel
+Depois que o retreino termina, o projeto executa uma comparacao auditavel
 entre:
 
-- o champion atual, representado pelo metadata sidecar de `model_current.pkl`
+- o champion, representado pelo metadata sidecar de `model_current.pkl`
 - o challenger recem-treinado, salvo em `artifacts/models/challengers/`
 
 Arquivos envolvidos:
@@ -542,30 +541,29 @@ O resultado dessa etapa vai para:
 
 - `artifacts/evaluation/model/retraining/promotion_decision.json`
 
-Essa decisao ainda nao promove nada sozinha. Ela apenas responde:
+Essa decisao nao promove nada sozinha. Ela apenas responde:
 
 - o challenger ficou elegivel para promocao?
 - qual foi a regra usada?
 - qual o delta entre champion e challenger?
 
-No estado atual, a regra minima padrao e:
+A regra minima padrao e:
 
 - `primary_metric = auc`
 - `minimum_improvement = 0.005`
 
-## Leitura Atual do Core
+## Leitura do Core
 
-Mesmo antes das proximas etapas, o core do monitoramento de drift do projeto
-hoje pode ser resumido assim:
+O core do monitoramento de drift do projeto pode ser resumido assim:
 
 - monitoramos `data drift` e `prediction drift`
 - usamos `PSI` como metrica principal de decisao
 - classificamos o estado em `ok`, `warning`, `critical` ou `insufficient_data`
 - `critical` abre solicitacao de retreino
-- no modo atual, o retreino pode ser disparado automaticamente
-- o retreino agora gera um challenger separado
+- no modo configurado, o retreino pode ser disparado automaticamente
+- o retreino gera um challenger separado
 - o challenger e comparado com o champion antes de qualquer promocao
-- a promocao ainda permanece manual e auditavel
+- a promocao permanece manual e auditavel
 
-Essa base deve continuar a mesma nas proximas etapas. O que deve evoluir depois
-e principalmente a promocao controlada do challenger aprovado.
+Essa base organiza o monitoramento, o retreino e a comparacao controlada entre
+champion e challenger.
