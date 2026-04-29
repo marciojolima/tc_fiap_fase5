@@ -144,6 +144,10 @@ mlflowrain = 'python -m src.model_lifecycle.train'
 # Lista modelos disponiveis no ambiente Ollama configurado no YAML.
 ollama_list = 'python scripts/list_ollama_models.py'
 
+# predicoes sinteticas
+genpred_synthetic_80_drift = "python -m scripts.generate_synthetic_predictions --num-predictions 80 --drift with_drift --output artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_80_with_drift.jsonl --metadata-output artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_80_with_drift.metadata.json"
+genpred_synthetic_100_no_drift = "python -m scripts.generate_synthetic_predictions --num-predictions 100 --drift no_drift --output artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_100_no_drift.jsonl --metadata-output artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_100_no_drift.metadata.json"
+
 post_test = 'coverage html'
 pre_format = 'ruff check --fix'
 pre_test = 'task lint'
