@@ -1,4 +1,6 @@
-# TC FIAP Fase 5
+# Datathon Fase 5
+# Previsão de Churn Bancário com Machine Learning + Agente LLM
+# FIAP Pós-Tech MLET | Grupo 30 | Maio 2026  
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python)
 ![MLflow](https://img.shields.io/badge/MLflow-3.10.1-0194E2?style=for-the-badge&logo=mlflow)
@@ -11,10 +13,21 @@
 ![Redis](https://img.shields.io/badge/Redis-online%20store-DC382D?style=for-the-badge&logo=redis)
 ![Poetry](https://img.shields.io/badge/Poetry-dependencies-60A5FA?style=for-the-badge&logo=poetry)
 
-Projeto integrador da Fase 05 do curso MLET da FIAP, desenvolvido no formato de Datathon. O repositório implementa uma solução de predição de churn bancário com foco em MLOps, rastreabilidade, observabilidade e evolução arquitetural para componentes com LLMs e agentes.
+## Problema de Negócio
+
+Identificar clientes com alta probabilidade de evasão (churn) para permitir ações de retenção proativas pelo banco.
+
+## Métrica de negócio  
+**≥ 70%** dos clientes que realmente evadem devem estar entre os 20% com maior risco previsto (recall@top20% ≥ 0.70).
 
 
-O `README` apresenta o projeto, a arquitetura e a forma de execução. O acompanhamento de aderência aos requisitos, entregas concluídas e pendências fica centralizado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
+## Estratégia de seleção de modelo  
+A escolha do modelo não é fixa, sendo orientada pelo objetivo de negócio e pelas restrições operacionais.
+
+- Em cenários onde o objetivo é maximizar a retenção e evitar perda de clientes a qualquer custo, são priorizados modelos com **maior recall**.
+- Em cenários com limitação de capacidade operacional (ex: equipe de retenção reduzida), são priorizados modelos com **maior precisão (precision)**, garantindo maior eficiência nas ações.
+
+Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritmos) podem ser promovidos a modelo em produção conforme o critério de negócio vigente, caracterizando uma abordagem orientada a valor e não apenas a métricas técnicas isoladas.
 
 ## Sumário
 
@@ -49,8 +62,6 @@ O foco principal está em demonstrar práticas de engenharia de ML esperadas no 
 - monitoramento batch de drift com artefatos auditáveis
 - feature store local com Feast + Redis para materialização online incremental
 - stack local reproduzível com serving, MLflow, Prometheus e Grafana
-
-Além da trilha tabular principal, o repositório inclui uma trilha **LLM** (agente ReAct, RAG, guardrails e integração com `llm_provider`) já utilizável via API; avaliação formal (RAGAS, benchmark com várias configs) e CI/CD específicos do agente são os próximos passos planejados. O andamento frente aos requisitos do Datathon continua detalhado em [STATUS_ATUAL_PROJETO.md](STATUS_ATUAL_PROJETO.md).
 
 ## O que o Projeto Entrega
 
