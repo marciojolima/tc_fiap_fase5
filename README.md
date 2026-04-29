@@ -335,7 +335,7 @@ poetry run dvc repro
 
 O projeto utiliza DVC para dados e artefatos versionados. O remote padrão está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
 
-Se o DVC estiver instalado no ambiente, você pode usar `dvc ...` diretamente. Se preferir usar as dependências gerenciadas pelo projeto, utilize `poetry run dvc ...`.
+Ao longo deste README, os exemplos usam `poetry run dvc ...`.
 
 #### Como a configuração está organizada
 
@@ -349,13 +349,7 @@ Em outras palavras:
 
 #### 1. Configure o remote
 
-A configuração compartilhada aponta para o remote `datathon_remote`. Para recriá-lo manualmente em outra máquina, o fluxo é:
-
-```bash
-dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
-```
-
-Se estiver usando o ambiente do projeto via Poetry:
+A configuração compartilhada aponta para o remote `datathon_remote`. Para recriá-lo manualmente em outra máquina:
 
 ```bash
 poetry run dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
@@ -364,13 +358,6 @@ poetry run dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
 #### 2. Configure as credenciais locais do Google Drive
 
 As credenciais OAuth não devem ir para o Git. Por isso, elas devem ser gravadas localmente com `--local`, o que escreve em `.dvc/config.local`:
-
-```bash
-dvc remote modify --local datathon_remote gdrive_client_id <ID>
-dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
-```
-
-Ou, usando o ambiente do projeto:
 
 ```bash
 poetry run dvc remote modify --local datathon_remote gdrive_client_id <ID>
@@ -405,12 +392,6 @@ Na primeira autenticação, o DVC pode abrir um fluxo de autorização OAuth no 
 Depois do remote e das credenciais estarem corretos, baixe os dados com:
 
 ```bash
-dvc pull
-```
-
-Ou:
-
-```bash
 poetry run dvc pull
 ```
 
@@ -430,7 +411,7 @@ dvc pull
 - `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 - ** para maiores detalhes consulte o arquivo: [`dvc.yaml`](dvc.yaml)**
 
-### 5. Stack local com Docker Compose
+### 4. Stack local com Docker Compose
 
 ```bash
 cp .env.example .env
@@ -472,7 +453,7 @@ Para encerrar os serviços:
 poetry run task appstack_down
 ```
 
-### 6. Execução manual isolada
+### 5. Execução manual isolada
 
 Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
 
@@ -487,7 +468,7 @@ Fluxo recomendado:
 ```bash
 poetry run dvc repro featurize
 poetry run dvc repro train
-poetry run dvc repro export_feature_store
+poetry run dvc repro create_fs_offline
 docker compose up -d redis
 poetry run task feastapply
 poetry run task feastmaterialize
@@ -507,7 +488,7 @@ Detalhamento completo, decisões arquiteturais, limitações e próximos passos 
 Serving:
 
 ```bash
-poetry run task serving
+poetry run uvicorn serving.app:app --host 0.0.0.0 --port 8000
 ```
 
 MLflow:
@@ -516,7 +497,7 @@ MLflow:
 poetry run task mlflow
 ```
 
-### 7. Monitoramento e demonstração de drift
+### 6. Monitoramento e demonstração de drift
 
 Monitoramento batch:
 
@@ -533,10 +514,10 @@ poetry run task mldriftdemo
 Geração de cenários sintéticos:
 
 ```bash
-poetry run task mlsyntheticdrift
+poetry run task mlflowsyntheticdrift
 ```
 
-### 8. Testes
+### 7. Testes
 
 ```bash
 poetry run task test
