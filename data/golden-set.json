@@ -126,10 +126,10 @@
         {
             "id": "gs-008",
             "question": "Qual ferramenta o projeto usa para rastreio de experimentos e em qual diretório local isso costuma ser armazenado em desenvolvimento?",
-            "expected_answer": "O projeto usa MLflow; a URI padrão no config global aponta para file:./mlruns e os runs ficam acessíveis via MLflow UI no fluxo de observabilidade (Docker).",
+            "expected_answer": "O projeto usa MLflow; a URI padrão no config global aponta para sqlite:///mlruns/mlflow.db e os runs podem ser visualizados pela UI do MLflow quando o servidor for iniciado sobre esse mesmo store.",
             "contexts": [
                 "MLflow é utilizado para tracking de experimentos.",
-                "Os dados são armazenados localmente em ./mlruns."
+                "Os dados são armazenados localmente em mlruns/mlflow.db e em mlruns/artifacts."
             ],
             "expected_tools": [
                 "rag_search"

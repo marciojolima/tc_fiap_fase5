@@ -11,11 +11,11 @@ from common.config_loader import (
 def test_load_global_config_allows_mlflow_tracking_uri_override(
     monkeypatch,
 ) -> None:
-    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "sqlite:///tmp/custom-mlflow.db")
 
     config = load_global_config()
 
-    assert config["mlflow"]["tracking_uri"] == "http://127.0.0.1:5000"
+    assert config["mlflow"]["tracking_uri"] == "sqlite:///tmp/custom-mlflow.db"
 
 
 def test_load_global_config_keeps_default_tracking_uri_without_override(
@@ -25,7 +25,31 @@ def test_load_global_config_keeps_default_tracking_uri_without_override(
 
     config = load_global_config()
 
-    assert config["mlflow"]["tracking_uri"] == "file:./mlruns"
+    assert config["mlflow"]["tracking_uri"] == "sqlite:///mlruns/mlflow.db"
+
+
+def test_load_global_config_reads_tracking_uri_from_project_dotenv(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    (config_dir / "pipeline_global_config.yaml").write_text(
+        "mlflow:\n  tracking_uri: sqlite:///mlruns/mlflow.db\n",
+        encoding="utf-8",
+    )
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "MLFLOW_TRACKING_URI=sqlite:///tmp/from-dotenv.db\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
+    monkeypatch.setattr("common.config_loader.ROOT_DIR", tmp_path)
+
+    config = load_global_config()
+
+    assert config["mlflow"]["tracking_uri"] == "sqlite:///tmp/from-dotenv.db"
 
 
 def test_resolve_llm_provider_and_model_name_from_global_config() -> None:

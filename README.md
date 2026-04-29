@@ -606,11 +606,11 @@ Quando a stack é iniciada com `poetry run task appstack`, os serviços ficam di
 |---|---|---|
 | FastAPI | `http://127.0.0.1:8000` | Serving da aplicação de inferência |
 | Swagger UI | `http://127.0.0.1:8000/docs` | Teste interativo do endpoint |
-| MLflow UI | `http://127.0.0.1:5000` | Rastreamento de experimentos |
+| MLflow UI | `http://127.0.0.1:<MLFLOW_PORT>` | Rastreamento de experimentos |
 | Prometheus | `http://localhost:9090` | Coleta e exploração das métricas |
 | Grafana | `http://localhost:3000` | Dashboards operacionais |
 
-O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis com o código do projeto. Com isso, o serving carrega o mesmo modelo champion e o mesmo pipeline de features materializados localmente, enquanto o MLflow expõe os experimentos rastreados em `mlruns/`.
+O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis com o código do projeto. Com isso, o serving carrega o mesmo modelo champion e o mesmo pipeline de features materializados localmente, enquanto o MLflow expõe os experimentos rastreados no SQLite local `mlruns/mlflow.db`. A porta publicada da UI vem de `MLFLOW_PORT` no `.env` e usa `5000` apenas como padrão.
 
 ### Fluxo sugerido para validação local
 

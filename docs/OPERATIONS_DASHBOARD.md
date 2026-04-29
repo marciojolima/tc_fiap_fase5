@@ -174,7 +174,7 @@ Use o Swagger em `http://127.0.0.1:8000/docs` ou faça chamadas para `POST /pred
 - Serving: `http://127.0.0.1:8000`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
-- MLflow: `http://127.0.0.1:5000`
+- MLflow: `http://127.0.0.1:<MLFLOW_PORT>` (padrão `5000`)
 - Usuário padrão Grafana: `admin`
 - Senha padrão Grafana: `admin`
 

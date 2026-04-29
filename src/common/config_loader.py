@@ -54,7 +54,7 @@ def load_global_config() -> dict[str, Any]:
     """Carrega a configuração global do pipeline."""
 
     config = load_config(DEFAULT_GLOBAL_CONFIG_PATH)
-    tracking_uri_override = os.getenv("MLFLOW_TRACKING_URI")
+    tracking_uri_override = load_env_value("MLFLOW_TRACKING_URI")
 
     if tracking_uri_override:
         config["mlflow"]["tracking_uri"] = tracking_uri_override

@@ -933,7 +933,7 @@ variantes `sample`
 **Cadeia**
 
 `mlflow server ...`
--> sobe servidor local de tracking para treino, experimentos e retreino
+-> sobe servidor local opcional para visualização do tracking já gravado no SQLite
 
 **Entradas**
 
@@ -941,8 +941,9 @@ variantes `sample`
 
 **Saídas**
 
-- servidor MLflow em `http://127.0.0.1:5000`
-- diretório local `mlruns/`
+- servidor MLflow em `http://127.0.0.1:<MLFLOW_PORT>`
+- backend store SQLite local em `mlruns/mlflow.db`
+- artifacts locais em `mlruns/artifacts/`
 
 ### 7.3 Scripts utilitários de geração e diagnóstico
 
