@@ -57,6 +57,7 @@ services:
       - ./docs:/app/docs:ro
       - ./artifacts:/app/artifacts
       - ./feature_store:/app/feature_store:ro
+      - ./mlruns:/app/mlruns
     networks:
       - ml_platform
 

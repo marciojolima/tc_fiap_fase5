@@ -170,6 +170,7 @@ Notas de serving:
 
 - `POST /train` não sobrescreve `artifacts/models/model_current.pkl` e retorna erro se o payload tentar apontar para o modelo champion ativo.
 - `POST /train` reutiliza o módulo de treino existente e registra métricas/artefatos no MLflow, mas não limpa cache nem altera o modelo carregado pelo serving em memória.
+- Em Docker, o serviço `serving` também precisa do volume `./mlruns:/app/mlruns`, porque o endpoint registra runs diretamente no backend SQLite do MLflow.
 - O fluxo recomendado para servir um novo modelo continua sendo treino de candidato, avaliação e promoção explícita.
 
 ## Arquitetura da Solução
