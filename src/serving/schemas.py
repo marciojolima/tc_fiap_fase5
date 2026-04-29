@@ -366,7 +366,7 @@ class TrainModelRequest(BaseModel):
                 },
                 "artifacts": {
                     "model_path": (
-                        "artifacts/models/candidates/"
+                        "artifacts/models/challengers/"
                         "random_forest_candidate_api.pkl"
                     ),
                 },
@@ -403,6 +403,7 @@ class TrainModelResponse(BaseModel):
     model_path: str
     metadata_path: str
     metrics: dict[str, float]
+    training_time_seconds: float
     promoted_to_serving: bool
     message: str
 

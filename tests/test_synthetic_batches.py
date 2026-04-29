@@ -62,7 +62,7 @@ def build_batch_config(tmp_path: Path) -> SyntheticBatchConfig:
         mlflow_experiment_name="monitoring-drift-test",
         output_dir=tmp_path,
         batch_size=4,
-        experiment_config_path="configs/model_lifecycle/model_current.yaml",
+        experiment_config_path="configs/model_lifecycle/model_current.json",
     )
 
 

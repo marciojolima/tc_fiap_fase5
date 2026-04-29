@@ -160,7 +160,7 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 | `GET` | `/health` | Healthcheck simples da API tabular | Retorna `{"status":"ok"}`. |
 | `POST` | `/predict` | Predição online por `customer_id` | Usa Feast + Redis e o modelo champion ativo. |
 | `POST` | `/predict/raw` | Predição por payload bruto | Reaplica localmente o pipeline de features persistido. |
-| `POST` | `/train` | Treino síncrono de um experimento individual | Valida o schema com Pydantic, recebe JSON no formato lógico do config de treino e salva candidato sem promover para o serving. |
+| `POST` | `/train` | Treino síncrono de um experimento individual | Valida o schema com Pydantic, recebe JSON no formato lógico do config de treino, salva challenger e retorna o tempo de treino em segundos. |
 | `GET` | `/metrics` | Exposição de métricas Prometheus | Foco atual em `/predict` e `/llm/chat`. |
 | `GET` | `/llm/health` | Healthcheck do router LLM | Diagnóstico rápido das rotas LLM. |
 | `GET` | `/llm/status` | Status do provider LLM e do RAG | Mostra provider ativo, modelo esperado e estado do índice. |
@@ -169,9 +169,9 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 Notas de serving:
 
 - `POST /train` não sobrescreve `artifacts/models/model_current.pkl` e retorna erro se o payload tentar apontar para o modelo champion ativo.
-- `POST /train` reutiliza o módulo de treino existente e registra métricas/artefatos no MLflow, mas não limpa cache nem altera o modelo carregado pelo serving em memória.
+- `POST /train` reutiliza o módulo de treino existente, registra métricas/artefatos no MLflow e retorna `training_time_seconds`, mas não limpa cache nem altera o modelo carregado pelo serving em memória.
 - Em Docker, o serviço `serving` também precisa do volume `./mlruns:/app/mlruns`, porque o endpoint registra runs diretamente no backend SQLite do MLflow.
-- O fluxo recomendado para servir um novo modelo continua sendo treino de candidato, avaliação e promoção explícita.
+- O fluxo recomendado para servir um novo modelo continua sendo treino de challenger, avaliação e promoção explícita.
 
 ## Arquitetura da Solução
 

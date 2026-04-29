@@ -345,7 +345,7 @@ def test_load_experiment_training_config_merges_global_and_experiment(
         return_git_nearest_tag,
     )
 
-    cfg = load_experiment_training_config("configs/model_lifecycle/model_current.yaml")
+    cfg = load_experiment_training_config("configs/model_lifecycle/model_current.json")
 
     assert isinstance(cfg, ExperimentTrainingConfig)
     assert cfg.algorithm == "random_forest"
@@ -766,7 +766,7 @@ def test_run_training_executes_single_experiment(monkeypatch) -> None:
     )
     monkeypatch.setattr("model_lifecycle.train.train_and_log_model", return_train_call)
 
-    run_training("configs/model_lifecycle/model_current.yaml")
+    run_training("configs/model_lifecycle/model_current.json")
 
     assert seed_calls == [42]
     assert len(mlflow_cfg_calls) == 1

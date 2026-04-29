@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 
 from fastapi import APIRouter, HTTPException
 
@@ -55,11 +56,11 @@ TRAIN_NOTES = """
 
 - O endpoint executa treino síncrono de um único experimento por chamada.
 - O payload segue o mesmo contrato lógico de
-  `configs/model_lifecycle/model_current.yaml`.
+  `configs/model_lifecycle/model_current.json`.
 - O endpoint valida o schema com Pydantic antes de iniciar o treino.
 - O endpoint **não** promove automaticamente o modelo para o serving.
 - `artifacts.model_path` deve apontar para um caminho de artefato
-  candidato, diferente do champion ativo.
+  challenger, diferente do champion ativo.
 """
 
 
@@ -79,7 +80,7 @@ def _validate_train_output_path(payload: TrainModelRequest) -> None:
             status_code=409,
             detail=(
                 "O endpoint /train não pode sobrescrever o modelo ativo do serving. "
-                "Informe um artifacts.model_path de candidato."
+                "Informe um artifacts.model_path de challenger."
             ),
         )
 
@@ -215,7 +216,9 @@ def train_model(payload: TrainModelRequest) -> TrainModelResponse:
         payload.experiment.name,
         payload.artifacts.model_path,
     )
+    start_time = perf_counter()
     metrics = run_training(experiment_config=payload.model_dump())
+    training_time_seconds = round(perf_counter() - start_time, 3)
     metadata_path = build_metadata_output_path(Path(payload.artifacts.model_path))
     logger.info(
         "Treino síncrono concluído via /train | experiment=%s | model_path=%s",
@@ -230,9 +233,10 @@ def train_model(payload: TrainModelRequest) -> TrainModelResponse:
         model_path=payload.artifacts.model_path,
         metadata_path=str(metadata_path),
         metrics=metrics,
+        training_time_seconds=training_time_seconds,
         promoted_to_serving=False,
         message=(
-            "Treino concluído com sucesso. O modelo foi salvo como candidato e "
+            "Treino concluído com sucesso. O modelo foi salvo como challenger e "
             "não foi promovido automaticamente para o serving."
         ),
     )

@@ -139,7 +139,7 @@ def return_train_request_payload() -> TrainModelRequest:
             },
             "artifacts": {
                 "model_path": (
-                    "artifacts/models/candidates/"
+                    "artifacts/models/challengers/"
                     "random_forest_candidate_api.pkl"
                 ),
             },
@@ -347,6 +347,11 @@ def test_train_route_returns_training_summary(monkeypatch) -> None:
         "serving.routes.run_training",
         lambda **_: {"auc": 0.91, "f1": 0.82},
     )
+    perf_counter_calls = iter([10.0, 12.345])
+    monkeypatch.setattr(
+        "serving.routes.perf_counter",
+        lambda: next(perf_counter_calls),
+    )
 
     response = train_model(return_train_request_payload())
 
@@ -356,15 +361,16 @@ def test_train_route_returns_training_summary(monkeypatch) -> None:
         "run_name": "random_forest_candidate_api",
         "model_version": "0.2.1",
         "model_path": (
-            "artifacts/models/candidates/random_forest_candidate_api.pkl"
+            "artifacts/models/challengers/random_forest_candidate_api.pkl"
         ),
         "metadata_path": (
-            "artifacts/models/candidates/random_forest_candidate_api_metadata.json"
+            "artifacts/models/challengers/random_forest_candidate_api_metadata.json"
         ),
         "metrics": {"auc": 0.91, "f1": 0.82},
+        "training_time_seconds": 2.345,
         "promoted_to_serving": False,
         "message": (
-            "Treino concluído com sucesso. O modelo foi salvo como candidato e "
+            "Treino concluído com sucesso. O modelo foi salvo como challenger e "
             "não foi promovido automaticamente para o serving."
         ),
     }

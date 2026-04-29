@@ -26,6 +26,7 @@ DEFAULT_RETRAIN_REQUEST_PATH = (
 DEFAULT_RETRAIN_RUN_PATH = "artifacts/evaluation/model/retraining/retrain_run.json"
 
 logger = get_logger("model_lifecycle.retraining")
+JSON_FILE_SUFFIXES = {".json"}
 
 
 class RetrainingRequest(NamedTuple):
@@ -173,7 +174,8 @@ def create_challenger_training_config(
 ) -> str:
     """Gera uma configuração temporária para treinar o challenger sem promover."""
 
-    with open(request.training_config_path, "r", encoding="utf-8") as file_obj:
+    source_config_path = Path(request.training_config_path)
+    with open(source_config_path, "r", encoding="utf-8") as file_obj:
         config = yaml.safe_load(file_obj)
 
     request_suffix = request.request_id.split("-")[0]
@@ -195,11 +197,18 @@ def create_challenger_training_config(
 
     temp_dir = Path("artifacts/evaluation/model/retraining/generated_configs")
     temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_config_path = temp_dir / f"retrain_{request.request_id}.yaml"
-    temp_config_path.write_text(
-        yaml.safe_dump(config, sort_keys=False),
-        encoding="utf-8",
-    )
+    output_suffix = source_config_path.suffix.lower() or ".json"
+    temp_config_path = temp_dir / f"retrain_{request.request_id}{output_suffix}"
+    if output_suffix in JSON_FILE_SUFFIXES:
+        temp_config_path.write_text(
+            json.dumps(config, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    else:
+        temp_config_path.write_text(
+            yaml.safe_dump(config, sort_keys=False),
+            encoding="utf-8",
+        )
     return str(temp_config_path)
 
 

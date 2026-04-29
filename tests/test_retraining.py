@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from model_lifecycle.retraining import load_retraining_request, run_retraining_request
+from model_lifecycle.retraining import (
+    create_challenger_training_config,
+    load_retraining_request,
+    run_retraining_request,
+)
 from model_lifecycle.train import ExperimentTrainingConfig
 
 EXPECTED_RETRAIN_AUC = 0.91
@@ -20,7 +24,7 @@ def build_request_payload() -> dict[str, object]:
         "status": "requested",
         "reason": "critical_data_or_prediction_drift",
         "model_path": "artifacts/models/model_current.pkl",
-        "training_config_path": "configs/model_lifecycle/model_current.yaml",
+        "training_config_path": "configs/model_lifecycle/model_current.json",
         "created_at": "2026-04-12T00:00:00+00:00",
         "trigger_mode": "auto_train_manual_promote",
         "promotion_policy": "manual_approval_required",
@@ -70,6 +74,17 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
     )
 
 
+def write_request_with_config_path(tmp_path: Path, config_path: str) -> Path:
+    request_path = tmp_path / "retrain_request.json"
+    payload = build_request_payload()
+    payload["training_config_path"] = config_path
+    request_path.write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+    return request_path
+
+
 def test_load_retraining_request_parses_contract(tmp_path: Path) -> None:
     request_path = tmp_path / "retrain_request.json"
     request_path.write_text(
@@ -81,7 +96,7 @@ def test_load_retraining_request_parses_contract(tmp_path: Path) -> None:
 
     assert request.request_id == "req-123"
     assert request.status == "requested"
-    assert request.training_config_path == "configs/model_lifecycle/model_current.yaml"
+    assert request.training_config_path == "configs/model_lifecycle/model_current.json"
     assert request.drifted_features == ["Age"]
     assert request.promotion_rules["primary_metric"] == "auc"
     assert request.reference_row_count == EXPECTED_REFERENCE_ROW_COUNT
@@ -180,6 +195,69 @@ def test_run_retraining_request_executes_training_and_writes_result(
     assert output_payload["status"] == "completed"
 
 
+def test_create_challenger_training_config_preserves_json_format(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "model_current.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "experiment": {
+                    "name": "random_forest_current",
+                    "run_name": "random_forest_current",
+                    "version": "0.2.0",
+                    "algorithm": "random_forest",
+                    "flavor": "sklearn",
+                },
+                "dataset": {
+                    "target_col": "Exited",
+                    "feature_set": "processed_v1",
+                },
+                "training": {
+                    "params": {
+                        "n_estimators": 200,
+                    }
+                },
+                "inference": {
+                    "threshold": 0.5,
+                },
+                "feast": {
+                    "feature_service_name": "customer_churn_rf_v2",
+                },
+                "artifacts": {
+                    "model_path": "artifacts/models/model_current.pkl",
+                },
+                "mlflow": {
+                    "tags": {
+                        "candidate_type": "current",
+                    }
+                },
+                "registry": {
+                    "enabled": False,
+                },
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    generated_config_path = create_challenger_training_config(
+        load_retraining_request(
+            write_request_with_config_path(tmp_path, str(config_path))
+        )
+    )
+
+    assert generated_config_path.endswith(".json")
+    generated_payload = json.loads(
+        Path(generated_config_path).read_text(encoding="utf-8")
+    )
+    assert generated_payload["mlflow"]["tags"]["candidate_type"] == "challenger"
+    assert (
+        "artifacts/models/challengers/"
+        in generated_payload["artifacts"]["model_path"]
+    )
+
+
 def test_run_retraining_request_marks_failure_when_training_breaks(
     tmp_path: Path,
     monkeypatch,
@@ -199,7 +277,7 @@ def test_run_retraining_request_marks_failure_when_training_breaks(
     )
     monkeypatch.setattr(
         "model_lifecycle.retraining.create_challenger_training_config",
-        lambda request: str(tmp_path / "generated_retrain.yaml"),
+        lambda request: str(tmp_path / "generated_retrain.json"),
     )
 
     with pytest.raises(RuntimeError, match="falha no treino"):

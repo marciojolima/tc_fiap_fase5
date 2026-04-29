@@ -7,7 +7,7 @@ import yaml
 DEFAULT_ROOT_DIR = Path(__file__).resolve().parents[2]
 ROOT_DIR = Path(os.getenv("PROJECT_ROOT", DEFAULT_ROOT_DIR)).resolve()
 DEFAULT_GLOBAL_CONFIG_PATH = "configs/pipeline_global_config.yaml"
-DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/model_current.yaml"
+DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/model_current.json"
 OLLAMA_MODEL_ENV_VAR = "OLLAMA_MODEL"
 LLM_PROVIDER_ENV_VAR = "LLM_PROVIDER"
 LLM_BASE_URL_ENV_VAR = "LLM_BASE_URL"

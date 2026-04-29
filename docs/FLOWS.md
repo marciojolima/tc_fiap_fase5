@@ -145,13 +145,13 @@ docs + data/golden-set.json
 -> função [`load_prediction_model`](../src/serving/pipeline.py)
 -> usa `artifacts/models/model_current.pkl`
 -> aplica `predict_proba`
--> usa threshold em [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+-> usa threshold em [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 -> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Entradas**
 
 - payload HTTP contendo `customer_id`
-- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 - [`feature_store/repo.py`](../feature_store/repo.py)
 - `feature_store/data/registry.db`
 - Redis com features materializadas
@@ -194,7 +194,7 @@ docs + data/golden-set.json
 - payload bruto com atributos do cliente
 - `artifacts/models/feature_pipeline.joblib`
 - `artifacts/models/model_current.pkl`
-- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 
 **Saídas**
 
@@ -225,7 +225,7 @@ docs + data/golden-set.json
 
 **Entradas**
 
-- payload JSON no formato lógico de `configs/model_lifecycle/model_current.yaml`
+- payload JSON no formato lógico de `configs/model_lifecycle/model_current.json`
 - `data/processed/train.parquet`
 - `data/processed/test.parquet`
 - [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
@@ -506,7 +506,7 @@ ou `dvc repro featurize`
 
 - `data/processed/train.parquet`
 - `data/processed/test.parquet`
-- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 - [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
 - [`src/model_lifecycle/train.py`](../src/model_lifecycle/train.py)
 - [`src/model_lifecycle/catalog.py`](../src/model_lifecycle/catalog.py)

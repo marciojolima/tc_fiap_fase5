@@ -1,0 +1,52 @@
+{
+  "experiment": {
+    "name": "xgboost_v1",
+    "run_name": "xgboost_v1",
+    "version": "0.3.0",
+    "algorithm": "xgboost",
+    "flavor": "sklearn"
+  },
+  "dataset": {
+    "target_col": "Exited",
+    "feature_set": "processed_v1"
+  },
+  "training": {
+    "params": {
+      "n_estimators": 300,
+      "max_depth": 8,
+      "learning_rate": 0.05,
+      "random_state": 42,
+      "scale_pos_weight": "__neg_pos_ratio__",
+      "eval_metric": "auc",
+      "verbosity": 0
+    }
+  },
+  "inference": {
+    "threshold": 0.5
+  },
+  "feast": {
+    "feature_service_name": "customer_churn_xgb_v1"
+  },
+  "artifacts": {
+    "model_path": "artifacts/models/xgboost_v1.pkl"
+  },
+  "mlflow": {
+    "experiment_name": "datathon-churn-baseline",
+    "tags": {
+      "owner": "datathon-grupo",
+      "phase": "datathon-fase05",
+      "dataset_name": "bank-customer-churn",
+      "model_family": "xgboost",
+      "candidate_type": "challenger"
+    }
+  },
+  "registry": {
+    "enabled": false,
+    "model_name": "churn-classifier",
+    "alias": null
+  },
+  "governance": {
+    "risk_level": "high",
+    "fairness_checked": false
+  }
+}

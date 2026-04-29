@@ -48,7 +48,7 @@ Esses campos sao registrados como `params` e/ou `tags`, para facilitar:
 
 ### Declarados no YAML do experimento
 
-Exemplo em `configs/model_lifecycle/model_current.yaml`:
+Exemplo em `configs/model_lifecycle/model_current.json`:
 
 ```yaml
 experiment:
