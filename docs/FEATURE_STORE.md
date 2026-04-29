@@ -108,8 +108,6 @@ Exemplos:
 - `customer_churn_gb_v1`
 - `customer_churn_xgb_v1`
 
-Na prática:
-
 - a `FeatureView` é `customer_churn_features`
 - o `FeatureService` define qual contrato de features cada modelo consome
 - a configuração de treino aponta explicitamente para esse contrato em `feast.feature_service_name`
@@ -143,8 +141,6 @@ Embora apareçam juntos no uso cotidiano, `apply` e `materialize` cumprem papéi
 - `feast apply` atualiza o catálogo da Feature Store
 - `feast materialize-incremental` publica dados da camada offline na camada online
 
-Na prática:
-
 - `apply` lê `feature_store/repo.py` e registra `Entity`, `FeatureView` e `FeatureServices`
 - `materialize-incremental` lê o parquet offline exportado e envia para o Redis apenas a janela incremental pendente
 
@@ -157,8 +153,6 @@ Isso significa que:
 ## Quando a online store é atualizada
 
 O Redis não observa o parquet offline sozinho. A atualização da camada online ocorre apenas quando a materialização é disparada manualmente.
-
-Em outras palavras:
 
 - `dvc repro` reconstrói artefatos offline do pipeline
 - `feast materialize-incremental` sincroniza esses dados com a online store
@@ -209,14 +203,6 @@ poetry run dvc repro train
 poetry run dvc repro create_fs_offline
 ```
 
-Se preferir executar os módulos diretamente durante desenvolvimento:
-
-```bash
-poetry run python -m src.feature_engineering.feature_engineering
-poetry run python -m src.model_lifecycle.train
-poetry run python -m src.feast_ops.export
-```
-
 ### 5. Aplicar as definições do Feast
 
 ```bash
@@ -250,15 +236,10 @@ Em termos de responsabilidade:
 - `feast materialize-incremental` publica as features na online store Redis
 - o `serving` apenas consulta a online store; ele nao deve bootstrapar o Feast em runtime
 
-Isso e importante porque o `dvc repro` nao substitui:
+O `dvc repro` nao substitui:
 
 - a criacao/atualizacao do registry do Feast
 - a materializacao da online store
-
-Se apenas o `dvc repro` for executado, ainda pode faltar:
-
-- `feature_store/data/registry.db`
-- dados materializados no Redis para leitura online
 
 ## Desenho lógico
 

@@ -58,11 +58,9 @@ Validador:
 ## Como o RAGAS avalia o serving
 
 O RAGAS nao avalia uma resposta isolada escrita manualmente. Ele monta um dataset
-a partir do golden set e das respostas geradas pelo serving real.
-
-Em outras palavras, a avaliacao passa pelo mesmo fluxo documentado em
-[AGENT_REACT.md](AGENT_REACT.md): provider ativo, agente ReAct, tools,
-guardrails e RAG.
+a partir do golden set e das respostas geradas pelo serving real, passando pelo
+mesmo fluxo documentado em [AGENT_REACT.md](AGENT_REACT.md): provider ativo,
+agente ReAct, tools, guardrails e RAG.
 
 Fluxo atual:
 
