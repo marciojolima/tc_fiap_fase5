@@ -24,7 +24,7 @@ drift:
   retraining:
     enabled: true
     trigger_mode: auto_train_manual_promote
-    training_config_path: configs/model_lifecycle/model_current.yaml
+    training_config_path: configs/model_lifecycle/model_current.json
     request_path: artifacts/evaluation/model/retraining/retrain_request.json
     run_path: artifacts/evaluation/model/retraining/retrain_run.json
     promotion_decision_path: artifacts/evaluation/model/retraining/promotion_decision.json

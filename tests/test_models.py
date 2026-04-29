@@ -10,8 +10,11 @@ from model_lifecycle.train import (
     ExperimentTrainingConfig,
     ModelSpec,
     RetrainingMlflowContext,
+    build_experiment_training_config,
+    build_mlflow_experiment_artifact_location,
     build_model_spec,
     compute_training_data_version,
+    configure_mlflow,
     evaluate_model,
     load_experiment_training_config,
     log_run_metadata,
@@ -59,7 +62,19 @@ class DummyRun:
         return None
 
 
-def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConfig:
+class DummyExperiment:
+    def __init__(
+        self,
+        experiment_id: str,
+        name: str,
+        artifact_location: str,
+    ) -> None:
+        self.experiment_id = experiment_id
+        self.name = name
+        self.artifact_location = artifact_location
+
+
+def build_training_config_fixture(model_path: Path) -> ExperimentTrainingConfig:
     return ExperimentTrainingConfig(
         seed=42,
         target_col="Exited",
@@ -100,7 +115,7 @@ def return_global_training_config() -> dict:
         "data": {"target_col": "Exited"},
         "split": {"test_size": 0.2},
         "mlflow": {
-            "tracking_uri": "sqlite:///mlruns/mlflow.db",
+            "tracking_uri": "sqlite:////app/mlruns/mlflow.db",
             "experiment_name": "global-exp",
             "owner": "team",
             "phase": "dev",
@@ -190,7 +205,7 @@ def return_datasets_stub(target_col: str) -> DatasetSplits:
 def return_experiment_cfg_for_run(
     experiment_config_path: str,
 ) -> ExperimentTrainingConfig:
-    return build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    return build_training_config_fixture(Path("artifacts/models/model.pkl"))
 
 
 _METRICS_LOG: list[dict[str, float]] = []
@@ -264,7 +279,7 @@ def test_resolve_runtime_model_params_supports_neg_pos_ratio_token() -> None:
 
 
 def test_build_model_spec_uses_experiment_contract() -> None:
-    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    cfg = build_training_config_fixture(Path("artifacts/models/model.pkl"))
 
     spec = build_model_spec(cfg)
 
@@ -330,7 +345,7 @@ def test_load_experiment_training_config_merges_global_and_experiment(
         return_git_nearest_tag,
     )
 
-    cfg = load_experiment_training_config("configs/model_lifecycle/model_current.yaml")
+    cfg = load_experiment_training_config("configs/model_lifecycle/model_current.json")
 
     assert isinstance(cfg, ExperimentTrainingConfig)
     assert cfg.algorithm == "random_forest"
@@ -345,9 +360,41 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.git_nearest_tag == "v0.2.0"
     assert cfg.risk_level == "high"
     assert cfg.fairness_checked is False
-    assert cfg.mlflow_cfg["tracking_uri"] == "sqlite:///mlruns/mlflow.db"
+    assert cfg.mlflow_cfg["tracking_uri"] == "sqlite:////app/mlruns/mlflow.db"
     assert cfg.mlflow_cfg["experiment_name"] == "candidate-exp"
     assert cfg.mlflow_cfg["tags"]["owner"] == "team"
+    assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
+
+
+def test_build_experiment_training_config_supports_in_memory_contract(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "model_lifecycle.train.load_global_config",
+        return_global_training_config,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.compute_training_data_version",
+        return_data_hash,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_sha",
+        return_git_sha,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_tag",
+        return_git_tag,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_nearest_tag",
+        return_git_nearest_tag,
+    )
+
+    cfg = build_experiment_training_config(return_experiment_training_config(""))
+
+    assert isinstance(cfg, ExperimentTrainingConfig)
+    assert cfg.experiment_name == "random_forest_candidate"
+    assert cfg.model_path == Path("artifacts/models/model.pkl")
     assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
 
 
@@ -384,8 +431,131 @@ def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
     assert len(data_version) == 32  # noqa: PLR2004
 
 
+def test_build_mlflow_experiment_artifact_location_uses_sqlite_parent_dir() -> None:
+    artifact_location = build_mlflow_experiment_artifact_location(
+        "sqlite:////app/mlruns/mlflow.db",
+        "candidate-exp",
+    )
+
+    assert artifact_location == "/app/mlruns/candidate-exp"
+
+
+def test_configure_mlflow_creates_missing_experiment_with_stable_artifact_location(
+    monkeypatch,
+) -> None:
+    created_experiments: list[tuple[str, str | None]] = []
+    tracking_uris: list[str] = []
+    selected_experiments: list[str] = []
+
+    class DummyMlflowClient:
+        def __init__(self, tracking_uri: str) -> None:
+            tracking_uris.append(tracking_uri)
+
+        @staticmethod
+        def get_experiment_by_name(name: str) -> None:
+            return None
+
+        @staticmethod
+        def create_experiment(
+            name: str,
+            artifact_location: str | None = None,
+            tags: dict[str, object] | None = None,
+        ) -> str:
+            del tags
+            created_experiments.append((name, artifact_location))
+            return "11"
+
+    monkeypatch.setattr(
+        "model_lifecycle.train.MlflowClient",
+        DummyMlflowClient,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_tracking_uri",
+        tracking_uris.append,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_experiment",
+        selected_experiments.append,
+    )
+
+    configure_mlflow(
+        {
+            "tracking_uri": "sqlite:////app/mlruns/mlflow.db",
+            "experiment_name": "candidate-exp",
+            "tags": {},
+        }
+    )
+
+    assert created_experiments == [("candidate-exp", "/app/mlruns/candidate-exp")]
+    assert selected_experiments == ["candidate-exp"]
+
+
+def test_configure_mlflow_updates_legacy_experiment_artifact_location(
+    monkeypatch,
+) -> None:
+    selected_experiments: list[str] = []
+    updated_locations: list[tuple[str, str, str]] = []
+
+    class DummyMlflowClient:
+        def __init__(self, tracking_uri: str) -> None:
+            self.tracking_uri = tracking_uri
+
+        @staticmethod
+        def get_experiment_by_name(name: str) -> DummyExperiment:
+            return DummyExperiment(
+                experiment_id="1",
+                name=name,
+                artifact_location="/home/marcio/dev/projects/python/tc_fiap_fase5/mlruns/1",
+            )
+
+        @staticmethod
+        def create_experiment(
+            name: str,
+            artifact_location: str | None = None,
+            tags: dict[str, object] | None = None,
+        ) -> str:
+            del name, artifact_location, tags
+            raise AssertionError("Não deveria criar experimento novo")
+
+    monkeypatch.setattr(
+        "model_lifecycle.train.MlflowClient",
+        DummyMlflowClient,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.update_mlflow_experiment_artifact_location",
+        lambda tracking_uri, experiment_id, artifact_location: updated_locations.append(
+            (tracking_uri, experiment_id, artifact_location)
+        ),
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_tracking_uri",
+        lambda _: None,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.mlflow.set_experiment",
+        selected_experiments.append,
+    )
+
+    configure_mlflow(
+        {
+            "tracking_uri": "sqlite:////app/mlruns/mlflow.db",
+            "experiment_name": "datathon-churn-baseline",
+            "tags": {},
+        }
+    )
+
+    assert updated_locations == [
+        (
+            "sqlite:////app/mlruns/mlflow.db",
+            "1",
+            "/app/mlruns/1",
+        )
+    ]
+    assert selected_experiments == ["datathon-churn-baseline"]
+
+
 def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
-    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    cfg = build_training_config_fixture(Path("artifacts/models/model.pkl"))
     datasets = DatasetSplits(
         X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
         y_train=pd.Series([0, 1, 0, 1]),
@@ -428,7 +598,7 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
 
 
 def test_log_run_metadata_registers_retraining_context(monkeypatch) -> None:
-    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    cfg = build_training_config_fixture(Path("artifacts/models/model.pkl"))
     datasets = DatasetSplits(
         X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
         y_train=pd.Series([0, 1, 0, 1]),
@@ -488,7 +658,7 @@ def test_train_and_log_model_trains_logs_and_saves(
         X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
         y_test=pd.Series([0, 1, 0, 1]),
     )
-    cfg = build_experiment_training_config(tmp_path / "candidate_model.pkl")
+    cfg = build_training_config_fixture(tmp_path / "candidate_model.pkl")
     spec = build_model_spec(cfg)
 
     _METRICS_LOG.clear()
@@ -533,7 +703,7 @@ def test_train_and_log_model_uses_retrain_suffix_in_mlflow_run_name(
         X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
         y_test=pd.Series([0, 1, 0, 1]),
     )
-    cfg = build_experiment_training_config(tmp_path / "candidate_model.pkl")
+    cfg = build_training_config_fixture(tmp_path / "candidate_model.pkl")
     spec = build_model_spec(cfg)
     retraining_context = RetrainingMlflowContext(
         request_id="req-123",
@@ -596,9 +766,56 @@ def test_run_training_executes_single_experiment(monkeypatch) -> None:
     )
     monkeypatch.setattr("model_lifecycle.train.train_and_log_model", return_train_call)
 
-    run_training("configs/model_lifecycle/model_current.yaml")
+    run_training("configs/model_lifecycle/model_current.json")
 
     assert seed_calls == [42]
     assert len(mlflow_cfg_calls) == 1
     assert len(_TRAIN_CALLS) == 1
     assert _TRAIN_CALLS[0][3] is None
+
+
+def test_run_training_accepts_in_memory_experiment_config(monkeypatch) -> None:
+    seed_calls = []
+    mlflow_cfg_calls = []
+    _TRAIN_CALLS.clear()
+
+    monkeypatch.setattr(
+        "model_lifecycle.train.build_experiment_training_config",
+        lambda payload: build_experiment_training_config(
+            payload,
+            global_cfg=return_global_training_config(),
+        ),
+    )
+    monkeypatch.setattr("model_lifecycle.train.set_global_seed", seed_calls.append)
+    monkeypatch.setattr(
+        "model_lifecycle.train.load_training_data",
+        return_datasets_stub,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.configure_mlflow",
+        mlflow_cfg_calls.append,
+    )
+    monkeypatch.setattr("model_lifecycle.train.train_and_log_model", return_train_call)
+    monkeypatch.setattr(
+        "model_lifecycle.train.compute_training_data_version",
+        return_data_hash,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_sha",
+        return_git_sha,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_tag",
+        return_git_tag,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_nearest_tag",
+        return_git_nearest_tag,
+    )
+
+    run_training(experiment_config=return_experiment_training_config(""))
+
+    assert seed_calls == [42]
+    assert len(mlflow_cfg_calls) == 1
+    assert len(_TRAIN_CALLS) == 1
+    assert _TRAIN_CALLS[0][0].output_path == Path("artifacts/models/model.pkl")

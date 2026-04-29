@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pandas as pd
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from prometheus_client import generate_latest
 
 from monitoring.metrics import (
@@ -21,10 +25,16 @@ from serving.pipeline import (
     ServingConfig,
     prepare_inference_dataframe,
 )
-from serving.routes import predict_churn, predict_churn_from_raw
-from serving.schemas import ChurnCustomerLookupRequest, ChurnPredictionRequest
+from serving.routes import predict_churn, predict_churn_from_raw, train_model
+from serving.schemas import (
+    ChurnCustomerLookupRequest,
+    ChurnPredictionRequest,
+    TrainModelRequest,
+)
 
 HTTP_OK = 200
+HTTP_CONFLICT = 409
+HTTP_UNPROCESSABLE_ENTITY = 422
 EXPECTED_CUSTOMER_ID = 15634602
 
 
@@ -60,13 +70,13 @@ def return_route_config() -> ServingConfig:
         leakage_columns=["Exited"],
         drop_columns=["RowNumber", "CustomerId", "Surname"],
         governed_columns=["Geography"],
-        model_path=Mock(),
-        feature_pipeline_path=Mock(),
+        model_path=Path("artifacts/models/model_current.pkl"),
+        feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=0.5,
         model_name="random_forest_current",
         model_version="0.2.0",
         run_name="random_forest_current",
-        feast_repo_path=Mock(),
+        feast_repo_path=Path("feature_store"),
         feast_entity_key="customer_id",
         feast_feature_service_name="customer_churn_rf_v2",
     )
@@ -97,6 +107,59 @@ def return_prepared_raw_payload(payload, cfg) -> PreparedInferencePayload:
 
 def return_route_prediction(df_feat) -> tuple[float, int]:
     return 0.81, 1
+
+
+def return_train_request_payload() -> TrainModelRequest:
+    return TrainModelRequest(
+        **{
+            "experiment": {
+                "name": "random_forest_candidate_api",
+                "run_name": "random_forest_candidate_api",
+                "version": "0.2.1",
+                "algorithm": "random_forest",
+                "flavor": "sklearn",
+            },
+            "dataset": {
+                "target_col": "Exited",
+                "feature_set": "processed_v1",
+            },
+            "training": {
+                "params": {
+                    "n_estimators": 200,
+                    "max_depth": 15,
+                    "random_state": 42,
+                    "class_weight": "balanced",
+                }
+            },
+            "inference": {
+                "threshold": 0.5,
+            },
+            "feast": {
+                "feature_service_name": "customer_churn_rf_v2",
+            },
+            "artifacts": {
+                "model_path": (
+                    "artifacts/models/challengers/"
+                    "random_forest_candidate_api.pkl"
+                ),
+            },
+            "mlflow": {
+                "experiment_name": "datathon-churn-baseline",
+                "tags": {
+                    "candidate_type": "api_candidate",
+                },
+            },
+            "registry": {
+                "enabled": False,
+                "model_name": "churn-classifier",
+                "alias": None,
+            },
+            "governance": {
+                "risk_level": "high",
+                "fairness_checked": False,
+            },
+        }
+    )
 
 
 def test_prepare_inference_dataframe_uses_feature_pipeline(monkeypatch) -> None:
@@ -273,6 +336,128 @@ def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
         "feature_source": "request_payload",
         "customer_id": None,
     }
+
+
+def test_train_route_returns_training_summary(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "serving.routes.load_serving_config",
+        return_route_config,
+    )
+    monkeypatch.setattr(
+        "serving.routes.run_training",
+        lambda **_: {"auc": 0.91, "f1": 0.82},
+    )
+    perf_counter_calls = iter([10.0, 12.345])
+    monkeypatch.setattr(
+        "serving.routes.perf_counter",
+        lambda: next(perf_counter_calls),
+    )
+
+    response = train_model(return_train_request_payload())
+
+    assert response.model_dump() == {
+        "status": "completed",
+        "experiment_name": "random_forest_candidate_api",
+        "run_name": "random_forest_candidate_api",
+        "model_version": "0.2.1",
+        "model_path": (
+            "artifacts/models/challengers/random_forest_candidate_api.pkl"
+        ),
+        "metadata_path": (
+            "artifacts/models/challengers/random_forest_candidate_api_metadata.json"
+        ),
+        "metrics": {"auc": 0.91, "f1": 0.82},
+        "training_time_seconds": 2.345,
+        "promoted_to_serving": False,
+        "message": (
+            "Treino concluído com sucesso. O modelo foi salvo como challenger e "
+            "não foi promovido automaticamente para o serving."
+        ),
+    }
+
+
+def test_train_route_blocks_overwrite_of_active_serving_model(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "serving.routes.load_serving_config",
+        return_route_config,
+    )
+
+    conflicting_payload = TrainModelRequest(
+        **{
+            **return_train_request_payload().model_dump(),
+            "artifacts": {
+                "model_path": str(return_route_config().model_path.resolve()),
+            },
+        }
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        train_model(conflicting_payload)
+
+    assert exc_info.value.status_code == HTTP_CONFLICT
+
+
+def test_app_registers_train_route() -> None:
+    app = create_app()
+    paths = {getattr(route, "path", "") for route in app.routes}
+
+    assert "/train" in paths
+
+
+def test_train_endpoint_returns_schema_validation_error_for_invalid_payload(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "serving.app.initialize_rag_index",
+        lambda: {
+            "cache_hit": True,
+            "index_estimated_memory_bytes": 0,
+            "process_rss_delta_bytes": 0,
+            "total_duration_seconds": 0.0,
+        },
+    )
+    client = TestClient(create_app())
+    response = client.post(
+        "/train",
+        json={
+            "experiment": {
+                "name": "invalid_candidate",
+                "run_name": "invalid_candidate",
+                "version": "0.1.0",
+                "algorithm": "invalid_algo",
+                "flavor": "sklearn",
+            },
+            "dataset": {
+                "target_col": "Exited",
+                "feature_set": "processed_v1",
+            },
+            "training": {
+                "params": {
+                    "n_estimators": 10,
+                }
+            },
+            "inference": {
+                "threshold": 0.5,
+            },
+            "feast": {
+                "feature_service_name": "customer_churn_rf_v2",
+            },
+            "artifacts": {
+                "model_path": "artifacts/models/invalid_candidate.pkl",
+            },
+            "mlflow": {
+                "experiment_name": "datathon-churn-baseline",
+                "tags": {},
+            },
+            "registry": {
+                "enabled": False,
+                "model_name": "churn-classifier",
+                "alias": None,
+            },
+        },
+    )
+
+    assert response.status_code == HTTP_UNPROCESSABLE_ENTITY
 
 
 def test_metrics_endpoint_exposes_predict_operational_metrics() -> None:

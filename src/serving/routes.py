@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+from time import perf_counter
+
 from fastapi import APIRouter, HTTPException
 
 from common.logger import get_logger
+from model_lifecycle.train import build_metadata_output_path, run_training
 from monitoring.metrics import (
     finish_predict_request_for_monitor,
     start_predict_request_for_monitor,
@@ -17,6 +21,8 @@ from serving.schemas import (
     ChurnCustomerLookupRequest,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
+    TrainModelRequest,
+    TrainModelResponse,
 )
 from src.evaluation.model.drift.prediction_logger import (
     PredictionLogContext,
@@ -45,10 +51,38 @@ DATA_DICT_TABLE = """
 | **Point Earned** | Pontos | int | >= 0 | Pontos acumulados |
 """
 
+TRAIN_NOTES = """
+### Notas Operacionais do Endpoint
+
+- O endpoint executa treino síncrono de um único experimento por chamada.
+- O payload segue o mesmo contrato lógico de
+  `configs/model_lifecycle/model_current.json`.
+- O endpoint valida o schema com Pydantic antes de iniciar o treino.
+- O endpoint **não** promove automaticamente o modelo para o serving.
+- `artifacts.model_path` deve apontar para um caminho de artefato
+  challenger, diferente do champion ativo.
+"""
+
 
 @router.get("/health")
 def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+def _validate_train_output_path(payload: TrainModelRequest) -> None:
+    """Bloqueia sobrescrita do modelo champion ativo pelo endpoint síncrono."""
+
+    active_model_path = load_serving_config().model_path.resolve()
+    requested_model_resolved = Path(payload.artifacts.model_path).resolve()
+
+    if requested_model_resolved == active_model_path:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "O endpoint /train não pode sobrescrever o modelo ativo do serving. "
+                "Informe um artifacts.model_path de challenger."
+            ),
+        )
 
 
 @router.post(
@@ -164,3 +198,45 @@ def predict_churn_from_raw(
             method="POST",
             status_code=status_code,
         )
+
+
+@router.post(
+    "/train",
+    response_model=TrainModelResponse,
+    description=(
+        "Executa um treino síncrono de um único experimento a partir de um "
+        "payload JSON validado.\n"
+        f"{TRAIN_NOTES}"
+    ),
+)
+def train_model(payload: TrainModelRequest) -> TrainModelResponse:
+    _validate_train_output_path(payload)
+    logger.info(
+        "Recebida requisição POST /train | experiment=%s | model_path=%s",
+        payload.experiment.name,
+        payload.artifacts.model_path,
+    )
+    start_time = perf_counter()
+    metrics = run_training(experiment_config=payload.model_dump())
+    training_time_seconds = round(perf_counter() - start_time, 3)
+    metadata_path = build_metadata_output_path(Path(payload.artifacts.model_path))
+    logger.info(
+        "Treino síncrono concluído via /train | experiment=%s | model_path=%s",
+        payload.experiment.name,
+        payload.artifacts.model_path,
+    )
+    return TrainModelResponse(
+        status="completed",
+        experiment_name=payload.experiment.name,
+        run_name=payload.experiment.run_name,
+        model_version=payload.experiment.version,
+        model_path=payload.artifacts.model_path,
+        metadata_path=str(metadata_path),
+        metrics=metrics,
+        training_time_seconds=training_time_seconds,
+        promoted_to_serving=False,
+        message=(
+            "Treino concluído com sucesso. O modelo foi salvo como challenger e "
+            "não foi promovido automaticamente para o serving."
+        ),
+    )

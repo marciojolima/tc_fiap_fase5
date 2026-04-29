@@ -71,6 +71,8 @@ data/**/*.csv
 *.json
 # Exceções — configs leves que fazem sentido versionar
 !configs/*.yaml
+!configs/model_lifecycle/*.json
+!configs/model_lifecycle/experiments/*.json
 !data/golden-set.json
 !configs/observability/grafana/dashboards/*.json
 .config/dvc/gdrive_credentials.json

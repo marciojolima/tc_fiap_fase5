@@ -1,6 +1,7 @@
 from common.config_loader import (
     load_env_value,
     load_global_config,
+    normalize_mlflow_tracking_uri,
     resolve_llm_api_key,
     resolve_llm_base_url,
     resolve_llm_model_name,
@@ -15,7 +16,8 @@ def test_load_global_config_allows_mlflow_tracking_uri_override(
 
     config = load_global_config()
 
-    assert config["mlflow"]["tracking_uri"] == "sqlite:///tmp/custom-mlflow.db"
+    assert config["mlflow"]["tracking_uri"].endswith("/tmp/custom-mlflow.db")
+    assert config["mlflow"]["tracking_uri"].startswith("sqlite:////")
 
 
 def test_load_global_config_keeps_default_tracking_uri_without_override(
@@ -25,7 +27,8 @@ def test_load_global_config_keeps_default_tracking_uri_without_override(
 
     config = load_global_config()
 
-    assert config["mlflow"]["tracking_uri"] == "sqlite:///mlruns/mlflow.db"
+    assert config["mlflow"]["tracking_uri"].endswith("/mlruns/mlflow.db")
+    assert config["mlflow"]["tracking_uri"].startswith("sqlite:////")
 
 
 def test_load_global_config_reads_tracking_uri_from_project_dotenv(
@@ -49,7 +52,14 @@ def test_load_global_config_reads_tracking_uri_from_project_dotenv(
 
     config = load_global_config()
 
-    assert config["mlflow"]["tracking_uri"] == "sqlite:///tmp/from-dotenv.db"
+    assert config["mlflow"]["tracking_uri"].startswith("sqlite:////")
+    assert config["mlflow"]["tracking_uri"].endswith("/tmp/from-dotenv.db")
+
+
+def test_normalize_mlflow_tracking_uri_keeps_absolute_sqlite_uri() -> None:
+    tracking_uri = "sqlite:////app/mlruns/mlflow.db"
+
+    assert normalize_mlflow_tracking_uri(tracking_uri) == tracking_uri
 
 
 def test_resolve_llm_provider_and_model_name_from_global_config() -> None:

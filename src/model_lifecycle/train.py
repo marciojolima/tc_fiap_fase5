@@ -5,15 +5,18 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sqlite3
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, Mapping, NamedTuple
+from urllib.parse import urlparse
 
 import mlflow
 import mlflow.sklearn
 import pandas as pd
 from joblib import dump
+from mlflow.tracking import MlflowClient
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -94,6 +97,61 @@ class RetrainingMlflowContext(NamedTuple):
     current_row_count: int
 
 
+def build_experiment_training_config(
+    experiment_cfg: Mapping[str, Any],
+    *,
+    global_cfg: Mapping[str, Any] | None = None,
+) -> ExperimentTrainingConfig:
+    """Converte o contrato bruto do experimento em configuração tipada."""
+
+    active_global_cfg = global_cfg or load_global_config()
+    governance_cfg = experiment_cfg.get("governance", {})
+
+    mlflow_tags = {
+        "owner": active_global_cfg["mlflow"]["owner"],
+        "phase": active_global_cfg["mlflow"]["phase"],
+        "dataset_name": active_global_cfg["mlflow"]["dataset_name"],
+    }
+    mlflow_tags.update(experiment_cfg["mlflow"].get("tags", {}))
+
+    return ExperimentTrainingConfig(
+        seed=active_global_cfg["seed"],
+        target_col=experiment_cfg["dataset"].get(
+            "target_col",
+            active_global_cfg["data"]["target_col"],
+        ),
+        test_size=active_global_cfg["split"]["test_size"],
+        algorithm=experiment_cfg["experiment"]["algorithm"],
+        flavor=experiment_cfg["experiment"]["flavor"],
+        experiment_name=experiment_cfg["experiment"]["name"],
+        run_name=experiment_cfg["experiment"]["run_name"],
+        model_version=experiment_cfg["experiment"].get(
+            "version",
+            experiment_cfg["experiment"]["name"],
+        ),
+        model_params=experiment_cfg["training"]["params"],
+        threshold=experiment_cfg["inference"]["threshold"],
+        feature_set=experiment_cfg["dataset"]["feature_set"],
+        feature_service_name=experiment_cfg["feast"]["feature_service_name"],
+        model_path=Path(experiment_cfg["artifacts"]["model_path"]),
+        training_data_version=compute_training_data_version(),
+        git_sha=resolve_git_sha(),
+        git_tag=resolve_git_tag(),
+        git_nearest_tag=resolve_git_nearest_tag(),
+        risk_level=governance_cfg.get("risk_level", "medium"),
+        fairness_checked=governance_cfg.get("fairness_checked", False),
+        mlflow_cfg={
+            "tracking_uri": active_global_cfg["mlflow"]["tracking_uri"],
+            "experiment_name": experiment_cfg["mlflow"].get(
+                "experiment_name",
+                active_global_cfg["mlflow"]["experiment_name"],
+            ),
+            "tags": mlflow_tags,
+        },
+        registry_cfg=experiment_cfg["registry"],
+    )
+
+
 def build_metadata_output_path(model_output_path: Path) -> Path:
     """Resolve o caminho do sidecar JSON com metadados do modelo salvo."""
 
@@ -168,52 +226,10 @@ def load_experiment_training_config(
 ) -> ExperimentTrainingConfig:
     """Carrega um experimento individual combinando config global e local."""
 
-    global_cfg = load_global_config()
     experiment_cfg = load_training_experiment_config(experiment_config_path)
-    governance_cfg = experiment_cfg.get("governance", {})
-
-    mlflow_tags = {
-        "owner": global_cfg["mlflow"]["owner"],
-        "phase": global_cfg["mlflow"]["phase"],
-        "dataset_name": global_cfg["mlflow"]["dataset_name"],
-    }
-    mlflow_tags.update(experiment_cfg["mlflow"].get("tags", {}))
-
-    return ExperimentTrainingConfig(
-        seed=global_cfg["seed"],
-        target_col=experiment_cfg["dataset"].get(
-            "target_col",
-            global_cfg["data"]["target_col"],
-        ),
-        test_size=global_cfg["split"]["test_size"],
-        algorithm=experiment_cfg["experiment"]["algorithm"],
-        flavor=experiment_cfg["experiment"]["flavor"],
-        experiment_name=experiment_cfg["experiment"]["name"],
-        run_name=experiment_cfg["experiment"]["run_name"],
-        model_version=experiment_cfg["experiment"].get(
-            "version",
-            experiment_cfg["experiment"]["name"],
-        ),
-        model_params=experiment_cfg["training"]["params"],
-        threshold=experiment_cfg["inference"]["threshold"],
-        feature_set=experiment_cfg["dataset"]["feature_set"],
-        feature_service_name=experiment_cfg["feast"]["feature_service_name"],
-        model_path=Path(experiment_cfg["artifacts"]["model_path"]),
-        training_data_version=compute_training_data_version(),
-        git_sha=resolve_git_sha(),
-        git_tag=resolve_git_tag(),
-        git_nearest_tag=resolve_git_nearest_tag(),
-        risk_level=governance_cfg.get("risk_level", "medium"),
-        fairness_checked=governance_cfg.get("fairness_checked", False),
-        mlflow_cfg={
-            "tracking_uri": global_cfg["mlflow"]["tracking_uri"],
-            "experiment_name": experiment_cfg["mlflow"].get(
-                "experiment_name",
-                global_cfg["mlflow"]["experiment_name"],
-            ),
-            "tags": mlflow_tags,
-        },
-        registry_cfg=experiment_cfg["registry"],
+    return build_experiment_training_config(
+        experiment_cfg,
+        global_cfg=load_global_config(),
     )
 
 
@@ -280,11 +296,116 @@ def configure_mlflow(mlflow_cfg: dict[str, Any]) -> None:
     """Configura o tracking e o experimento do MLflow."""
 
     mlflow.set_tracking_uri(mlflow_cfg["tracking_uri"])
+    ensure_mlflow_experiment(mlflow_cfg)
     mlflow.set_experiment(mlflow_cfg["experiment_name"])
     logger.info(
         "MLflow configurado — tracking_uri=%s | experiment=%s",
         mlflow_cfg["tracking_uri"],
         mlflow_cfg["experiment_name"],
+    )
+
+
+def resolve_sqlite_tracking_db_path(tracking_uri: str) -> Path | None:
+    """Extrai o caminho local do backend SQLite usado pelo MLflow."""
+
+    parsed_uri = urlparse(tracking_uri)
+    if parsed_uri.scheme != "sqlite":
+        return None
+
+    db_path = parsed_uri.path
+    if not db_path:
+        return None
+
+    return Path(db_path).resolve()
+
+
+def build_mlflow_experiment_artifact_root(tracking_uri: str) -> Path | None:
+    """Resolve o diretório-base de artefatos para backends SQLite locais."""
+
+    db_path = resolve_sqlite_tracking_db_path(tracking_uri)
+    if db_path is None:
+        return None
+
+    return db_path.parent
+
+
+def build_mlflow_experiment_artifact_location(
+    tracking_uri: str,
+    experiment_ref: str,
+) -> str | None:
+    """Monta o artifact_location canônico para um experimento local."""
+
+    artifact_root = build_mlflow_experiment_artifact_root(tracking_uri)
+    if artifact_root is None:
+        return None
+
+    return str((artifact_root / experiment_ref).resolve())
+
+
+def update_mlflow_experiment_artifact_location(
+    tracking_uri: str,
+    experiment_id: str,
+    artifact_location: str,
+) -> None:
+    """Atualiza o artifact_location do experimento no backend SQLite local."""
+
+    db_path = resolve_sqlite_tracking_db_path(tracking_uri)
+    if db_path is None:
+        raise ValueError(
+            "Atualização de artifact_location só é suportada para tracking URI SQLite."
+        )
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
+            (artifact_location, int(experiment_id)),
+        )
+        connection.commit()
+
+
+def ensure_mlflow_experiment(mlflow_cfg: dict[str, Any]) -> None:
+    """Garante experimento MLflow compatível com o ambiente atual."""
+
+    tracking_uri = mlflow_cfg["tracking_uri"]
+    experiment_name = mlflow_cfg["experiment_name"]
+    client = MlflowClient(tracking_uri=tracking_uri)
+    experiment = client.get_experiment_by_name(experiment_name)
+
+    if experiment is None:
+        artifact_location = build_mlflow_experiment_artifact_location(
+            tracking_uri,
+            experiment_name,
+        )
+        client.create_experiment(
+            experiment_name,
+            artifact_location=artifact_location,
+        )
+        logger.info(
+            "Experimento MLflow criado | experiment=%s | artifact_location=%s",
+            experiment_name,
+            artifact_location,
+        )
+        return
+
+    desired_artifact_location = build_mlflow_experiment_artifact_location(
+        tracking_uri,
+        str(experiment.experiment_id),
+    )
+    if desired_artifact_location is None:
+        return
+    if experiment.artifact_location == desired_artifact_location:
+        return
+
+    update_mlflow_experiment_artifact_location(
+        tracking_uri,
+        str(experiment.experiment_id),
+        desired_artifact_location,
+    )
+    logger.info(
+        "Experimento MLflow ajustado | experiment=%s | de=%s | para=%s",
+        experiment_name,
+        experiment.artifact_location,
+        desired_artifact_location,
     )
 
 
@@ -466,10 +587,15 @@ def parse_args() -> argparse.Namespace:
 def run_training(
     experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
     retraining_context: RetrainingMlflowContext | None = None,
+    experiment_config: Mapping[str, Any] | None = None,
 ) -> dict[str, float]:
     """Executa o treino atômico de um experimento individual."""
 
-    cfg = load_experiment_training_config(experiment_config_path)
+    cfg = (
+        build_experiment_training_config(experiment_config)
+        if experiment_config is not None
+        else load_experiment_training_config(experiment_config_path)
+    )
     set_global_seed(cfg.seed)
 
     datasets = load_training_data(cfg.target_col)

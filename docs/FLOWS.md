@@ -28,6 +28,7 @@ scripts operacionais, monitoramento passivo e automações internas.
 | Healthcheck da API | API | Automático online | `GET /health` | Retorna status do serviço |
 | Predição online por `customer_id` | API | Automático online | `POST /predict` | Consulta Feast online e retorna classe/probabilidade |
 | Predição legada por payload bruto | API | Automático online | `POST /predict/raw` | Aplica pipeline local e retorna classe/probabilidade |
+| Treino síncrono por payload | API/models | Manual online | `POST /train` | Treina um candidato, salva artefatos e não promove o champion |
 | Métricas Prometheus | API/monitoramento | Automático passivo | `GET /metrics` e `/predict` | Expõe contadores, gauges e latência |
 | Logging de inferência | API/monitoramento | Automático passivo | `POST /predict` | Salva `predictions.jsonl` |
 | Engenharia de features | Feature engineering | Manual ou DVC | `task mlfeateng` / `dvc repro featurize` | Gera `interim`, `processed` e `feature_pipeline.joblib` |
@@ -75,6 +76,7 @@ docs + data/golden-set.json
 | Natureza | Flows | Observação operacional |
 |---|---|---|
 | Automático online | `/health`, `/predict`, `/predict/raw`, `/metrics`, rotas LLM | Acontecem quando a API recebe chamadas HTTP. |
+| Manual online | `/train` | Exige chamada explícita e executa treino síncrono sob demanda. |
 | Automático passivo | métricas Prometheus e logging de inferência | São efeitos colaterais do serving; não iniciam treino nem drift sozinhos. |
 | Automático interno | retreino por drift crítico | Ocorre dentro do flow batch de drift quando a configuração permite. |
 | Manual batch | feature engineering, treino, export Feast, drift, avaliações LLM, cenários | Dependem de comando local, DVC, taskipy ou container dedicado. |
@@ -143,13 +145,13 @@ docs + data/golden-set.json
 -> função [`load_prediction_model`](../src/serving/pipeline.py)
 -> usa `artifacts/models/model_current.pkl`
 -> aplica `predict_proba`
--> usa threshold em [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+-> usa threshold em [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 -> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Entradas**
 
 - payload HTTP contendo `customer_id`
-- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 - [`feature_store/repo.py`](../feature_store/repo.py)
 - `feature_store/data/registry.db`
 - Redis com features materializadas
@@ -192,7 +194,7 @@ docs + data/golden-set.json
 - payload bruto com atributos do cliente
 - `artifacts/models/feature_pipeline.joblib`
 - `artifacts/models/model_current.pkl`
-- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 
 **Saídas**
 
@@ -203,7 +205,45 @@ docs + data/golden-set.json
 - Foi mantido como fallback legado e apoio didático.
 - Não é o caminho principal quando a Feature Store online está disponível.
 
-### 1.4 Métricas Prometheus
+### 1.4 Treino síncrono por payload
+
+**Tipo:** online manual
+**Start:** chamada HTTP para `POST /train`
+
+**Cadeia**
+
+`POST /train`
+-> schema [`TrainModelRequest`](../src/serving/schemas.py)
+-> rota [`train_model`](../src/serving/routes.py)
+-> valida bloqueio de sobrescrita do champion ativo
+-> função [`run_training`](../src/model_lifecycle/train.py)
+-> converte payload HTTP em contrato interno de treino
+-> carrega `data/processed/train.parquet` e `data/processed/test.parquet`
+-> registra parâmetros, métricas e artefatos no MLflow
+-> salva modelo candidato e sidecar de metadata
+-> retorna [`TrainModelResponse`](../src/serving/schemas.py)
+
+**Entradas**
+
+- payload JSON no formato lógico de `configs/model_lifecycle/model_current.json`
+- `data/processed/train.parquet`
+- `data/processed/test.parquet`
+- [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
+
+**Saídas**
+
+- resposta JSON com status, identificação do experimento, caminhos de artefatos e métricas
+- modelo candidato em `artifacts/models/...`
+- metadata sidecar `*_metadata.json`
+- nova run no MLflow
+
+**Observações**
+
+- O endpoint é síncrono e bloqueia até o treino terminar.
+- O endpoint não promove automaticamente o modelo treinado para o serving.
+- O endpoint recusa `artifacts.model_path` que aponte para `artifacts/models/model_current.pkl`.
+
+### 1.5 Métricas Prometheus
 
 **Tipo:** online/passivo automático
 **Start:** chamadas em `/predict` e scrape em `GET /metrics`
@@ -237,7 +277,7 @@ em andamento
 - [`src/serving/routes.py`](../src/serving/routes.py)
 - [`src/monitoring/metrics.py`](../src/monitoring/metrics.py)
 
-### 1.5 Logging de inferência para drift
+### 1.6 Logging de inferência para drift
 
 **Tipo:** online/passivo automático
 **Start:** chamada HTTP para `POST /predict`
@@ -466,7 +506,7 @@ ou `dvc repro featurize`
 
 - `data/processed/train.parquet`
 - `data/processed/test.parquet`
-- [`configs/model_lifecycle/model_current.yaml`](../configs/model_lifecycle/model_current.yaml)
+- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
 - [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
 - [`src/model_lifecycle/train.py`](../src/model_lifecycle/train.py)
 - [`src/model_lifecycle/catalog.py`](../src/model_lifecycle/catalog.py)

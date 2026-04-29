@@ -418,7 +418,7 @@ Trecho do YAML:
 retraining:
   enabled: true
   trigger_mode: auto_train_manual_promote
-  training_config_path: configs/model_lifecycle/model_current.yaml
+  training_config_path: configs/model_lifecycle/model_current.json
   request_path: artifacts/evaluation/model/retraining/retrain_request.json
   run_path: artifacts/evaluation/model/retraining/retrain_run.json
   promotion_decision_path: artifacts/evaluation/model/retraining/promotion_decision.json
@@ -468,7 +468,7 @@ Exemplo conceitual:
   "status": "requested",
   "reason": "critical_data_or_prediction_drift",
   "model_path": "artifacts/models/model_current.pkl",
-  "training_config_path": "configs/model_lifecycle/model_current.yaml",
+  "training_config_path": "configs/model_lifecycle/model_current.json",
   "created_at": "2026-04-12T00:00:00+00:00",
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
@@ -506,8 +506,8 @@ Exemplo conceitual:
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
   "drift_status": "critical",
-  "training_config_path": "configs/model_lifecycle/model_current.yaml",
-  "challenger_training_config_path": "artifacts/evaluation/model/retraining/generated_configs/retrain_<request_id>.yaml",
+  "training_config_path": "configs/model_lifecycle/model_current.json",
+  "challenger_training_config_path": "artifacts/evaluation/model/retraining/generated_configs/retrain_<request_id>.json",
   "experiment_name": "random_forest_current",
   "model_output_path": "artifacts/models/challengers/model_current_<request_id>.pkl",
   "model_version": "0.2.0-challenger-<request_id>",

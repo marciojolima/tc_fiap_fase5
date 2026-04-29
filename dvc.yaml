@@ -34,7 +34,7 @@ stages:
       - src/model_lifecycle/catalog.py
       - src/model_lifecycle/train.py
       - configs/pipeline_global_config.yaml
-      - configs/model_lifecycle/model_current.yaml
+      - configs/model_lifecycle/model_current.json
       - data/processed/train.parquet        # output de featurize → ordem garantida
       - data/processed/test.parquet
     outs:
@@ -101,11 +101,11 @@ stages:
     cmd: >-
       sh -c '
       python -m src.model_lifecycle.train &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v1.yaml &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v2.yaml &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v3.yaml &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/xgboost_v1.yaml &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v1.yaml &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v1.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v2.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v3.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/xgboost_v1.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v1.json &&
       python -m src.scenario_experiments.inference_cases --suite-file configs/scenario_experiments/inference_cases.yaml
       '
     deps:
