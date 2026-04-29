@@ -275,7 +275,7 @@ def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
         run_name="random_forest_v2",
     )
     cfg = ScenarioAnalysisConfig(
-        tracking_uri="file:./mlruns",
+        tracking_uri="sqlite:///mlruns/mlflow.db",
         mlflow_experiment_name="datathon-churn-scenario-analysis",
         experiment_config_path="configs/model_lifecycle/model_current.yaml",
     )

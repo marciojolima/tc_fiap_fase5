@@ -62,7 +62,7 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         risk_level="high",
         fairness_checked=False,
         mlflow_cfg={
-            "tracking_uri": "file:./mlruns",
+            "tracking_uri": "sqlite:///mlruns/mlflow.db",
             "experiment_name": "datathon-churn-baseline",
             "tags": {"owner": "team"},
         },

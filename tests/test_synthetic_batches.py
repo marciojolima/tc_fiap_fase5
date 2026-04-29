@@ -58,7 +58,7 @@ def build_base_dataframe() -> pd.DataFrame:
 def build_batch_config(tmp_path: Path) -> SyntheticBatchConfig:
     return SyntheticBatchConfig(
         seed=42,
-        tracking_uri="file:./mlruns",
+        tracking_uri="sqlite:///mlruns/mlflow.db",
         mlflow_experiment_name="monitoring-drift-test",
         output_dir=tmp_path,
         batch_size=4,

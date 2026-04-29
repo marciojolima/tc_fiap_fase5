@@ -81,7 +81,7 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         risk_level="high",
         fairness_checked=False,
         mlflow_cfg={
-            "tracking_uri": "file:./mlruns",
+            "tracking_uri": "sqlite:///mlruns/mlflow.db",
             "experiment_name": "candidate-exp",
             "tags": {
                 "owner": "team",
@@ -100,7 +100,7 @@ def return_global_training_config() -> dict:
         "data": {"target_col": "Exited"},
         "split": {"test_size": 0.2},
         "mlflow": {
-            "tracking_uri": "file:./mlruns",
+            "tracking_uri": "sqlite:///mlruns/mlflow.db",
             "experiment_name": "global-exp",
             "owner": "team",
             "phase": "dev",
@@ -345,7 +345,7 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.git_nearest_tag == "v0.2.0"
     assert cfg.risk_level == "high"
     assert cfg.fairness_checked is False
-    assert cfg.mlflow_cfg["tracking_uri"] == "file:./mlruns"
+    assert cfg.mlflow_cfg["tracking_uri"] == "sqlite:///mlruns/mlflow.db"
     assert cfg.mlflow_cfg["experiment_name"] == "candidate-exp"
     assert cfg.mlflow_cfg["tags"]["owner"] == "team"
     assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"

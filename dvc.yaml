@@ -95,13 +95,11 @@ stages:
 
   # ──────────────────────────────────────────────────────────
   # 6. Experimentos MLflow (champion + challengers + cenários)
-  #    Depende do MLflow estar rodando (infra_up já garante)
+  #    Grava direto no SQLite local; a UI do MLflow é opcional.
   # ──────────────────────────────────────────────────────────
   run_mlflow_experiments:
     cmd: >-
       sh -c '
-      until curl -fsS http://127.0.0.1:5000 >/dev/null; do echo "Aguardando MLflow..."; sleep 2; done &&
-      export MLFLOW_TRACKING_URI=http://127.0.0.1:5000 &&
       python -m src.model_lifecycle.train &&
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v1.yaml &&
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v2.yaml &&
