@@ -10,6 +10,7 @@ from model_lifecycle.train import (
     ExperimentTrainingConfig,
     ModelSpec,
     RetrainingMlflowContext,
+    build_experiment_training_config,
     build_model_spec,
     compute_training_data_version,
     evaluate_model,
@@ -59,7 +60,7 @@ class DummyRun:
         return None
 
 
-def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConfig:
+def build_training_config_fixture(model_path: Path) -> ExperimentTrainingConfig:
     return ExperimentTrainingConfig(
         seed=42,
         target_col="Exited",
@@ -190,7 +191,7 @@ def return_datasets_stub(target_col: str) -> DatasetSplits:
 def return_experiment_cfg_for_run(
     experiment_config_path: str,
 ) -> ExperimentTrainingConfig:
-    return build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    return build_training_config_fixture(Path("artifacts/models/model.pkl"))
 
 
 _METRICS_LOG: list[dict[str, float]] = []
@@ -264,7 +265,7 @@ def test_resolve_runtime_model_params_supports_neg_pos_ratio_token() -> None:
 
 
 def test_build_model_spec_uses_experiment_contract() -> None:
-    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    cfg = build_training_config_fixture(Path("artifacts/models/model.pkl"))
 
     spec = build_model_spec(cfg)
 
@@ -351,6 +352,38 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
 
 
+def test_build_experiment_training_config_supports_in_memory_contract(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "model_lifecycle.train.load_global_config",
+        return_global_training_config,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.compute_training_data_version",
+        return_data_hash,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_sha",
+        return_git_sha,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_tag",
+        return_git_tag,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_nearest_tag",
+        return_git_nearest_tag,
+    )
+
+    cfg = build_experiment_training_config(return_experiment_training_config(""))
+
+    assert isinstance(cfg, ExperimentTrainingConfig)
+    assert cfg.experiment_name == "random_forest_candidate"
+    assert cfg.model_path == Path("artifacts/models/model.pkl")
+    assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
+
+
 def test_resolve_git_sha_returns_string() -> None:
     git_sha = resolve_git_sha()
 
@@ -385,7 +418,7 @@ def test_compute_training_data_version_returns_hash(tmp_path: Path) -> None:
 
 
 def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
-    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    cfg = build_training_config_fixture(Path("artifacts/models/model.pkl"))
     datasets = DatasetSplits(
         X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
         y_train=pd.Series([0, 1, 0, 1]),
@@ -428,7 +461,7 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
 
 
 def test_log_run_metadata_registers_retraining_context(monkeypatch) -> None:
-    cfg = build_experiment_training_config(Path("artifacts/models/model.pkl"))
+    cfg = build_training_config_fixture(Path("artifacts/models/model.pkl"))
     datasets = DatasetSplits(
         X_train=pd.DataFrame({"f1": [1, 2, 3, 4]}),
         y_train=pd.Series([0, 1, 0, 1]),
@@ -488,7 +521,7 @@ def test_train_and_log_model_trains_logs_and_saves(
         X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
         y_test=pd.Series([0, 1, 0, 1]),
     )
-    cfg = build_experiment_training_config(tmp_path / "candidate_model.pkl")
+    cfg = build_training_config_fixture(tmp_path / "candidate_model.pkl")
     spec = build_model_spec(cfg)
 
     _METRICS_LOG.clear()
@@ -533,7 +566,7 @@ def test_train_and_log_model_uses_retrain_suffix_in_mlflow_run_name(
         X_test=pd.DataFrame({"f1": [5, 6, 7, 8]}),
         y_test=pd.Series([0, 1, 0, 1]),
     )
-    cfg = build_experiment_training_config(tmp_path / "candidate_model.pkl")
+    cfg = build_training_config_fixture(tmp_path / "candidate_model.pkl")
     spec = build_model_spec(cfg)
     retraining_context = RetrainingMlflowContext(
         request_id="req-123",
@@ -602,3 +635,50 @@ def test_run_training_executes_single_experiment(monkeypatch) -> None:
     assert len(mlflow_cfg_calls) == 1
     assert len(_TRAIN_CALLS) == 1
     assert _TRAIN_CALLS[0][3] is None
+
+
+def test_run_training_accepts_in_memory_experiment_config(monkeypatch) -> None:
+    seed_calls = []
+    mlflow_cfg_calls = []
+    _TRAIN_CALLS.clear()
+
+    monkeypatch.setattr(
+        "model_lifecycle.train.build_experiment_training_config",
+        lambda payload: build_experiment_training_config(
+            payload,
+            global_cfg=return_global_training_config(),
+        ),
+    )
+    monkeypatch.setattr("model_lifecycle.train.set_global_seed", seed_calls.append)
+    monkeypatch.setattr(
+        "model_lifecycle.train.load_training_data",
+        return_datasets_stub,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.configure_mlflow",
+        mlflow_cfg_calls.append,
+    )
+    monkeypatch.setattr("model_lifecycle.train.train_and_log_model", return_train_call)
+    monkeypatch.setattr(
+        "model_lifecycle.train.compute_training_data_version",
+        return_data_hash,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_sha",
+        return_git_sha,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_tag",
+        return_git_tag,
+    )
+    monkeypatch.setattr(
+        "model_lifecycle.train.resolve_git_nearest_tag",
+        return_git_nearest_tag,
+    )
+
+    run_training(experiment_config=return_experiment_training_config(""))
+
+    assert seed_calls == [42]
+    assert len(mlflow_cfg_calls) == 1
+    assert len(_TRAIN_CALLS) == 1
+    assert _TRAIN_CALLS[0][0].output_path == Path("artifacts/models/model.pkl")

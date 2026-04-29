@@ -115,6 +115,13 @@ Na prática:
 - a configuração de treino aponta explicitamente para esse contrato em `feast.feature_service_name`
 - o serving resolve a leitura online pelo `FeatureService` do modelo ativo
 
+Nota importante sobre o endpoint `POST /train`:
+
+- ele pode treinar um novo candidato com outro `feature_service_name`
+- ele não troca automaticamente o modelo champion ativo do serving
+- ele também não executa `apply` ou `materialize` no Feast
+- portanto, um candidato treinado via API só passa a afetar `/predict` após promoção explícita e atualização operacional da Feature Store, quando necessário
+
 Isso aproxima a solução de um cenário produtivo sem introduzir complexidade desnecessária.
 
 ## Materialização incremental

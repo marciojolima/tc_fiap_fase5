@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -151,6 +152,259 @@ class ChurnPredictionResponse(BaseModel):
     threshold: float
     feature_source: str
     customer_id: int | None = None
+
+
+SUPPORTED_TRAINING_ALGORITHMS = (
+    "gradient_boosting",
+    "logistic_regression",
+    "random_forest",
+    "xgboost",
+)
+SUPPORTED_MODEL_FLAVORS = ("sklearn",)
+
+
+class TrainExperimentConfig(BaseModel):
+    """Bloco de identificação do experimento de treino."""
+
+    name: str = Field(..., min_length=1, description="Nome lógico do experimento.")
+    run_name: str = Field(..., min_length=1, description="Nome da run no MLflow.")
+    version: str = Field(..., min_length=1, description="Versão semântica do modelo.")
+    algorithm: str = Field(
+        ...,
+        description=(
+            "Algoritmo de treino. "
+            f"Suportados: {SUPPORTED_TRAINING_ALGORITHMS}."
+        ),
+    )
+    flavor: str = Field(
+        default="sklearn",
+        description=f"Stack de serialização. Suportados: {SUPPORTED_MODEL_FLAVORS}.",
+    )
+
+    @field_validator("algorithm")
+    @classmethod
+    def validate_algorithm(cls, value: str) -> str:
+        if value not in SUPPORTED_TRAINING_ALGORITHMS:
+            raise ValueError(
+                f"algorithm deve ser um de {SUPPORTED_TRAINING_ALGORITHMS}"
+            )
+        return value
+
+    @field_validator("flavor")
+    @classmethod
+    def validate_flavor(cls, value: str) -> str:
+        if value not in SUPPORTED_MODEL_FLAVORS:
+            raise ValueError(f"flavor deve ser um de {SUPPORTED_MODEL_FLAVORS}")
+        return value
+
+
+class TrainDatasetConfig(BaseModel):
+    """Bloco de dados e contrato de features do treino."""
+
+    target_col: str = Field(
+        "Exited",
+        min_length=1,
+        description="Nome da coluna alvo no dataset processado.",
+    )
+    feature_set: str = Field(
+        ...,
+        min_length=1,
+        description="Identificador lógico do conjunto de features.",
+    )
+
+
+class TrainParamsConfig(BaseModel):
+    """Bloco de hiperparâmetros do modelo."""
+
+    params: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Hiperparâmetros do estimador, no mesmo formato do config de treino."
+        ),
+    )
+
+    @field_validator("params")
+    @classmethod
+    def validate_params(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if not value:
+            raise ValueError("training.params não pode ser vazio")
+        return value
+
+
+class TrainInferenceConfig(BaseModel):
+    """Bloco de parâmetros usados na etapa de avaliação do treino."""
+
+    threshold: float = Field(
+        ...,
+        gt=0,
+        lt=1,
+        description="Threshold de classificação usado para métricas e metadata.",
+    )
+
+
+class TrainFeastConfig(BaseModel):
+    """Bloco do contrato Feast associado ao modelo treinado."""
+
+    feature_service_name: str = Field(
+        ...,
+        min_length=1,
+        description="FeatureService que representa o contrato online do modelo.",
+    )
+
+
+class TrainArtifactsConfig(BaseModel):
+    """Bloco de artefatos gerados pelo treino."""
+
+    model_path: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Caminho de saída do modelo serializado. "
+            "Não pode apontar para o modelo champion ativo do serving."
+        ),
+    )
+
+    @field_validator("model_path")
+    @classmethod
+    def validate_model_path(cls, value: str) -> str:
+        if Path(value).suffix != ".pkl":
+            raise ValueError("artifacts.model_path deve terminar com .pkl")
+        return value
+
+
+class TrainMlflowConfig(BaseModel):
+    """Bloco de metadados MLflow do experimento."""
+
+    experiment_name: str = Field(
+        ...,
+        min_length=1,
+        description="Nome do experimento no MLflow.",
+    )
+    tags: dict[str, str] = Field(
+        default_factory=dict,
+        description="Tags adicionais do experimento a serem registradas no MLflow.",
+    )
+
+
+class TrainRegistryConfig(BaseModel):
+    """Bloco de registry lógico do modelo."""
+
+    enabled: bool = Field(
+        False,
+        description=(
+            "Mantido por compatibilidade de contrato; não promove modelo "
+            "no endpoint."
+        ),
+    )
+    model_name: str = Field(
+        ...,
+        min_length=1,
+        description="Nome lógico do modelo no registry.",
+    )
+    alias: str | None = Field(
+        default=None,
+        description="Alias opcional do modelo no registry.",
+    )
+
+
+class TrainGovernanceConfig(BaseModel):
+    """Bloco de governança do experimento."""
+
+    risk_level: Literal["low", "medium", "high"] = Field(
+        default="medium",
+        description="Classificação de risco do modelo.",
+    )
+    fairness_checked: bool = Field(
+        default=False,
+        description="Indica se houve checagem formal de fairness.",
+    )
+
+
+class TrainModelRequest(BaseModel):
+    """Payload HTTP para treino síncrono de um experimento individual."""
+
+    experiment: TrainExperimentConfig
+    dataset: TrainDatasetConfig
+    training: TrainParamsConfig
+    inference: TrainInferenceConfig
+    feast: TrainFeastConfig
+    artifacts: TrainArtifactsConfig
+    mlflow: TrainMlflowConfig
+    registry: TrainRegistryConfig
+    governance: TrainGovernanceConfig = Field(
+        default_factory=TrainGovernanceConfig,
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "experiment": {
+                    "name": "random_forest_candidate_api",
+                    "run_name": "random_forest_candidate_api",
+                    "version": "0.2.1",
+                    "algorithm": "random_forest",
+                    "flavor": "sklearn",
+                },
+                "dataset": {
+                    "target_col": "Exited",
+                    "feature_set": "processed_v1",
+                },
+                "training": {
+                    "params": {
+                        "n_estimators": 200,
+                        "max_depth": 15,
+                        "random_state": 42,
+                        "class_weight": "balanced",
+                        "min_samples_leaf": 5,
+                    }
+                },
+                "inference": {
+                    "threshold": 0.5,
+                },
+                "feast": {
+                    "feature_service_name": "customer_churn_rf_v2",
+                },
+                "artifacts": {
+                    "model_path": (
+                        "artifacts/models/candidates/"
+                        "random_forest_candidate_api.pkl"
+                    ),
+                },
+                "mlflow": {
+                    "experiment_name": "datathon-churn-baseline",
+                    "tags": {
+                        "owner": "datathon-grupo",
+                        "phase": "datathon-fase05",
+                        "dataset_name": "bank-customer-churn",
+                        "candidate_type": "api_candidate",
+                    },
+                },
+                "registry": {
+                    "enabled": False,
+                    "model_name": "churn-classifier",
+                    "alias": None,
+                },
+                "governance": {
+                    "risk_level": "high",
+                    "fairness_checked": False,
+                },
+            }
+        },
+    }
+
+
+class TrainModelResponse(BaseModel):
+    """Resposta do endpoint síncrono de treino."""
+
+    status: Literal["completed"]
+    experiment_name: str
+    run_name: str
+    model_version: str
+    model_path: str
+    metadata_path: str
+    metrics: dict[str, float]
+    promoted_to_serving: bool
+    message: str
 
 
 class LLMChatRequest(BaseModel):
