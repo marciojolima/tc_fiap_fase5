@@ -206,7 +206,7 @@ poetry run dvc repro train
 ### 4. Exportar a camada offline do Feast
 
 ```bash
-poetry run dvc repro export_feature_store
+poetry run dvc repro create_fs_offline
 ```
 
 Se preferir executar os módulos diretamente durante desenvolvimento:
@@ -237,7 +237,7 @@ O fluxo mais seguro para preparar a Feature Store e
 depois usar o serving e:
 
 ```bash
-poetry run dvc repro export_feature_store
+poetry run dvc repro create_fs_offline
 poetry run task feastapply
 poetry run task feastmaterialize
 docker compose up -d serving prometheus grafana
@@ -245,7 +245,7 @@ docker compose up -d serving prometheus grafana
 
 Em termos de responsabilidade:
 
-- `dvc repro export_feature_store` prepara a camada offline
+- `dvc repro create_fs_offline` prepara a camada offline
 - `feast apply` registra ou atualiza o catalogo do Feast
 - `feast materialize-incremental` publica as features na online store Redis
 - o `serving` apenas consulta a online store; ele nao deve bootstrapar o Feast em runtime
@@ -267,7 +267,7 @@ Dados + pipeline de features
         |
         v
 python -m src.feast_ops.export
-ou dvc repro export_feature_store
+ou dvc repro create_fs_offline
         |
         v
 data/feature_store/customer_features.parquet
