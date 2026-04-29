@@ -145,12 +145,6 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
   As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
 
-  Se `artifacts/rag/` tiver sido criado por um container antigo com outro usuário, corrija a posse uma vez antes da execução local:
-
-  ```bash
-  sudo chown -R "$(id -u):$(id -g)" artifacts/rag
-  ```
-
 **Extensões previstas para essa trilha:** ampliação do CI/CD e documentação agregada de resultados de avaliação.
 
 ## Endpoints da API
@@ -342,11 +336,6 @@ Ao longo deste README, os exemplos usam `poetry run dvc ...`.
 - `.dvc/config`: arquivo versionado no Git com a configuração compartilhada do remote, como nome e URL
 - `.dvc/config.local`: arquivo local, não versionado, usado para credenciais e segredos de cada máquina
 
-Em outras palavras:
-
-- o time pode versionar em `.dvc/config` que o remote se chama `datathon_remote`
-- cada pessoa configura em `.dvc/config.local` suas próprias credenciais de acesso
-
 #### 1. Configure o remote
 
 A configuração compartilhada aponta para o remote `datathon_remote`. Para recriá-lo manualmente em outra máquina:
@@ -364,18 +353,7 @@ poetry run dvc remote modify --local datathon_remote gdrive_client_id <ID>
 poetry run dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
 ```
 
-#### 3. Garanta a permissão no Google Drive
-
-Não basta conhecer o `client_id` e o `client_secret`. A conta Google usada na autenticação também precisa ter permissão para acessar o storage apontado pelo remote.
-
-Na prática, isso significa que:
-
-- a pasta ou recurso do Google Drive referenciado pelo `gdrive://...` precisa estar compartilhado com a conta que fará o `dvc pull`
-- se a permissão não existir, a autenticação pode até funcionar, mas o download dos dados falhará por falta de acesso ao conteúdo
-
-Se o time estiver centralizando os dados em uma pasta compartilhada, confirme antes que sua conta foi adicionada com acesso apropriado.
-
-#### 4. Configure o OAuth no Google Cloud Console
+#### 3. Configure o OAuth no Google Cloud Console
 
 Para que o DVC possa autenticar no Google Drive via OAuth, é necessário existir um cliente OAuth configurado no Google Cloud Console. Em linhas gerais:
 
@@ -385,9 +363,7 @@ Para que o DVC possa autenticar no Google Drive via OAuth, é necessário existi
 4. crie credenciais do tipo OAuth Client ID
 5. use o `client_id` e o `client_secret` gerados nos comandos `dvc remote modify --local ...`
 
-Na primeira autenticação, o DVC pode abrir um fluxo de autorização OAuth no navegador. Essa etapa vincula a conta Google local ao client OAuth configurado e concede acesso ao storage do Drive.
-
-#### 5. Baixe os dados
+#### 4. Baixe os dados
 
 Depois do remote e das credenciais estarem corretos, baixe os dados com:
 
@@ -395,19 +371,10 @@ Depois do remote e das credenciais estarem corretos, baixe os dados com:
 poetry run dvc pull
 ```
 
-#### Resumo prático
-
-```bash
-dvc remote modify --local datathon_remote gdrive_client_id <ID>
-dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
-dvc pull
-```
-
 #### Observações importantes
 
 - não versione `.dvc/config.local`
 - não publique `client_id` e `client_secret` em README, issue, commit ou pull request
-- se a autenticação OAuth estiver correta, mas o Drive não estiver compartilhado com sua conta, o `pull` ainda assim pode falhar
 - `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
 - ** para maiores detalhes consulte o arquivo: [`dvc.yaml`](dvc.yaml)**
 
@@ -445,8 +412,6 @@ Com a stack em execução, a documentação interativa do FastAPI fica disponív
 
 **Quando não precisa rebuild:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo Uvicorn. Configurações, dados e artefatos ficam disponíveis por volumes do Compose principal, incluindo `configs/`, `data/processed/`, `data/feature_store/`, `artifacts/` e `feature_store/`.
 
-**Diagnóstico LLM:** com a stack no ar, abra `http://127.0.0.1:8000/llm/status` para ver o `llm_provider` ativo, o modelo esperado e o diagnóstico específico do provider. Se o provider for `ollama`, `poetry run task ollama_list` ajuda a confirmar os modelos instalados nessa instância.
-
 Para encerrar os serviços:
 
 ```bash
@@ -482,8 +447,6 @@ Arquivos principais dessa integração:
 - `src/feast_ops/export.py`
 - `src/feast_ops/demo.py`
 - `docs/FEATURE_STORE.md`
-
-Detalhamento completo, decisões arquiteturais, limitações e próximos passos estão em [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md).
 
 Serving:
 
@@ -625,11 +588,6 @@ O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis c
 6. Abra o MLflow para revisar runs, parâmetros, métricas e artefatos.
 7. Rode `poetry run task mldriftdemo` ou `poetry run task mldrift` para produzir uma execução de drift.
 8. Abra os relatórios HTML e os arquivos JSON em `artifacts/evaluation/model/` para inspecionar as evidências geradas.
-
-Resumo rápido:
-
-- `.env.example`: template versionado, usado como referência para o time
-- `.env`: arquivo local efetivamente lido pelo `docker compose`
 
 ## Artefatos Relevantes
 
