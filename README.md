@@ -43,7 +43,9 @@ Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritm
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
 - [Documentação Complementar](#documentação-complementar)
+- [Referências](#referências)
 - [Autores](#autores)
+- [Licença](#licença)
 
 ## Sobre o Projeto
 
@@ -308,6 +310,13 @@ Observações importantes:
 #### Carga inicial de dados e geração de artefatos
 
 Faça o pull dos dados versionados no storage via DVC, incluindo arquivos como `data/raw/Customer-Churn-Records.csv`:
+
+Observação sobre a base de churn bancário:
+
+- a base utilizada no projeto foi obtida via Kaggle, a partir do dataset `Bank Customer Churn`
+- o uso neste repositório é voltado principalmente a fins educacionais, experimentais e de demonstração técnica
+- a referência de obtenção e a licença/procedência da base devem ser verificadas diretamente na página do dataset antes de qualquer redistribuição ou uso fora de contexto acadêmico
+- por esse motivo, este projeto não deve apresentar essa base como dado operacional real de clientes
 
 ```bash
 poetry run dvc pull
@@ -633,6 +642,19 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 - [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
 - [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
 
+## Referências
+
+1. OWASP (2025). *Top 10 for Large Language Model Applications*.
+2. Brasil (2018). *Lei n° 13.709/2018 (LGPD)*.
+3. Kaggle. *Bank Customer Churn*. Disponível em: <https://www.kaggle.com/datasets/radheshyamkollipara/bank-customer-churn>.
+4. Kaggle. *Bank Customer Churn - Discussion*. Disponível em: <https://www.kaggle.com/datasets/radheshyamkollipara/bank-customer-churn/discussion?sort=undefined>.
+
+Nota sobre a referência do Kaggle:
+
+- a base foi utilizada principalmente para fins educacionais, experimentais e de demonstração técnica no contexto do projeto
+- a página do dataset indica licença do tipo `Other (specified in description)`, então a eventual redistribuição ou uso fora do contexto acadêmico deve considerar essa ressalva e ser validada diretamente na origem
+- a citação acima documenta a fonte de obtenção da base, mas não substitui a verificação de licença, procedência e condições de uso
+
 ## Autores
 
 **Turma 6MLET - FIAP**
@@ -641,3 +663,7 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 - Gabriel Jordan - RM365606
 - Luciana Ferreira - RM366171
 - Marcio Lima - RM365919
+
+## Licença
+
+Este projeto adota a licença MIT para o código-fonte do repositório.
