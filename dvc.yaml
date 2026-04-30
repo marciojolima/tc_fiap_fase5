@@ -34,12 +34,12 @@ stages:
       - src/model_lifecycle/catalog.py
       - src/model_lifecycle/train.py
       - configs/pipeline_global_config.yaml
-      - configs/model_lifecycle/model_current.json
+      - configs/model_lifecycle/current.json
       - data/processed/train.parquet        # output de featurize → ordem garantida
       - data/processed/test.parquet
     outs:
-      - artifacts/models/model_current.pkl
-      - artifacts/models/model_current_metadata.json
+      - artifacts/models/current.pkl
+      - artifacts/models/current_metadata.json
 
   # ──────────────────────────────────────────────────────────
   # 3. Exportação offline para a Feature Store
@@ -89,7 +89,7 @@ stages:
       - configs
       - docs
       - README.md
-      - artifacts/models/model_current_metadata.json  # output de train → ordem garantida
+      - artifacts/models/current_metadata.json  # output de train → ordem garantida
     outs:
       - artifacts/rag
 
@@ -101,9 +101,9 @@ stages:
     cmd: >-
       sh -c '
       python -m src.model_lifecycle.train &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v1.json &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v2.json &&
-      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/random_forest_v3.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/rf_v1.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/rf_v2_precision.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/rf_v3_recall.json &&
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/xgboost_v1.json &&
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v1.json &&
       python -m src.scenario_experiments.inference_cases --suite-file configs/scenario_experiments/inference_cases.yaml
@@ -115,7 +115,7 @@ stages:
       - configs/scenario_experiments
       - data/processed/train.parquet
       - data/processed/test.parquet
-      - artifacts/models/model_current.pkl
+      - artifacts/models/current.pkl
     always_changed: true
 
   # ──────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ stages:
     cmd: python -m src.evaluation.model.drift.synthetic_drifts --all
     deps:
       - src/evaluation/model/drift
-      - artifacts/models/model_current.pkl  # output de train → ordem garantida
+      - artifacts/models/current.pkl  # output de train → ordem garantida
       - artifacts/rag                        # output de build_rag_cache → ordem garantida
       - data/processed/test.parquet
     outs:

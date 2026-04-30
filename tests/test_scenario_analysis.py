@@ -145,7 +145,7 @@ def test_run_scenario_prediction_returns_standardized_output(monkeypatch) -> Non
 
     result = run_scenario_prediction(
         scenario,
-        "configs/model_lifecycle/experiments/random_forest_v2.json",
+        "configs/model_lifecycle/experiments/rf_v2_precision.json",
     )
 
     assert isinstance(result, ScenarioAnalysisResult)
@@ -277,7 +277,7 @@ def test_log_scenario_analysis_run_registers_mlflow_data(monkeypatch) -> None:
     cfg = ScenarioAnalysisConfig(
         tracking_uri="sqlite:///mlruns/mlflow.db",
         mlflow_experiment_name="datathon-churn-scenario-analysis",
-        experiment_config_path="configs/model_lifecycle/model_current.json",
+        experiment_config_path="configs/model_lifecycle/current.json",
     )
 
     _PARAM_LOG.clear()

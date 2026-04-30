@@ -1,8 +1,8 @@
 {
   "experiment": {
-    "name": "random_forest_current",
-    "run_name": "random_forest_current",
-    "version": "0.2.0",
+    "name": "random_forest_v3_recall",
+    "run_name": "random_forest_v3_recall",
+    "version": "0.3.0",
     "algorithm": "random_forest",
     "flavor": "sklearn"
   },
@@ -12,21 +12,21 @@
   },
   "training": {
     "params": {
-      "n_estimators": 200,
-      "max_depth": 15,
+      "n_estimators": 300,
+      "max_depth": 8,
       "random_state": 42,
       "class_weight": "balanced",
-      "min_samples_leaf": 5
+      "min_samples_leaf": 10
     }
   },
   "inference": {
-    "threshold": 0.5
+    "threshold": 0.4
   },
   "feast": {
-    "feature_service_name": "customer_churn_rf_v2"
+    "feature_service_name": "customer_churn_rf_v3"
   },
   "artifacts": {
-    "model_path": "artifacts/models/model_current.pkl"
+    "model_path": "artifacts/models/rf_v3_recall.pkl"
   },
   "mlflow": {
     "experiment_name": "datathon-churn-baseline",
@@ -35,7 +35,7 @@
       "phase": "datathon-fase05",
       "dataset_name": "bank-customer-churn",
       "model_family": "random_forest",
-      "candidate_type": "current"
+      "candidate_type": "baseline"
     }
   },
   "registry": {

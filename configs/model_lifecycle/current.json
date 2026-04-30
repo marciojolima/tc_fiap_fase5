@@ -1,7 +1,7 @@
 {
   "experiment": {
-    "name": "random_forest_v2_precision",
-    "run_name": "random_forest_v2_precision",
+    "name": "current",
+    "run_name": "current",
     "version": "0.2.0",
     "algorithm": "random_forest",
     "flavor": "sklearn"
@@ -26,7 +26,7 @@
     "feature_service_name": "customer_churn_rf_v2"
   },
   "artifacts": {
-    "model_path": "artifacts/models/random_forest_v2.pkl"
+    "model_path": "artifacts/models/current.pkl"
   },
   "mlflow": {
     "experiment_name": "datathon-churn-baseline",
@@ -35,7 +35,7 @@
       "phase": "datathon-fase05",
       "dataset_name": "bank-customer-churn",
       "model_family": "random_forest",
-      "candidate_type": "baseline"
+      "candidate_type": "current"
     }
   },
   "registry": {

@@ -175,7 +175,7 @@ def _predict_churn_tool(raw_input: str) -> str:
         )
 
     request = ChurnPredictionRequest(**payload)
-    cfg = load_serving_config()
+    cfg = load_serving_config(model_name=request.model_name)
     features = prepare_inference_dataframe(request, cfg)
     probability, prediction = predict_from_dataframe_with_config(features, cfg)
     result = {

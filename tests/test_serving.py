@@ -64,18 +64,18 @@ class DummyFeaturePipeline:
         )
 
 
-def return_route_config() -> ServingConfig:
+def return_route_config(model_name: str = "current") -> ServingConfig:
     return ServingConfig(
         target_col="Exited",
         leakage_columns=["Exited"],
         drop_columns=["RowNumber", "CustomerId", "Surname"],
         governed_columns=["Geography"],
-        model_path=Path("artifacts/models/model_current.pkl"),
+        model_path=Path(f"artifacts/models/{model_name}.pkl"),
         feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=0.5,
-        model_name="random_forest_current",
+        model_name=model_name,
         model_version="0.2.0",
-        run_name="random_forest_current",
+        run_name=model_name,
         feast_repo_path=Path("feature_store"),
         feast_entity_key="customer_id",
         feast_feature_service_name="customer_churn_rf_v2",
@@ -105,7 +105,7 @@ def return_prepared_raw_payload(payload, cfg) -> PreparedInferencePayload:
     )
 
 
-def return_route_prediction(df_feat) -> tuple[float, int]:
+def return_route_prediction(df_feat, cfg=None) -> tuple[float, int]:
     return 0.81, 1
 
 
@@ -187,9 +187,9 @@ def test_prepare_inference_dataframe_uses_feature_pipeline(monkeypatch) -> None:
         model_path=Mock(),
         feature_pipeline_path=Mock(),
         threshold=0.5,
-        model_name="random_forest_current",
+        model_name="current",
         model_version="0.2.0",
-        run_name="random_forest_current",
+        run_name="current",
         feast_repo_path=Mock(),
         feast_entity_key="customer_id",
         feast_feature_service_name="customer_churn_rf_v2",
@@ -233,9 +233,9 @@ def test_prepare_inference_dataframe_logs_lgpd_governance(monkeypatch) -> None:
         model_path=Mock(),
         feature_pipeline_path=Mock(),
         threshold=0.5,
-        model_name="random_forest_current",
+        model_name="current",
         model_version="0.2.0",
-        run_name="random_forest_current",
+        run_name="current",
         feast_repo_path=Mock(),
         feast_entity_key="customer_id",
         feast_feature_service_name="customer_churn_rf_v2",
@@ -284,7 +284,7 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
     assert response.model_dump() == {
         "churn_probability": 0.81,
         "churn_prediction": 1,
-        "model_name": "random_forest_current",
+        "model_name": "current",
         "threshold": 0.5,
         "feature_source": "feast_online_store",
         "customer_id": EXPECTED_CUSTOMER_ID,
@@ -324,6 +324,7 @@ def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
                 "EstimatedSalary": 50000.0,
                 "Card Type": "DIAMOND",
                 "Point Earned": 450,
+                "model_name": "rf_v3_recall",
             }
         )
     )
@@ -331,7 +332,7 @@ def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
     assert response.model_dump() == {
         "churn_probability": 0.81,
         "churn_prediction": 1,
-        "model_name": "random_forest_current",
+        "model_name": "rf_v3_recall",
         "threshold": 0.5,
         "feature_source": "request_payload",
         "customer_id": None,

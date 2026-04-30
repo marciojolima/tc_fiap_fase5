@@ -36,8 +36,8 @@ ou fora do domínio observado no treinamento.
 ## Modelo Atual
 
 As informações abaixo refletem o modelo champion hoje materializado em
-`artifacts/models/model_current.pkl` e no sidecar
-`artifacts/models/model_current_metadata.json`.
+`artifacts/models/current.pkl` e no sidecar
+`artifacts/models/current_metadata.json`.
 
 Essa tabela resume o estado operacional do champion a partir dos metadados
 persistidos ao final do treino e do rastreamento associado no MLflow. Em outras
@@ -46,7 +46,7 @@ identificação do modelo atualmente usado no serving e no monitoramento.
 
 | Campo | Valor atual |
 |---|---|
-| `experiment_name` | `random_forest_current` |
+| `experiment_name` | `current` |
 | `algorithm` | `random_forest` |
 | `flavor` | `sklearn` |
 | `model_version` | `0.2.0` |

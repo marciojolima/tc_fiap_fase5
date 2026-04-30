@@ -3,7 +3,7 @@
 Esta pasta separa a configuracao global do projeto das configuracoes
 de treino de modelos.
 
-- `model_current.json`: experimento principal aprovado para treino operacional.
+- `current.json`: experimento principal aprovado para treino operacional.
 - `experiments/*.json`: experimentos candidatos independentes.
 
 O executor de treino consome um unico experimento por vez. Novos
@@ -16,6 +16,6 @@ Convencao de governanca com Feast:
 - o serving usa esse mesmo contrato ao consultar a online store
 
 Convencao recomendada para artefatos:
-- `model_current.json` deve apontar para um caminho estavel, como `artifacts/models/model_current.pkl`
+- `current.json` deve apontar para um caminho estavel, como `artifacts/models/current.pkl`
 - `experiments/*.json` podem usar caminhos versionados, como `artifacts/models/<experiment.name>.pkl`
-- o treino operacional gera um sidecar de rastreabilidade em `artifacts/models/model_current_metadata.json`
+- o treino operacional gera um sidecar de rastreabilidade em `artifacts/models/current_metadata.json`

@@ -71,7 +71,7 @@ comparação champion-challenger.
 Todos utilizando o mesmo conjunto de dados (`processed_v1`) e divisão de treino/teste (80/20).
 
 O champion operacional está alinhado ao
-`random_forest_current`, cuja leitura prática é próxima da família de resultados
+`current`, cuja leitura prática é próxima da família de resultados
 mais equilibrados mostrada nesta tabela.
 
 ---

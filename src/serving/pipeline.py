@@ -12,8 +12,10 @@ from sklearn.pipeline import Pipeline
 
 from common.config_loader import (
     DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    DEFAULT_SERVING_MODEL_NAME,
     load_global_config,
     load_training_experiment_config,
+    resolve_experiment_config_path,
 )
 from common.logger import get_logger
 from feast_ops.config import (
@@ -63,12 +65,19 @@ class PreparedInferencePayload:
 
 
 def build_serving_config(
-    experiment_config_path: str = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    experiment_config_path: str | None = DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
+    *,
+    model_name: str = DEFAULT_SERVING_MODEL_NAME,
 ) -> ServingConfig:
     """Carrega a configuração usada pela API de inferência."""
 
     global_config = load_global_config()
-    experiment_config = load_training_experiment_config(experiment_config_path)
+    resolved_experiment_config_path = (
+        experiment_config_path
+        if experiment_config_path is not None
+        else resolve_experiment_config_path(model_name)
+    )
+    experiment_config = load_training_experiment_config(resolved_experiment_config_path)
 
     return ServingConfig(
         target_col=global_config["data"]["target_col"],
@@ -97,10 +106,12 @@ def _load_artifact(path_str: str) -> Any:
     return load(Path(path_str))
 
 
-def load_serving_config() -> ServingConfig:
-    """Carrega a configuração padrão usada pela API de inferência."""
+def load_serving_config(
+    model_name: str = DEFAULT_SERVING_MODEL_NAME,
+) -> ServingConfig:
+    """Carrega a configuração usada pela API a partir do nome lógico do modelo."""
 
-    return build_serving_config()
+    return build_serving_config(experiment_config_path=None, model_name=model_name)
 
 
 def load_prediction_model(model_path: Path | None = None) -> Any:
@@ -141,7 +152,7 @@ def load_feast_store(repo_path_str: str) -> FeatureStore:
 def build_inference_input_dataframe(payload: ChurnPredictionRequest) -> pd.DataFrame:
     """Converte o payload validado em um DataFrame bruto de inferência."""
 
-    return pd.DataFrame([payload.model_dump(by_alias=True)])
+    return pd.DataFrame([payload.model_dump(by_alias=True, exclude={"model_name"})])
 
 
 def prepare_inference_dataframe(
@@ -278,11 +289,14 @@ def prepare_online_inference_payload(
     )
 
 
-def predict_from_dataframe(transformed_features: pd.DataFrame) -> tuple[float, int]:
+def predict_from_dataframe(
+    transformed_features: pd.DataFrame,
+    cfg: ServingConfig | None = None,
+) -> tuple[float, int]:
     """Aplica o modelo já carregado sobre features transformadas."""
 
-    cfg = load_serving_config()
-    return predict_from_dataframe_with_config(transformed_features, cfg)
+    active_cfg = cfg or load_serving_config()
+    return predict_from_dataframe_with_config(transformed_features, active_cfg)
 
 
 def predict_from_dataframe_with_config(

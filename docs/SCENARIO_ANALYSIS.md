@@ -7,7 +7,7 @@ de churn e registra cada execucao em um experimento separado no MLflow.
 
 ```bash
 python -m src.scenario_experiments.inference_cases \
-  --config configs/model_lifecycle/model_current.json \
+  --config configs/model_lifecycle/current.json \
   --suite-file configs/scenario_experiments/inference_cases.yaml
 ```
 
@@ -15,7 +15,7 @@ python -m src.scenario_experiments.inference_cases \
 
 ```bash
 python -m src.scenario_experiments.inference_cases \
-  --config configs/model_lifecycle/model_current.json \
+  --config configs/model_lifecycle/current.json \
   --scenario-name high_churn_manual \
   --payload-json '{"Age": 92, "Balance": 0, "Card Type": "SILVER", "CreditScore": 350, "EstimatedSalary": 11.58, "Gender": "Female", "Geography": "Germany", "HasCrCard": 0, "IsActiveMember": 0, "NumOfProducts": 4, "Point Earned": 119, "Tenure": 0}'
 ```

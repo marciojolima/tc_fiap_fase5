@@ -152,8 +152,8 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 | Método | Endpoint | Objetivo | Observações |
 |---|---|---|---|
 | `GET` | `/health` | Healthcheck simples da API tabular | Retorna `{"status":"ok"}`. |
-| `POST` | `/predict` | Predição online por `customer_id` | Usa Feast + Redis e o modelo champion ativo. |
-| `POST` | `/predict/raw` | Predição por payload bruto | Reaplica localmente o pipeline de features persistido. |
+| `POST` | `/predict` | Predição online por `customer_id` | Usa Feast + Redis e aceita `model_name`, com default `current`. |
+| `POST` | `/predict/raw` | Predição por payload bruto | Reaplica o pipeline persistido e aceita `model_name`, com default `current`. |
 | `POST` | `/train` | Treino síncrono de um experimento individual | Valida o schema com Pydantic, recebe JSON no formato lógico do config de treino, salva challenger e retorna o tempo de treino em segundos. |
 | `GET` | `/metrics` | Exposição de métricas Prometheus | Foco atual em `/predict` e `/llm/chat`. |
 | `GET` | `/llm/health` | Healthcheck do router LLM | Diagnóstico rápido das rotas LLM. |
@@ -162,7 +162,7 @@ Implementação alinhada a uma camada de provider LLM configurável, integrada �
 
 Notas de serving:
 
-- `POST /train` não sobrescreve `artifacts/models/model_current.pkl` e retorna erro se o payload tentar apontar para o modelo champion ativo.
+- `POST /train` não sobrescreve `artifacts/models/current.pkl` e retorna erro se o payload tentar apontar para o modelo champion ativo.
 - `POST /train` reutiliza o módulo de treino existente, registra métricas/artefatos no MLflow e retorna `training_time_seconds`, mas não limpa cache nem altera o modelo carregado pelo serving em memória.
 - Em Docker, o serviço `serving` também precisa do volume `./mlruns:/app/mlruns`, porque o endpoint registra runs diretamente no backend SQLite do MLflow.
 - O fluxo recomendado para servir um novo modelo continua sendo treino de challenger, avaliação e promoção explícita.
@@ -601,8 +601,8 @@ Os arquivos abaixo ajudam a demonstrar reprodutibilidade, rastreabilidade e oper
 | `data/processed/feature_columns.json` | Registra a ordem e os nomes finais das features, ajudando a manter consistência entre treino e inferência. |
 | `data/processed/schema_report.json` | Evidência da validação estrutural dos dados processados, reforçando a etapa de qualidade de dados. |
 | `artifacts/models/feature_pipeline.joblib` | Pipeline de transformação persistido para reutilização no serving, evitando divergência entre treino e produção. |
-| `artifacts/models/model_current.pkl` | Modelo champion mantido como versão principal para inferência. |
-| `artifacts/models/model_current_metadata.json` | Metadados do champion, incluindo informações de versão, configuração e métricas relevantes. |
+| `artifacts/models/current.pkl` | Modelo champion mantido como versão principal para inferência. |
+| `artifacts/models/current_metadata.json` | Metadados do champion, incluindo informações de versão, configuração e métricas relevantes. |
 | `artifacts/models/challengers/` | Diretório reservado para challengers gerados em ciclos de retreino e comparados antes de eventual promoção. |
 | `artifacts/logs/inference/predictions.jsonl` | Log de inferências usado como base para monitoramento posterior. O contrato registra principalmente as features transformadas efetivamente servidas ao modelo, com metadados mínimos de predição e origem. |
 | `artifacts/evaluation/model/drift/drift_report.html` | Relatório HTML oficial do projeto para drift, coerente com `drift_metrics.json` e com a decisão operacional baseada em PSI. |

@@ -23,8 +23,8 @@ def build_request_payload() -> dict[str, object]:
         "request_id": "req-123",
         "status": "requested",
         "reason": "critical_data_or_prediction_drift",
-        "model_path": "artifacts/models/model_current.pkl",
-        "training_config_path": "configs/model_lifecycle/model_current.json",
+        "model_path": "artifacts/models/current.pkl",
+        "training_config_path": "configs/model_lifecycle/current.json",
         "created_at": "2026-04-12T00:00:00+00:00",
         "trigger_mode": "auto_train_manual_promote",
         "promotion_policy": "manual_approval_required",
@@ -51,8 +51,8 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         test_size=0.2,
         algorithm="random_forest",
         flavor="sklearn",
-        experiment_name="random_forest_current",
-        run_name="random_forest_current",
+        experiment_name="current",
+        run_name="current",
         model_version="0.2.0",
         model_params={"n_estimators": 200},
         threshold=0.5,
@@ -96,7 +96,7 @@ def test_load_retraining_request_parses_contract(tmp_path: Path) -> None:
 
     assert request.request_id == "req-123"
     assert request.status == "requested"
-    assert request.training_config_path == "configs/model_lifecycle/model_current.json"
+    assert request.training_config_path == "configs/model_lifecycle/current.json"
     assert request.drifted_features == ["Age"]
     assert request.promotion_rules["primary_metric"] == "auc"
     assert request.reference_row_count == EXPECTED_REFERENCE_ROW_COUNT
@@ -118,8 +118,8 @@ def test_run_retraining_request_executes_training_and_writes_result(
         yaml.safe_dump(
             {
                 "experiment": {
-                    "name": "random_forest_current",
-                    "run_name": "random_forest_current_challenger_req123",
+                    "name": "current",
+                    "run_name": "current_challenger_req123",
                     "version": "0.2.0-challenger-req123",
                     "algorithm": "random_forest",
                     "flavor": "sklearn",
@@ -137,7 +137,7 @@ def test_run_retraining_request_executes_training_and_writes_result(
                         / "artifacts"
                         / "models"
                         / "challengers"
-                        / "model_current_req123.pkl"
+                        / "current_req123.pkl"
                     )
                 },
                 "mlflow": {"tags": {"candidate_type": "challenger"}},
@@ -159,11 +159,7 @@ def test_run_retraining_request_executes_training_and_writes_result(
     monkeypatch.setattr(
         "model_lifecycle.retraining.load_experiment_training_config",
         lambda config_path: build_experiment_training_config(
-            tmp_path
-            / "artifacts"
-            / "models"
-            / "challengers"
-            / "model_current_req123.pkl"
+            tmp_path / "artifacts" / "models" / "challengers" / "current_req123.pkl"
         ),
     )
     monkeypatch.setattr(
@@ -181,7 +177,7 @@ def test_run_retraining_request_executes_training_and_writes_result(
     )
 
     assert result["status"] == "completed"
-    assert result["experiment_name"] == "random_forest_current"
+    assert result["experiment_name"] == "current"
     assert result["metrics"]["auc"] == EXPECTED_RETRAIN_AUC
     assert result["promotion_decision"]["status"] == "eligible"
     assert "challenger_training_config_path" in result
@@ -198,13 +194,13 @@ def test_run_retraining_request_executes_training_and_writes_result(
 def test_create_challenger_training_config_preserves_json_format(
     tmp_path: Path,
 ) -> None:
-    config_path = tmp_path / "model_current.json"
+    config_path = tmp_path / "current.json"
     config_path.write_text(
         json.dumps(
             {
                 "experiment": {
-                    "name": "random_forest_current",
-                    "run_name": "random_forest_current",
+                    "name": "current",
+                    "run_name": "current",
                     "version": "0.2.0",
                     "algorithm": "random_forest",
                     "flavor": "sklearn",
@@ -225,7 +221,7 @@ def test_create_challenger_training_config_preserves_json_format(
                     "feature_service_name": "customer_churn_rf_v2",
                 },
                 "artifacts": {
-                    "model_path": "artifacts/models/model_current.pkl",
+                    "model_path": "artifacts/models/current.pkl",
                 },
                 "mlflow": {
                     "tags": {

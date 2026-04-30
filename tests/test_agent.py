@@ -352,7 +352,10 @@ def test_rag_search_tool_returns_structured_evidence(monkeypatch) -> None:
 
 def test_predict_churn_tool_returns_structured_output(monkeypatch) -> None:
     cfg = SimpleNamespace(threshold=0.5, model_name="modelo_teste")
-    monkeypatch.setattr("agent.tools.load_serving_config", lambda: cfg)
+    monkeypatch.setattr(
+        "agent.tools.load_serving_config",
+        lambda model_name="current": cfg,
+    )
     monkeypatch.setattr("agent.tools.prepare_inference_dataframe", lambda *_args: "df")
     monkeypatch.setattr(
         "agent.tools.predict_from_dataframe_with_config",
@@ -460,7 +463,10 @@ def test_scenario_prediction_tool_compares_two_scenarios(monkeypatch) -> None:
 
 def test_predict_churn_tool_accepts_python_literal_like_payload(monkeypatch) -> None:
     cfg = SimpleNamespace(threshold=0.5, model_name="modelo_teste")
-    monkeypatch.setattr("agent.tools.load_serving_config", lambda: cfg)
+    monkeypatch.setattr(
+        "agent.tools.load_serving_config",
+        lambda model_name="current": cfg,
+    )
     monkeypatch.setattr("agent.tools.prepare_inference_dataframe", lambda *_args: "df")
     monkeypatch.setattr(
         "agent.tools.predict_from_dataframe_with_config",

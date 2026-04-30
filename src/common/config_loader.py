@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,11 @@ import yaml
 DEFAULT_ROOT_DIR = Path(__file__).resolve().parents[2]
 ROOT_DIR = Path(os.getenv("PROJECT_ROOT", DEFAULT_ROOT_DIR)).resolve()
 DEFAULT_GLOBAL_CONFIG_PATH = "configs/pipeline_global_config.yaml"
-DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/model_current.json"
+DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/current.json"
+DEFAULT_SERVING_MODEL_NAME = "current"
+MODEL_LIFECYCLE_CONFIG_DIR = "configs/model_lifecycle"
+MODEL_LIFECYCLE_EXPERIMENTS_DIR = f"{MODEL_LIFECYCLE_CONFIG_DIR}/experiments"
+MODEL_NAME_PATTERN = re.compile(r"^[a-z0-9_]+$")
 OLLAMA_MODEL_ENV_VAR = "OLLAMA_MODEL"
 LLM_PROVIDER_ENV_VAR = "LLM_PROVIDER"
 LLM_BASE_URL_ENV_VAR = "LLM_BASE_URL"
@@ -255,6 +260,32 @@ def load_training_experiment_config(
     """Carrega a configuração de um experimento individual de treino."""
 
     return load_config(config_path)
+
+
+def normalize_model_name(model_name: str | None) -> str:
+    """Normaliza o nome lógico do modelo usado em serving e utilitários."""
+
+    normalized_model_name = str(
+        model_name or DEFAULT_SERVING_MODEL_NAME
+    ).strip().lower()
+    if not normalized_model_name:
+        raise ValueError("model_name não pode ser vazio.")
+    if not MODEL_NAME_PATTERN.fullmatch(normalized_model_name):
+        raise ValueError(
+            "model_name deve conter apenas letras minúsculas, números e underscore."
+        )
+    return normalized_model_name
+
+
+def resolve_experiment_config_path(
+    model_name: str = DEFAULT_SERVING_MODEL_NAME,
+) -> str:
+    """Resolve o arquivo de configuração a partir do nome lógico do modelo."""
+
+    normalized_model_name = normalize_model_name(model_name)
+    if normalized_model_name == DEFAULT_SERVING_MODEL_NAME:
+        return DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH
+    return f"{MODEL_LIFECYCLE_EXPERIMENTS_DIR}/{normalized_model_name}.json"
 
 
 def merge_configs(
