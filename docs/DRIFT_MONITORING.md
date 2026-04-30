@@ -363,7 +363,7 @@ drift:
   current_data_path: artifacts/logs/inference/predictions.jsonl
   feature_columns_path: data/processed/feature_columns.json
   feature_pipeline_path: artifacts/models/feature_pipeline.joblib
-  model_path: artifacts/models/model_current.pkl
+  model_path: artifacts/models/current.pkl
 ```
 
 Interpretacao:
@@ -418,7 +418,7 @@ Trecho do YAML:
 retraining:
   enabled: true
   trigger_mode: auto_train_manual_promote
-  training_config_path: configs/model_lifecycle/model_current.json
+  training_config_path: configs/model_lifecycle/current.json
   request_path: artifacts/evaluation/model/retraining/retrain_request.json
   run_path: artifacts/evaluation/model/retraining/retrain_run.json
   promotion_decision_path: artifacts/evaluation/model/retraining/promotion_decision.json
@@ -467,8 +467,8 @@ Exemplo conceitual:
   "request_id": "uuid",
   "status": "requested",
   "reason": "critical_data_or_prediction_drift",
-  "model_path": "artifacts/models/model_current.pkl",
-  "training_config_path": "configs/model_lifecycle/model_current.json",
+  "model_path": "artifacts/models/current.pkl",
+  "training_config_path": "configs/model_lifecycle/current.json",
   "created_at": "2026-04-12T00:00:00+00:00",
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
@@ -506,10 +506,10 @@ Exemplo conceitual:
   "trigger_mode": "auto_train_manual_promote",
   "promotion_policy": "manual_approval_required",
   "drift_status": "critical",
-  "training_config_path": "configs/model_lifecycle/model_current.json",
+  "training_config_path": "configs/model_lifecycle/current.json",
   "challenger_training_config_path": "artifacts/evaluation/model/retraining/generated_configs/retrain_<request_id>.json",
-  "experiment_name": "random_forest_current",
-  "model_output_path": "artifacts/models/challengers/model_current_<request_id>.pkl",
+  "experiment_name": "current",
+  "model_output_path": "artifacts/models/challengers/current_<request_id>.pkl",
   "model_version": "0.2.0-challenger-<request_id>",
   "metrics": {
     "auc": 0.91,
@@ -528,14 +528,14 @@ Exemplo conceitual:
 Depois que o retreino termina, o projeto executa uma comparacao auditavel
 entre:
 
-- o champion, representado pelo metadata sidecar de `model_current.pkl`
+- o champion, representado pelo metadata sidecar de `current.pkl`
 - o challenger recem-treinado, salvo em `artifacts/models/challengers/`
 
 Arquivos envolvidos:
 
 - [src/model_lifecycle/retraining.py](../src/model_lifecycle/retraining.py)
 - [src/model_lifecycle/promotion.py](../src/model_lifecycle/promotion.py)
-- `artifacts/models/model_current_metadata.json`
+- `artifacts/models/current_metadata.json`
 
 O resultado dessa etapa vai para:
 

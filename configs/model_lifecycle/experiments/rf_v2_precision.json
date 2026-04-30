@@ -1,8 +1,8 @@
 {
   "experiment": {
-    "name": "random_forest_v3_recall",
-    "run_name": "random_forest_v3_recall",
-    "version": "0.3.0",
+    "name": "random_forest_v2_precision",
+    "run_name": "random_forest_v2_precision",
+    "version": "0.2.0",
     "algorithm": "random_forest",
     "flavor": "sklearn"
   },
@@ -12,21 +12,21 @@
   },
   "training": {
     "params": {
-      "n_estimators": 300,
-      "max_depth": 8,
+      "n_estimators": 200,
+      "max_depth": 15,
       "random_state": 42,
       "class_weight": "balanced",
-      "min_samples_leaf": 10
+      "min_samples_leaf": 5
     }
   },
   "inference": {
-    "threshold": 0.4
+    "threshold": 0.5
   },
   "feast": {
-    "feature_service_name": "customer_churn_rf_v3"
+    "feature_service_name": "customer_churn_rf_v2"
   },
   "artifacts": {
-    "model_path": "artifacts/models/random_forest_v3.pkl"
+    "model_path": "artifacts/models/rf_v2_precision.pkl"
   },
   "mlflow": {
     "experiment_name": "datathon-churn-baseline",

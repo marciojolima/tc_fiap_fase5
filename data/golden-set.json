@@ -109,7 +109,7 @@
         {
             "id": "gs-007",
             "question": "Onde ficam o pipeline de features e o modelo champion usados em produção pelo serving?",
-            "expected_answer": "Artefatos em artifacts/models/ — em particular feature_pipeline.joblib (transformações) e model_current.pkl com metadados em model_current_metadata.json, alinhados ao experimento em configs/training/.",
+            "expected_answer": "Artefatos em artifacts/models/ — em particular feature_pipeline.joblib (transformações) e current.pkl com metadados em current_metadata.json, alinhados ao experimento champion em configs/model_lifecycle/current.json.",
             "contexts": [
                 "Os artefatos do modelo ficam em artifacts/models.",
                 "O pipeline de features é salvo separadamente do modelo."

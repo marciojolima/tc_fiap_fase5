@@ -25,7 +25,7 @@
     "feature_service_name": "customer_churn_rf_v1"
   },
   "artifacts": {
-    "model_path": "artifacts/models/random_forest_v1.pkl"
+    "model_path": "artifacts/models/rf_v1.pkl"
   },
   "mlflow": {
     "experiment_name": "datathon-churn-baseline",

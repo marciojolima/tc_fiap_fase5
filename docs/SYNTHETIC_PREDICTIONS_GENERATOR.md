@@ -85,7 +85,7 @@ poetry run python -m scripts.generate_synthetic_predictions \
 - `--input-csv`: CSV base usado para preservar o domínio das features. Padrão: `data/raw/Customer-Churn-Records.csv`.
 - `--output`: arquivo JSONL de saída. Padrão: `artifacts/evaluation/model/drift/experiments/predictions/synthetic_predictions_v1.jsonl`.
 - `--metadata-output`: caminho opcional para salvar um resumo JSON da geração.
-- `--experiment-config`: config estruturado do modelo atual usado para calcular `churn_probability` e `churn_prediction`. Padrão: `configs/model_lifecycle/model_current.json`.
+- `--experiment-config`: config estruturado do modelo usado para calcular `churn_probability` e `churn_prediction`. Padrão: `configs/model_lifecycle/current.json`.
 - `--seed`: seed para reprodutibilidade. Padrão: `42`.
 
 ## Modos de geração

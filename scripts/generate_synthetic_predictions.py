@@ -59,7 +59,7 @@ DEFAULT_OUTPUT_PATH = Path(
     "artifacts/evaluation/model/drift/experiments/predictions/"
     "synthetic_predictions_v1.jsonl"
 )
-DEFAULT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/model_current.json"
+DEFAULT_EXPERIMENT_CONFIG_PATH = "configs/model_lifecycle/current.json"
 DEFAULT_SEED = 42
 _DRIFT_MODE_NO_DRIFT = "no_drift"
 _DRIFT_MODE_WITH_DRIFT = "with_drift"
@@ -130,7 +130,7 @@ def parse_args() -> argparse.Namespace:
         "--experiment-config",
         type=str,
         default=DEFAULT_EXPERIMENT_CONFIG_PATH,
-        help="Configuração do modelo atual usada para score do lote.",
+        help="Configuração do modelo usada para score do lote.",
     )
     parser.add_argument(
         "--seed",

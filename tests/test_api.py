@@ -105,12 +105,12 @@ def build_serving_config() -> ServingConfig:
         leakage_columns=["Exited", "Complain", "Satisfaction Score"],
         drop_columns=["RowNumber", "CustomerId", "Surname"],
         governed_columns=["Geography"],
-        model_path=Path("artifacts/models/random_forest_current.pkl"),
+        model_path=Path("artifacts/models/current.pkl"),
         feature_pipeline_path=Path("artifacts/models/feature_pipeline.joblib"),
         threshold=0.5,
-        model_name="random_forest_current",
+        model_name="current",
         model_version="0.2.0",
-        run_name="random_forest_current",
+        run_name="current",
         feast_repo_path=Path("feature_store"),
         feast_entity_key="customer_id",
         feast_feature_service_name="customer_churn_rf_v2",
@@ -165,7 +165,8 @@ def test_predict_from_dataframe_returns_probability_and_prediction(
     )
 
     probability, prediction = predict_from_dataframe(
-        prepare_inference_dataframe(build_request(), build_serving_config())
+        prepare_inference_dataframe(build_request(), build_serving_config()),
+        build_serving_config(),
     )
 
     assert probability == 0.8  # noqa: PLR2004

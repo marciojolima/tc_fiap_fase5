@@ -63,7 +63,7 @@ stages:
   train:
     cmd: python -m src.model_lifecycle.train
     deps:
-    - path: configs/model_lifecycle/model_current.yaml
+    - path: configs/model_lifecycle/current.json
       hash: md5
       md5: ae8317bc7ac8eea93c0b1328eecce556
       size: 815
@@ -100,11 +100,11 @@ stages:
       md5: 2fea5f605efb4a076eed2344f360574f
       size: 15946
     outs:
-    - path: artifacts/models/model_current.pkl
+    - path: artifacts/models/current.pkl
       hash: md5
       md5: 90591a8d150dd6de065445d791767d1f
       size: 15298713
-    - path: artifacts/models/model_current_metadata.json
+    - path: artifacts/models/current_metadata.json
       hash: md5
       md5: 20e0e16d9a786b6710196b3fd54f9fa7
       size: 797
@@ -238,7 +238,7 @@ stages:
       hash: md5
       md5: 906d5db76016c3556055752c1236e681
       size: 35098
-    - path: artifacts/models/model_current_metadata.json
+    - path: artifacts/models/current_metadata.json
       hash: md5
       md5: 20e0e16d9a786b6710196b3fd54f9fa7
       size: 797
@@ -266,11 +266,11 @@ stages:
   run_mlflow_experiments:
     cmd: sh -c ' python -m src.model_lifecycle.train && python -m 
       src.model_lifecycle.train --config 
-      configs/model_lifecycle/experiments/random_forest_v1.yaml && python -m 
+      configs/model_lifecycle/experiments/rf_v1.json && python -m 
       src.model_lifecycle.train --config 
-      configs/model_lifecycle/experiments/random_forest_v2.yaml && python -m 
+      configs/model_lifecycle/experiments/rf_v2_precision.json && python -m 
       src.model_lifecycle.train --config 
-      configs/model_lifecycle/experiments/random_forest_v3.yaml && python -m 
+      configs/model_lifecycle/experiments/rf_v3_recall.json && python -m 
       src.model_lifecycle.train --config 
       configs/model_lifecycle/experiments/xgboost_v1.yaml && python -m 
       src.model_lifecycle.train --config 
@@ -278,7 +278,7 @@ stages:
       src.scenario_experiments.inference_cases --suite-file 
       configs/scenario_experiments/inference_cases.yaml '
     deps:
-    - path: artifacts/models/model_current.pkl
+    - path: artifacts/models/current.pkl
       hash: md5
       md5: 90591a8d150dd6de065445d791767d1f
       size: 15298713
@@ -313,7 +313,7 @@ stages:
   generate_synthetic_drift:
     cmd: python -m src.evaluation.model.drift.synthetic_drifts --all
     deps:
-    - path: artifacts/models/model_current.pkl
+    - path: artifacts/models/current.pkl
       hash: md5
       md5: 90591a8d150dd6de065445d791767d1f
       size: 15298713

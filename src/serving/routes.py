@@ -56,7 +56,7 @@ TRAIN_NOTES = """
 
 - O endpoint executa treino síncrono de um único experimento por chamada.
 - O payload segue o mesmo contrato lógico de
-  `configs/model_lifecycle/model_current.json`.
+  `configs/model_lifecycle/current.json`.
 - O endpoint valida o schema com Pydantic antes de iniciar o treino.
 - O endpoint **não** promove automaticamente o modelo para o serving.
 - `artifacts.model_path` deve apontar para um caminho de artefato
@@ -85,27 +85,45 @@ def _validate_train_output_path(payload: TrainModelRequest) -> None:
         )
 
 
+def _load_request_serving_config(model_name: str):
+    """Carrega a configuração do modelo solicitado pelo cliente."""
+
+    try:
+        return load_serving_config(model_name=model_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Modelo '{model_name}' não encontrado. Use `current` ou um "
+                "experimento existente em configs/model_lifecycle/experiments."
+            ),
+        ) from exc
+
+
 @router.post(
     "/predict",
     response_model=ChurnPredictionResponse,
     description=(
         "Realiza a inferência de churn a partir do `customer_id`, consultando "
-        "as features materializadas na online store do Feast."
+        "as features materializadas na online store do Feast. Aceita seleção "
+        "opcional do modelo via `model_name`."
     ),
 )
 def predict_churn(payload: ChurnCustomerLookupRequest) -> ChurnPredictionResponse:
     start_time = start_predict_request_for_monitor()
     status_code = "500"
 
-    cfg = load_serving_config()
+    cfg = _load_request_serving_config(payload.model_name)
     try:
         logger.info(
-            "Recebida requisição POST /predict para customer_id=%s",
+            "Recebida requisição POST /predict para customer_id=%s | model=%s",
             payload.customer_id,
+            payload.model_name,
         )
         prepared_payload = prepare_online_inference_payload(payload.customer_id, cfg)
         probability, prediction = predict_from_dataframe(
-            prepared_payload.transformed_features
+            prepared_payload.transformed_features,
+            cfg,
         )
         log_prediction_for_monitoring(
             feature_payload=prepared_payload.monitoring_features,
@@ -152,6 +170,7 @@ def predict_churn(payload: ChurnCustomerLookupRequest) -> ChurnPredictionRespons
     response_model=ChurnPredictionResponse,
     description=(
         "Rota legada para inferência direta a partir do payload bruto.\n"
+        "Aceita seleção opcional do modelo via `model_name`.\n"
         f"{DATA_DICT_TABLE}"
     ),
 )
@@ -161,12 +180,16 @@ def predict_churn_from_raw(
     start_time = start_predict_request_for_monitor()
     status_code = "500"
 
-    cfg = load_serving_config()
+    cfg = _load_request_serving_config(payload.model_name)
     try:
-        logger.info("Recebida requisição POST /predict/raw")
+        logger.info(
+            "Recebida requisição POST /predict/raw | model=%s",
+            payload.model_name,
+        )
         prepared_payload = prepare_request_inference_payload(payload, cfg)
         probability, prediction = predict_from_dataframe(
-            prepared_payload.transformed_features
+            prepared_payload.transformed_features,
+            cfg,
         )
         log_prediction_for_monitoring(
             feature_payload=prepared_payload.monitoring_features,

@@ -135,7 +135,7 @@ def test_build_prediction_records_includes_full_monitoring_contract() -> None:
         probabilities=np.array([0.2, 0.8]),
         predictions=np.array([0, 1]),
         context=PredictionOutputContext(
-            model_name="random_forest_current",
+            model_name="current",
             model_version="0.2.0",
             threshold=0.5,
         ),
@@ -205,7 +205,7 @@ def test_build_generation_metadata_reports_summary() -> None:
         probabilities=np.array([0.1, 0.9]),
         predictions=np.array([0, 1]),
         context=PredictionOutputContext(
-            model_name="random_forest_current",
+            model_name="current",
             model_version="0.2.0",
             threshold=0.5,
         ),
@@ -273,7 +273,7 @@ def test_run_generation_writes_jsonl_and_optional_metadata(
             np.array([0.1, 0.2, 0.7, 0.9]),
             np.array([0, 0, 1, 1]),
             PredictionOutputContext(
-                model_name="random_forest_current",
+                model_name="current",
                 model_version="0.2.0",
                 threshold=0.5,
             ),

@@ -22,7 +22,7 @@ def build_metadata(
     f1: float,
 ) -> dict[str, object]:
     return {
-        "experiment_name": "random_forest_current",
+        "experiment_name": "current",
         "model_version": model_version,
         "model_path": model_path,
         "metrics": {
@@ -39,13 +39,13 @@ def test_build_promotion_decision_payload_marks_eligible_when_auc_improves() -> 
     payload = build_promotion_decision_payload(
         request_id="req-123",
         champion_metadata=build_metadata(
-            model_path="artifacts/models/model_current.pkl",
+            model_path="artifacts/models/current.pkl",
             model_version="0.2.0",
             auc=0.87,
             f1=0.64,
         ),
         challenger_metadata=build_metadata(
-            model_path="artifacts/models/challengers/model_current_req123.pkl",
+            model_path="artifacts/models/challengers/current_req123.pkl",
             model_version="0.2.0-challenger-req123",
             auc=0.88,
             f1=0.65,
@@ -70,7 +70,7 @@ def test_evaluate_challenger_promotion_persists_rejection_decision(
     champion_metadata_path.write_text(
         json.dumps(
             build_metadata(
-                model_path="artifacts/models/model_current.pkl",
+                model_path="artifacts/models/current.pkl",
                 model_version="0.2.0",
                 auc=0.87,
                 f1=0.64,
@@ -81,7 +81,7 @@ def test_evaluate_challenger_promotion_persists_rejection_decision(
     challenger_metadata_path.write_text(
         json.dumps(
             build_metadata(
-                model_path="artifacts/models/challengers/model_current_req123.pkl",
+                model_path="artifacts/models/challengers/current_req123.pkl",
                 model_version="0.2.0-challenger-req123",
                 auc=0.872,
                 f1=0.65,

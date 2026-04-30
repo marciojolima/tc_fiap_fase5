@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from common.config_loader import load_global_config
+from common.config_loader import DEFAULT_SERVING_MODEL_NAME, load_global_config
 
 _GLOBAL_CONFIG = load_global_config()
 _CATEGORICAL_FEATURES = _GLOBAL_CONFIG["features"]["categorical_features"]
@@ -14,8 +14,19 @@ _GENDER_CATEGORIES = _CATEGORICAL_FEATURES["ordinal"]["Gender"]
 _CARD_TYPE_CATEGORIES = _CATEGORICAL_FEATURES["ordinal"]["Card Type"]
 
 
+def _normalize_request_model_name(value: str) -> str:
+    normalized_value = value.strip().lower()
+    if not normalized_value:
+        raise ValueError("model_name não pode ser vazio")
+    if normalized_value.replace("_", "").isalnum():
+        return normalized_value
+    raise ValueError(
+        "model_name deve conter apenas letras minúsculas, números e underscore"
+    )
+
+
 class ChurnPredictionRequest(BaseModel):
-    """Payload de entrada para inferência de churn de um único cliente."""
+    """Payload de entrada para inferência bruta com seleção opcional de modelo."""
 
     CreditScore: int = Field(
         600,
@@ -82,6 +93,14 @@ class ChurnPredictionRequest(BaseModel):
         ge=0,
         description="Pontos de fidelidade acumulados",
     )
+    model_name: str = Field(
+        default=DEFAULT_SERVING_MODEL_NAME,
+        min_length=1,
+        description=(
+            "Nome lógico do modelo. Use `current` para o champion padrão ou um "
+            "experimento como `rf_v2_precision` e `rf_v3_recall`."
+        ),
+    )
 
     model_config = {
         "populate_by_name": True,
@@ -99,6 +118,7 @@ class ChurnPredictionRequest(BaseModel):
                 "EstimatedSalary": 50000.0,
                 "Card Type": _CARD_TYPE_CATEGORIES[-1],
                 "Point Earned": 450,
+                "model_name": "rf_v3_recall",
             }
         },
     }
@@ -124,23 +144,42 @@ class ChurnPredictionRequest(BaseModel):
             raise ValueError(f"Card Type deve ser um de {_CARD_TYPE_CATEGORIES}")
         return value
 
+    @field_validator("model_name")
+    @classmethod
+    def validate_model_name(cls, value: str) -> str:
+        return _normalize_request_model_name(value)
+
 
 class ChurnCustomerLookupRequest(BaseModel):
-    """Payload enxuto para predição usando a online store do Feast."""
+    """Payload enxuto para predição via Feast com seleção opcional de modelo."""
 
     customer_id: int = Field(
         ...,
         gt=0,
         description="Identificador técnico do cliente na Feature Store.",
     )
+    model_name: str = Field(
+        default=DEFAULT_SERVING_MODEL_NAME,
+        min_length=1,
+        description=(
+            "Nome lógico do modelo. Use `current` para o champion padrão ou um "
+            "experimento como `rf_v2_precision` e `rf_v3_recall`."
+        ),
+    )
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "customer_id": 15634602,
+                "model_name": "current",
             }
         },
     }
+
+    @field_validator("model_name")
+    @classmethod
+    def validate_model_name(cls, value: str) -> str:
+        return _normalize_request_model_name(value)
 
 
 class ChurnPredictionResponse(BaseModel):

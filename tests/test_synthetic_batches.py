@@ -62,7 +62,7 @@ def build_batch_config(tmp_path: Path) -> SyntheticBatchConfig:
         mlflow_experiment_name="monitoring-drift-test",
         output_dir=tmp_path,
         batch_size=4,
-        experiment_config_path="configs/model_lifecycle/model_current.json",
+        experiment_config_path="configs/model_lifecycle/current.json",
     )
 
 
@@ -116,14 +116,14 @@ def test_build_prediction_records_includes_monitoring_metadata() -> None:
             transformed_features=features,
             probabilities=np.array([0.2, 0.8]),
             predictions=np.array([0, 1]),
-            model_name="random_forest_current",
+            model_name="current",
             model_version="0.2.0",
             threshold=0.5,
         )
     )
 
     assert len(records) == 2  # noqa: PLR2004
-    assert records[0]["model_name"] == "random_forest_current"
+    assert records[0]["model_name"] == "current"
     assert records[0]["model_version"] == "0.2.0"
     assert records[0]["monitoring_contract"] == "transformed_features_v1"
     assert records[0]["feature_source"] == "synthetic_batch"
@@ -169,7 +169,7 @@ def test_generate_and_log_synthetic_batch_writes_jsonl_and_manifest(
             ),
             probabilities=np.array([0.1, 0.2, 0.7, 0.9]),
             predictions=np.array([0, 0, 1, 1]),
-            model_name="random_forest_current",
+            model_name="current",
             model_version="0.2.0",
             threshold=0.5,
         ),

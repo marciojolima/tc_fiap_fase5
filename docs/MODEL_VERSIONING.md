@@ -48,12 +48,12 @@ Esses campos sao registrados como `params` e/ou `tags`, para facilitar:
 
 ### Declarados no YAML do experimento
 
-Exemplo em `configs/model_lifecycle/model_current.json`:
+Exemplo em `configs/model_lifecycle/current.json`:
 
 ```yaml
 experiment:
-  name: random_forest_current
-  run_name: random_forest_current
+  name: current
+  run_name: current
   version: 0.2.0
 
 governance:
@@ -121,7 +121,7 @@ necessaria para:
 Esse versionamento sustenta partes do fluxo operacional:
 
 - o champion possui sidecar de metadados em
-  `artifacts/models/model_current_metadata.json`
+  `artifacts/models/current_metadata.json`
 - o retreino gera challengers em `artifacts/models/challengers/`
 - o monitoramento de drift pode abrir um retreino auditavel
 - a comparacao champion-challenger produz `promotion_decision.json`

@@ -39,7 +39,7 @@ def test_build_inference_log_record_preserves_feature_payload() -> None:
         },
         probability=0.82,
         prediction=1,
-        model_name="random_forest_current",
+        model_name="current",
         model_version="0.2.0",
         threshold=0.5,
         request_metadata={
@@ -274,7 +274,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                         "enabled": True,
                         "trigger_mode": "manual",
                         "training_config_path": (
-                            "configs/model_lifecycle/model_current.json"
+                            "configs/model_lifecycle/current.json"
                         ),
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
@@ -325,7 +325,7 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
     assert retrain_payload["trigger_mode"] == "manual"
     assert (
         retrain_payload["training_config_path"]
-        == "configs/model_lifecycle/model_current.json"
+        == "configs/model_lifecycle/current.json"
     )
     assert retrain_payload["promotion_policy"] == "manual_approval_required"
     assert retrain_payload["promotion_rules"]["primary_metric"] == "auc"
@@ -397,7 +397,7 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
                         "enabled": True,
                         "trigger_mode": "auto_train_manual_promote",
                         "training_config_path": (
-                            "configs/model_lifecycle/model_current.json"
+                            "configs/model_lifecycle/current.json"
                         ),
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),
@@ -500,7 +500,7 @@ def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small
                         "enabled": True,
                         "trigger_mode": "auto_train_manual_promote",
                         "training_config_path": (
-                            "configs/model_lifecycle/model_current.json"
+                            "configs/model_lifecycle/current.json"
                         ),
                         "request_path": str(retrain_path),
                         "run_path": str(retrain_run_path),

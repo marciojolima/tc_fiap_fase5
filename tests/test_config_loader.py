@@ -1,7 +1,9 @@
 from common.config_loader import (
+    DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH,
     load_env_value,
     load_global_config,
     normalize_mlflow_tracking_uri,
+    resolve_experiment_config_path,
     resolve_llm_api_key,
     resolve_llm_base_url,
     resolve_llm_model_name,
@@ -111,3 +113,18 @@ def test_resolve_llm_api_key_reads_project_dotenv(monkeypatch, tmp_path) -> None
     }
 
     assert resolve_llm_api_key("claude", config) == "from-file"
+
+
+def test_resolve_experiment_config_path_uses_current_as_default() -> None:
+    assert resolve_experiment_config_path() == DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH
+    assert (
+        resolve_experiment_config_path("current")
+        == DEFAULT_CURRENT_EXPERIMENT_CONFIG_PATH
+    )
+
+
+def test_resolve_experiment_config_path_builds_experiment_path() -> None:
+    assert (
+        resolve_experiment_config_path("rf_v3_recall")
+        == "configs/model_lifecycle/experiments/rf_v3_recall.json"
+    )

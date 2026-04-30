@@ -35,7 +35,7 @@ scripts operacionais, monitoramento passivo e automações internas.
 | Export da Feature Store | Feature store | Manual ou DVC | `task feastexport` / `dvc repro create_fs_offline` | Gera parquet offline do Feast |
 | Feast apply | Feature store/infra | Manual | `task feastapply` | Registra definições no registry |
 | Feast materialize | Feature store/infra | Manual | `task feastmaterialize` | Materializa features no Redis |
-| Treino champion | Models | Manual ou DVC | `task mlflowrain` / `dvc repro train` | Gera `model_current.pkl` e metadados |
+| Treino champion | Models | Manual ou DVC | `task mlflowrain` / `dvc repro train` | Gera `current.pkl` e metadados |
 | Treino múltiplo de experimentos | Experimentos/models | Manual composto | `task mlflowrunexperiments` | Registra runs comparáveis no MLflow |
 | Cenários de inferência | Experimentos | Manual | `task mlflowscenarios` | Valida casos de negócio |
 | Drift sintético | Experimentos/monitoramento | Manual | `task mlflowsyntheticdrift` | Gera lotes e relatórios de drift sintético |
@@ -53,7 +53,7 @@ data/raw
   -> feature engineering
   -> data/interim + data/processed + artifacts/models/feature_pipeline.joblib
   -> treino
-  -> artifacts/models/model_current.pkl
+  -> artifacts/models/current.pkl
   -> export Feature Store
   -> Feast registry + Redis
   -> serving /predict
@@ -95,7 +95,7 @@ docs + data/golden-set.json
 | Stack local | Sim para uso local completo | Sob demanda | Sobe os serviços necessários para API e observabilidade. |
 | Drift monitoring | Recomendado | Diário, semanal ou por volume mínimo de inferências | Calcula saúde do modelo e pode abrir retreino. |
 | Retreino | Condicional | Quando drift for crítico ou métrica degradar | Gera challenger e decisão auditável. |
-| Promoção champion | Condicional e manual | Após revisão da decisão champion-challenger | Evita troca automática de `model_current.pkl`. |
+| Promoção champion | Condicional e manual | Após revisão da decisão champion-challenger | Evita troca automática de `current.pkl`. |
 | Cenários de inferência | Recomendado | Pré-release ou após mudança de modelo/features | Valida comportamento em casos de negócio. |
 | Avaliação LLM | Recomendado | Pré-release do agente ou mudança de prompt/RAG | Mede qualidade do agente contra golden set. |
 | Índice RAG | Sim, se usar agente com RAG | Após mudança relevante em docs/dados indexados | Atualiza contexto recuperável pelo agente. |
@@ -134,6 +134,7 @@ docs + data/golden-set.json
 **Cadeia**
 
 `POST /predict`
+-> request aceita `model_name` opcional com default `current`
 -> schema [`ChurnCustomerLookupRequest`](../src/serving/schemas.py)
 -> rota [`predict_churn`](../src/serving/routes.py)
 -> função [`load_serving_config`](../src/serving/pipeline.py)
@@ -143,19 +144,19 @@ docs + data/golden-set.json
 -> consulta a online store Redis pelo `customer_id`
 -> função [`predict_from_dataframe`](../src/serving/pipeline.py)
 -> função [`load_prediction_model`](../src/serving/pipeline.py)
--> usa `artifacts/models/model_current.pkl`
+-> usa `artifacts/models/current.pkl`
 -> aplica `predict_proba`
--> usa threshold em [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
+-> usa threshold em [`configs/model_lifecycle/current.json`](../configs/model_lifecycle/current.json)
 -> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Entradas**
 
 - payload HTTP contendo `customer_id`
-- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
+- [`configs/model_lifecycle/current.json`](../configs/model_lifecycle/current.json)
 - [`feature_store/repo.py`](../feature_store/repo.py)
 - `feature_store/data/registry.db`
 - Redis com features materializadas
-- `artifacts/models/model_current.pkl`
+- `artifacts/models/current.pkl`
 
 **Saídas**
 
@@ -178,6 +179,7 @@ docs + data/golden-set.json
 **Cadeia**
 
 `POST /predict/raw`
+-> request aceita `model_name` opcional com default `current`
 -> schema [`ChurnPredictionRequest`](../src/serving/schemas.py)
 -> rota [`predict_churn_from_raw`](../src/serving/routes.py)
 -> função [`load_serving_config`](../src/serving/pipeline.py)
@@ -186,15 +188,15 @@ docs + data/golden-set.json
 -> função [`load_feature_pipeline`](../src/serving/pipeline.py)
 -> aplica `artifacts/models/feature_pipeline.joblib`
 -> função [`predict_from_dataframe`](../src/serving/pipeline.py)
--> usa `artifacts/models/model_current.pkl`
+-> usa `artifacts/models/current.pkl`
 -> retorna [`ChurnPredictionResponse`](../src/serving/schemas.py)
 
 **Entradas**
 
 - payload bruto com atributos do cliente
 - `artifacts/models/feature_pipeline.joblib`
-- `artifacts/models/model_current.pkl`
-- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
+- `artifacts/models/current.pkl`
+- [`configs/model_lifecycle/current.json`](../configs/model_lifecycle/current.json)
 
 **Saídas**
 
@@ -225,7 +227,7 @@ docs + data/golden-set.json
 
 **Entradas**
 
-- payload JSON no formato lógico de `configs/model_lifecycle/model_current.json`
+- payload JSON no formato lógico de `configs/model_lifecycle/current.json`
 - `data/processed/train.parquet`
 - `data/processed/test.parquet`
 - [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
@@ -241,7 +243,7 @@ docs + data/golden-set.json
 
 - O endpoint é síncrono e bloqueia até o treino terminar.
 - O endpoint não promove automaticamente o modelo treinado para o serving.
-- O endpoint recusa `artifacts.model_path` que aponte para `artifacts/models/model_current.pkl`.
+- O endpoint recusa `artifacts.model_path` que aponte para `artifacts/models/current.pkl`.
 
 ### 1.5 Métricas Prometheus
 
@@ -506,15 +508,15 @@ ou `dvc repro featurize`
 
 - `data/processed/train.parquet`
 - `data/processed/test.parquet`
-- [`configs/model_lifecycle/model_current.json`](../configs/model_lifecycle/model_current.json)
+- [`configs/model_lifecycle/current.json`](../configs/model_lifecycle/current.json)
 - [`configs/pipeline_global_config.yaml`](../configs/pipeline_global_config.yaml)
 - [`src/model_lifecycle/train.py`](../src/model_lifecycle/train.py)
 - [`src/model_lifecycle/catalog.py`](../src/model_lifecycle/catalog.py)
 
 **Saídas**
 
-- `artifacts/models/model_current.pkl`
-- `artifacts/models/model_current_metadata.json`
+- `artifacts/models/current.pkl`
+- `artifacts/models/current_metadata.json`
 - run no MLflow, quando o tracking server estiver configurado
 
 **DVC**
@@ -544,7 +546,7 @@ ou `dvc repro featurize`
 - [`configs/monitoring/global_monitoring.yaml`](../configs/monitoring/global_monitoring.yaml)
 - `data/processed/train.parquet`
 - `data/processed/test.parquet`
-- `artifacts/models/model_current.pkl`
+- `artifacts/models/current.pkl`
 
 **Saídas**
 
@@ -607,8 +609,8 @@ decisão de promoção
 
 **Saídas**
 
-- potencial atualização de `artifacts/models/model_current.pkl`
-- potencial atualização de `artifacts/models/model_current_metadata.json`
+- potencial atualização de `artifacts/models/current.pkl`
+- potencial atualização de `artifacts/models/current_metadata.json`
 
 **Observações**
 
@@ -665,7 +667,7 @@ decisão de promoção
 - [`configs/scenario_experiments/inference_cases.yaml`](../configs/scenario_experiments/inference_cases.yaml)
 - [`src/scenario_experiments/inference_cases.py`](../src/scenario_experiments/inference_cases.py)
 - `artifacts/models/feature_pipeline.joblib`
-- `artifacts/models/model_current.pkl`
+- `artifacts/models/current.pkl`
 
 **Saídas**
 
@@ -692,7 +694,7 @@ decisão de promoção
 - [`src/evaluation/model/drift/synthetic_drifts.py`](../src/evaluation/model/drift/synthetic_drifts.py)
 - `data/processed/test.parquet`
 - `artifacts/models/feature_pipeline.joblib`
-- `artifacts/models/model_current.pkl`
+- `artifacts/models/current.pkl`
 - [`configs/monitoring/global_monitoring.yaml`](../configs/monitoring/global_monitoring.yaml)
 
 **Saídas**
@@ -1013,7 +1015,7 @@ O repositório **não possui**:
 - cron formal versionado no projeto
 - scheduler interno próprio
 - DAG operacional que encadeie todos os flows
-- promoção automática do challenger para substituir `model_current.pkl`
+- promoção automática do challenger para substituir `current.pkl`
 - materialização automática do Feast após `dvc repro create_fs_offline`
 - serving responsável por bootstrapar Feast registry ou Redis
 
@@ -1024,7 +1026,7 @@ Se reduzirmos o projeto aos flows centrais, o mapa fica assim:
 `API`
 -> `/predict`
 -> consulta Feast online
--> usa `model_current.pkl`
+-> usa `current.pkl`
 -> retorna predição
 -> atualiza métricas
 -> salva inferência para monitoramento

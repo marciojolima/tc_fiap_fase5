@@ -258,8 +258,8 @@ mais segura hoje parece ser:
 - `artifacts/evaluation/model/retraining/retrain_request.json`
 - `artifacts/evaluation/model/retraining/retrain_run.json`
 - `artifacts/evaluation/model/retraining/promotion_decision.json`
-- `artifacts/models/model_current.pkl`
-- `artifacts/models/model_current_metadata.json`
+- `artifacts/models/current.pkl`
+- `artifacts/models/current_metadata.json`
 - `artifacts/models/challengers/`
 - `artifacts/rag/cache/manifest.json`
 - `artifacts/rag/index_build_history.jsonl`
