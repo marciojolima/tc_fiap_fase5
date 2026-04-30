@@ -50,6 +50,11 @@ DATA_DICT_TABLE = """
 | **Card Type** | Tipo de Cartão | str | DIAMOND, GOLD, etc | Categoria do cartão |
 | **Point Earned** | Pontos | int | >= 0 | Pontos acumulados |
 """
+DATA_DICT_TABLE += (
+    "| **model_name** | Modelo de serving | str | current, "
+    "rf_v2_precision, rf_v3_recall | Modelo da predição; se omitido, "
+    "usa `current`. |\n"
+)
 
 TRAIN_NOTES = """
 ### Notas Operacionais do Endpoint
@@ -169,7 +174,7 @@ def predict_churn(payload: ChurnCustomerLookupRequest) -> ChurnPredictionRespons
     "/predict/raw",
     response_model=ChurnPredictionResponse,
     description=(
-        "Rota legada para inferência direta a partir do payload bruto.\n"
+        "Rota para inferência direta a partir do payload bruto.\n"
         "Aceita seleção opcional do modelo via `model_name`.\n"
         f"{DATA_DICT_TABLE}"
     ),

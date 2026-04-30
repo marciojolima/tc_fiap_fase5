@@ -118,7 +118,7 @@ class ChurnPredictionRequest(BaseModel):
                 "EstimatedSalary": 50000.0,
                 "Card Type": _CARD_TYPE_CATEGORIES[-1],
                 "Point Earned": 450,
-                "model_name": "rf_v3_recall",
+                "model_name": DEFAULT_SERVING_MODEL_NAME,
             }
         },
     }
