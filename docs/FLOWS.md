@@ -134,6 +134,8 @@ docs + data/golden-set.json
 **Cadeia**
 
 `POST /predict`
+-> se houver 1 item no body, o contrato aceita objeto e retorna objeto
+-> se houver 2 ou mais itens no body, o contrato aceita array e retorna lote com `items` e `summary`
 -> request aceita `model_name` opcional com default `current`
 -> schema [`ChurnCustomerLookupRequest`](../src/serving/schemas.py)
 -> rota [`predict_churn`](../src/serving/routes.py)
@@ -160,8 +162,9 @@ docs + data/golden-set.json
 
 **Saídas**
 
-- resposta JSON com `churn_probability`, `churn_prediction`, `model_name`,
-  `threshold`, `feature_source` e `customer_id`
+- resposta JSON unitária com `churn_probability`, `churn_prediction`, `model_name`,
+  `threshold`, `feature_source` e `customer_id`, ou resposta em lote com
+  `items` e `summary`
 - métricas Prometheus atualizadas
 - registro em `artifacts/logs/inference/predictions.jsonl`
 
@@ -170,6 +173,8 @@ docs + data/golden-set.json
 - O serving não recalcula features na requisição.
 - Este é o flow preferencial de inferência online.
 - A API depende de Feast registry e Redis preparados pelos flows de Feature Store.
+- Em lote, cada item é processado isoladamente e erros de negócio ficam
+  restritos ao item correspondente.
 
 ### 1.3 Predição legada por payload bruto
 
@@ -179,6 +184,8 @@ docs + data/golden-set.json
 **Cadeia**
 
 `POST /predict/raw`
+-> se houver 1 item no body, o contrato aceita objeto e retorna objeto
+-> se houver 2 ou mais itens no body, o contrato aceita array e retorna lote com `items` e `summary`
 -> request aceita `model_name` opcional com default `current`
 -> schema [`ChurnPredictionRequest`](../src/serving/schemas.py)
 -> rota [`predict_churn_from_raw`](../src/serving/routes.py)
@@ -200,12 +207,15 @@ docs + data/golden-set.json
 
 **Saídas**
 
-- resposta JSON de predição
+- resposta JSON unitária de predição ou resposta em lote com `items` e `summary`
 
 **Observações**
 
 - Foi mantido como fallback legado e apoio didático.
 - Não é o caminho principal quando a Feature Store online está disponível.
+- O payload continua sendo o conjunto mínimo de atributos de inferência, não o
+  registro bruto completo de 18 colunas da camada `raw`.
+- Em lote, erros de validação e de negócio ficam restritos ao item afetado.
 
 ### 1.4 Treino síncrono por payload
 

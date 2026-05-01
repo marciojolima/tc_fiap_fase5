@@ -36,6 +36,7 @@ HTTP_OK = 200
 HTTP_CONFLICT = 409
 HTTP_UNPROCESSABLE_ENTITY = 422
 EXPECTED_CUSTOMER_ID = 15634602
+UNKNOWN_CUSTOMER_ID = 999
 
 
 class DummyFeaturePipeline:
@@ -291,6 +292,69 @@ def test_predict_route_returns_prediction_payload(monkeypatch) -> None:
     }
 
 
+def test_predict_route_returns_batch_response_with_partial_errors(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "serving.routes.load_serving_config",
+        return_route_config,
+    )
+    monkeypatch.setattr(
+        "serving.routes.predict_from_dataframe",
+        return_route_prediction,
+    )
+    monkeypatch.setattr(
+        "serving.routes.log_prediction_for_monitoring",
+        lambda **_: None,
+    )
+
+    def mock_prepare_online_payload(customer_id, cfg) -> PreparedInferencePayload:
+        if customer_id == UNKNOWN_CUSTOMER_ID:
+            raise LookupError("Cliente não encontrado na Feature Store.")
+        return return_prepared_online_payload(customer_id, cfg)
+
+    monkeypatch.setattr(
+        "serving.routes.prepare_online_inference_payload",
+        mock_prepare_online_payload,
+    )
+
+    response = predict_churn(
+        [
+            {"customer_id": EXPECTED_CUSTOMER_ID, "model_name": "current"},
+            {"customer_id": UNKNOWN_CUSTOMER_ID, "model_name": "current"},
+        ]
+    )
+
+    assert response.model_dump() == {
+        "items": [
+            {
+                "index": 0,
+                "status": "ok",
+                "result": {
+                    "churn_probability": 0.81,
+                    "churn_prediction": 1,
+                    "model_name": "current",
+                    "threshold": 0.5,
+                    "feature_source": "feast_online_store",
+                    "customer_id": EXPECTED_CUSTOMER_ID,
+                },
+                "error": None,
+            },
+            {
+                "index": 1,
+                "status": "error",
+                "result": None,
+                "error": "Cliente não encontrado na Feature Store.",
+            },
+        ],
+        "summary": {
+            "total": 2,
+            "success": 1,
+            "errors": 1,
+        },
+    }
+
+
 def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
     monkeypatch.setattr(
         "serving.routes.load_serving_config",
@@ -337,6 +401,105 @@ def test_predict_raw_route_returns_prediction_payload(monkeypatch) -> None:
         "feature_source": "request_payload",
         "customer_id": None,
     }
+
+
+def test_predict_raw_route_returns_batch_response_with_validation_errors(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "serving.routes.load_serving_config",
+        return_route_config,
+    )
+    monkeypatch.setattr(
+        "serving.routes.prepare_request_inference_payload",
+        return_prepared_raw_payload,
+    )
+    monkeypatch.setattr(
+        "serving.routes.predict_from_dataframe",
+        return_route_prediction,
+    )
+    monkeypatch.setattr(
+        "serving.routes.log_prediction_for_monitoring",
+        lambda **_: None,
+    )
+
+    response = predict_churn_from_raw(
+        [
+            {
+                "CreditScore": 600,
+                "Geography": "Germany",
+                "Gender": "Female",
+                "Age": 40,
+                "Tenure": 3,
+                "Balance": 60000.0,
+                "NumOfProducts": 2,
+                "HasCrCard": 1,
+                "IsActiveMember": 1,
+                "EstimatedSalary": 50000.0,
+                "Card Type": "DIAMOND",
+                "Point Earned": 450,
+                "model_name": "rf_v3_recall",
+            },
+            {
+                "CreditScore": 600,
+                "Geography": "Germany",
+                "Gender": "Female",
+                "Age": 10,
+                "Tenure": 3,
+                "Balance": 60000.0,
+                "NumOfProducts": 2,
+                "HasCrCard": 1,
+                "IsActiveMember": 1,
+                "EstimatedSalary": 50000.0,
+                "Card Type": "DIAMOND",
+                "Point Earned": 450,
+                "model_name": "rf_v3_recall",
+            },
+        ]
+    )
+
+    payload = response.model_dump()
+    assert payload["summary"] == {"total": 2, "success": 1, "errors": 1}
+    assert payload["items"][0] == {
+        "index": 0,
+        "status": "ok",
+        "result": {
+            "churn_probability": 0.81,
+            "churn_prediction": 1,
+            "model_name": "rf_v3_recall",
+            "threshold": 0.5,
+            "feature_source": "request_payload",
+            "customer_id": None,
+        },
+        "error": None,
+    }
+    assert payload["items"][1]["index"] == 1
+    assert payload["items"][1]["status"] == "error"
+    assert payload["items"][1]["result"] is None
+    assert "Age" in payload["items"][1]["error"]
+
+
+def test_predict_raw_route_preserves_422_for_single_invalid_item() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        predict_churn_from_raw(
+            {
+                "CreditScore": 600,
+                "Geography": "Germany",
+                "Gender": "Female",
+                "Age": 10,
+                "Tenure": 3,
+                "Balance": 60000.0,
+                "NumOfProducts": 2,
+                "HasCrCard": 1,
+                "IsActiveMember": 1,
+                "EstimatedSalary": 50000.0,
+                "Card Type": "DIAMOND",
+                "Point Earned": 450,
+                "model_name": "rf_v3_recall",
+            }
+        )
+
+    assert exc_info.value.status_code == HTTP_UNPROCESSABLE_ENTITY
 
 
 def test_train_route_returns_training_summary(monkeypatch) -> None:

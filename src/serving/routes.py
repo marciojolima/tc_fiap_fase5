@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from time import perf_counter
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException
+from pydantic import BaseModel, ValidationError
 
 from common.logger import get_logger
 from model_lifecycle.train import build_metadata_output_path, run_training
@@ -18,7 +20,14 @@ from serving.pipeline import (
     prepare_request_inference_payload,
 )
 from serving.schemas import (
+    LOOKUP_PREDICTION_BATCH_EXAMPLE,
+    LOOKUP_PREDICTION_SINGLE_EXAMPLE,
+    RAW_PREDICTION_BATCH_EXAMPLE,
+    RAW_PREDICTION_SINGLE_EXAMPLE,
     ChurnCustomerLookupRequest,
+    ChurnPredictionBatchItemResponse,
+    ChurnPredictionBatchResponse,
+    ChurnPredictionBatchSummary,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
     TrainModelRequest,
@@ -68,6 +77,214 @@ TRAIN_NOTES = """
   challenger, diferente do champion ativo.
 """
 
+PREDICT_CONTRACT_NOTES = """
+### Contrato de Entrada
+
+- Se enviar **1 item**, envie um **objeto JSON** e a resposta será um
+  **objeto JSON**.
+- Se enviar **2 ou mais itens**, envie um **array JSON** e a resposta será um
+  **objeto de lote** com `items` e `summary`.
+- Em lote, cada item é processado isoladamente e erros de negócio ou validação
+  retornam apenas no item afetado.
+"""
+
+PredictLookupBody = Annotated[
+    dict[str, Any] | list[dict[str, Any]],
+    Body(
+        ...,
+        openapi_examples={
+            "single": {
+                "summary": "Objeto único",
+                "value": LOOKUP_PREDICTION_SINGLE_EXAMPLE,
+            },
+            "batch": {
+                "summary": "Array com dois itens",
+                "value": LOOKUP_PREDICTION_BATCH_EXAMPLE,
+            },
+        },
+    ),
+]
+
+PredictRawBody = Annotated[
+    dict[str, Any] | list[dict[str, Any]],
+    Body(
+        ...,
+        openapi_examples={
+            "single": {
+                "summary": "Objeto único",
+                "value": RAW_PREDICTION_SINGLE_EXAMPLE,
+            },
+            "batch": {
+                "summary": "Array com dois itens",
+                "value": RAW_PREDICTION_BATCH_EXAMPLE,
+            },
+        },
+    ),
+]
+
+
+def _serialize_validation_error(exc: ValidationError) -> str:
+    """Converte erros de validação do Pydantic em mensagem compacta por item."""
+
+    parts = []
+    for error in exc.errors():
+        location = " -> ".join(str(item) for item in error.get("loc", ()))
+        message = str(error.get("msg", "erro de validação"))
+        parts.append(f"{location}: {message}" if location else message)
+    return "; ".join(parts)
+
+
+def _normalize_request_items(
+    payload: Any,
+    model_cls: type[BaseModel],
+) -> tuple[list[tuple[int, BaseModel]], list[ChurnPredictionBatchItemResponse], bool]:
+    """Normaliza payload único ou lista e valida cada item individualmente."""
+
+    is_batch = isinstance(payload, list)
+    raw_items = payload if is_batch else [payload]
+    validated_items: list[tuple[int, BaseModel]] = []
+    validation_errors: list[ChurnPredictionBatchItemResponse] = []
+
+    for index, raw_item in enumerate(raw_items):
+        try:
+            item = (
+                raw_item
+                if isinstance(raw_item, model_cls)
+                else model_cls.model_validate(raw_item)
+            )
+        except ValidationError as exc:
+            if not is_batch:
+                raise HTTPException(status_code=422, detail=exc.errors()) from exc
+            validation_errors.append(
+                ChurnPredictionBatchItemResponse(
+                    index=index,
+                    status="error",
+                    error=_serialize_validation_error(exc),
+                )
+            )
+            continue
+
+        validated_items.append((index, item))
+
+    return validated_items, validation_errors, is_batch
+
+
+def _build_prediction_response(
+    *,
+    probability: float,
+    prediction: int,
+    cfg,
+    feature_source: str,
+    customer_id: int | None,
+) -> ChurnPredictionResponse:
+    """Padroniza a montagem da resposta unitária de inferência."""
+
+    return ChurnPredictionResponse(
+        churn_probability=probability,
+        churn_prediction=prediction,
+        model_name=cfg.model_name,
+        threshold=cfg.threshold,
+        feature_source=feature_source,
+        customer_id=customer_id,
+    )
+
+
+def _build_prediction_batch_response(
+    items: list[ChurnPredictionBatchItemResponse],
+) -> ChurnPredictionBatchResponse:
+    """Calcula o resumo de sucesso parcial para respostas em lote."""
+
+    total = len(items)
+    success = sum(item.status == "ok" for item in items)
+    return ChurnPredictionBatchResponse(
+        items=items,
+        summary=ChurnPredictionBatchSummary(
+            total=total,
+            success=success,
+            errors=total - success,
+        ),
+    )
+
+
+def _predict_lookup_item(
+    payload: ChurnCustomerLookupRequest,
+) -> ChurnPredictionResponse:
+    """Executa a inferência online para um único customer_id."""
+
+    cfg = _load_request_serving_config(payload.model_name)
+    logger.info(
+        "Recebida requisição POST /predict para customer_id=%s | model=%s",
+        payload.customer_id,
+        payload.model_name,
+    )
+    prepared_payload = prepare_online_inference_payload(payload.customer_id, cfg)
+    probability, prediction = predict_from_dataframe(
+        prepared_payload.transformed_features,
+        cfg,
+    )
+    log_prediction_for_monitoring(
+        feature_payload=prepared_payload.monitoring_features,
+        prediction_context=PredictionLogContext(
+            probability=probability,
+            prediction=prediction,
+            model_name=cfg.model_name,
+            model_version=cfg.model_version,
+            threshold=cfg.threshold,
+        ),
+        request_metadata=prepared_payload.request_metadata,
+    )
+    logger.info(
+        "Resposta /predict pronta | customer_id=%s | source=%s",
+        payload.customer_id,
+        prepared_payload.feature_source,
+    )
+    return _build_prediction_response(
+        probability=probability,
+        prediction=prediction,
+        cfg=cfg,
+        feature_source=prepared_payload.feature_source,
+        customer_id=prepared_payload.customer_id,
+    )
+
+
+def _predict_raw_item(
+    payload: ChurnPredictionRequest,
+) -> ChurnPredictionResponse:
+    """Executa a inferência raw para um único payload validado."""
+
+    cfg = _load_request_serving_config(payload.model_name)
+    logger.info(
+        "Recebida requisição POST /predict/raw | model=%s",
+        payload.model_name,
+    )
+    prepared_payload = prepare_request_inference_payload(payload, cfg)
+    probability, prediction = predict_from_dataframe(
+        prepared_payload.transformed_features,
+        cfg,
+    )
+    log_prediction_for_monitoring(
+        feature_payload=prepared_payload.monitoring_features,
+        prediction_context=PredictionLogContext(
+            probability=probability,
+            prediction=prediction,
+            model_name=cfg.model_name,
+            model_version=cfg.model_version,
+            threshold=cfg.threshold,
+        ),
+        request_metadata=prepared_payload.request_metadata,
+    )
+    logger.info(
+        "Resposta /predict/raw pronta | source=%s",
+        prepared_payload.feature_source,
+    )
+    return _build_prediction_response(
+        probability=probability,
+        prediction=prediction,
+        cfg=cfg,
+        feature_source=prepared_payload.feature_source,
+        customer_id=prepared_payload.customer_id,
+    )
+
 
 @router.get("/health")
 def healthcheck() -> dict[str, str]:
@@ -107,60 +324,63 @@ def _load_request_serving_config(model_name: str):
 
 @router.post(
     "/predict",
-    response_model=ChurnPredictionResponse,
+    response_model=ChurnPredictionResponse | ChurnPredictionBatchResponse,
     description=(
         "Realiza a inferência de churn a partir do `customer_id`, consultando "
         "as features materializadas na online store do Feast. Aceita seleção "
-        "opcional do modelo via `model_name`."
+        "opcional do modelo via `model_name`.\n"
+        f"{PREDICT_CONTRACT_NOTES}"
     ),
 )
-def predict_churn(payload: ChurnCustomerLookupRequest) -> ChurnPredictionResponse:
+def predict_churn(
+    payload: PredictLookupBody,
+) -> ChurnPredictionResponse | ChurnPredictionBatchResponse:
     start_time = start_predict_request_for_monitor()
     status_code = "500"
 
-    cfg = _load_request_serving_config(payload.model_name)
     try:
-        logger.info(
-            "Recebida requisição POST /predict para customer_id=%s | model=%s",
-            payload.customer_id,
-            payload.model_name,
+        validated_items, batch_errors, is_batch = _normalize_request_items(
+            payload,
+            ChurnCustomerLookupRequest,
         )
-        prepared_payload = prepare_online_inference_payload(payload.customer_id, cfg)
-        probability, prediction = predict_from_dataframe(
-            prepared_payload.transformed_features,
-            cfg,
-        )
-        log_prediction_for_monitoring(
-            feature_payload=prepared_payload.monitoring_features,
-            prediction_context=PredictionLogContext(
-                probability=probability,
-                prediction=prediction,
-                model_name=cfg.model_name,
-                model_version=cfg.model_version,
-                threshold=cfg.threshold,
-            ),
-            request_metadata=prepared_payload.request_metadata,
-        )
+        if not is_batch:
+            response = _predict_lookup_item(validated_items[0][1])
+            status_code = "200"
+            return response
+
+        batch_items = list(batch_errors)
+        for raw_index, validated_item in validated_items:
+            try:
+                response = _predict_lookup_item(validated_item)
+            except (HTTPException, LookupError) as exc:
+                error_message = (
+                    exc.detail
+                    if isinstance(exc, HTTPException)
+                    else str(exc)
+                )
+                batch_items.append(
+                    ChurnPredictionBatchItemResponse(
+                        index=raw_index,
+                        status="error",
+                        error=error_message,
+                    )
+                )
+                continue
+
+            batch_items.append(
+                ChurnPredictionBatchItemResponse(
+                    index=raw_index,
+                    status="ok",
+                    result=response,
+                )
+            )
+
         status_code = "200"
-        logger.info(
-            "Resposta /predict pronta | customer_id=%s | source=%s",
-            payload.customer_id,
-            prepared_payload.feature_source,
-        )
-        return ChurnPredictionResponse(
-            churn_probability=probability,
-            churn_prediction=prediction,
-            model_name=cfg.model_name,
-            threshold=cfg.threshold,
-            feature_source=prepared_payload.feature_source,
-            customer_id=prepared_payload.customer_id,
+        return _build_prediction_batch_response(
+            sorted(batch_items, key=lambda item: item.index)
         )
     except LookupError as exc:
-        logger.warning(
-            "Falha em /predict | customer_id=%s | motivo=%s",
-            payload.customer_id,
-            exc,
-        )
+        logger.warning("Falha em /predict | motivo=%s", exc)
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     finally:
         finish_predict_request_for_monitor(
@@ -172,53 +392,59 @@ def predict_churn(payload: ChurnCustomerLookupRequest) -> ChurnPredictionRespons
 
 @router.post(
     "/predict/raw",
-    response_model=ChurnPredictionResponse,
+    response_model=ChurnPredictionResponse | ChurnPredictionBatchResponse,
     description=(
         "Rota para inferência direta a partir do payload bruto.\n"
         "Aceita seleção opcional do modelo via `model_name`.\n"
+        f"{PREDICT_CONTRACT_NOTES}\n"
         f"{DATA_DICT_TABLE}"
     ),
 )
 def predict_churn_from_raw(
-    payload: ChurnPredictionRequest,
-) -> ChurnPredictionResponse:
+    payload: PredictRawBody,
+) -> ChurnPredictionResponse | ChurnPredictionBatchResponse:
     start_time = start_predict_request_for_monitor()
     status_code = "500"
 
-    cfg = _load_request_serving_config(payload.model_name)
     try:
+        validated_items, batch_errors, is_batch = _normalize_request_items(
+            payload,
+            ChurnPredictionRequest,
+        )
+        if not is_batch:
+            response = _predict_raw_item(validated_items[0][1])
+            status_code = "200"
+            return response
+
+        batch_items = list(batch_errors)
         logger.info(
-            "Recebida requisição POST /predict/raw | model=%s",
-            payload.model_name,
+            "Recebida requisição POST /predict/raw em lote | itens_validos=%d",
+            len(validated_items),
         )
-        prepared_payload = prepare_request_inference_payload(payload, cfg)
-        probability, prediction = predict_from_dataframe(
-            prepared_payload.transformed_features,
-            cfg,
-        )
-        log_prediction_for_monitoring(
-            feature_payload=prepared_payload.monitoring_features,
-            prediction_context=PredictionLogContext(
-                probability=probability,
-                prediction=prediction,
-                model_name=cfg.model_name,
-                model_version=cfg.model_version,
-                threshold=cfg.threshold,
-            ),
-            request_metadata=prepared_payload.request_metadata,
-        )
+        for raw_index, validated_item in validated_items:
+            try:
+                response = _predict_raw_item(validated_item)
+            except HTTPException as exc:
+                batch_items.append(
+                    ChurnPredictionBatchItemResponse(
+                        index=raw_index,
+                        status="error",
+                        error=str(exc.detail),
+                    )
+                )
+                continue
+
+            batch_items.append(
+                ChurnPredictionBatchItemResponse(
+                    index=raw_index,
+                    status="ok",
+                    result=response,
+                )
+            )
+
         status_code = "200"
-        logger.info(
-            "Resposta /predict/raw pronta | source=%s",
-            prepared_payload.feature_source,
-        )
-        return ChurnPredictionResponse(
-            churn_probability=probability,
-            churn_prediction=prediction,
-            model_name=cfg.model_name,
-            threshold=cfg.threshold,
-            feature_source=prepared_payload.feature_source,
-            customer_id=prepared_payload.customer_id,
+        return _build_prediction_batch_response(
+            sorted(batch_items, key=lambda item: item.index)
         )
     finally:
         finish_predict_request_for_monitor(

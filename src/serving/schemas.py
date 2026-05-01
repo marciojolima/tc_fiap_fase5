@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from common.config_loader import DEFAULT_SERVING_MODEL_NAME, load_global_config
 
@@ -12,6 +12,41 @@ _CATEGORICAL_FEATURES = _GLOBAL_CONFIG["features"]["categorical_features"]
 _GEOGRAPHY_CATEGORIES = _CATEGORICAL_FEATURES["one_hot"]["Geography"]
 _GENDER_CATEGORIES = _CATEGORICAL_FEATURES["ordinal"]["Gender"]
 _CARD_TYPE_CATEGORIES = _CATEGORICAL_FEATURES["ordinal"]["Card Type"]
+
+RAW_PREDICTION_SINGLE_EXAMPLE = {
+    "CreditScore": 600,
+    "Geography": _GEOGRAPHY_CATEGORIES[1],
+    "Gender": _GENDER_CATEGORIES[0],
+    "Age": 40,
+    "Tenure": 3,
+    "Balance": 60000.0,
+    "NumOfProducts": 2,
+    "HasCrCard": 1,
+    "IsActiveMember": 1,
+    "EstimatedSalary": 50000.0,
+    "Card Type": _CARD_TYPE_CATEGORIES[-1],
+    "Point Earned": 450,
+    "model_name": DEFAULT_SERVING_MODEL_NAME,
+}
+RAW_PREDICTION_BATCH_EXAMPLE = [
+    RAW_PREDICTION_SINGLE_EXAMPLE,
+    {
+        **RAW_PREDICTION_SINGLE_EXAMPLE,
+        "Card Type": _CARD_TYPE_CATEGORIES[0],
+        "Point Earned": 520,
+    },
+]
+LOOKUP_PREDICTION_SINGLE_EXAMPLE = {
+    "customer_id": 15634602,
+    "model_name": DEFAULT_SERVING_MODEL_NAME,
+}
+LOOKUP_PREDICTION_BATCH_EXAMPLE = [
+    LOOKUP_PREDICTION_SINGLE_EXAMPLE,
+    {
+        "customer_id": 15662085,
+        "model_name": DEFAULT_SERVING_MODEL_NAME,
+    },
+]
 
 
 def _normalize_request_model_name(value: str) -> str:
@@ -105,21 +140,7 @@ class ChurnPredictionRequest(BaseModel):
     model_config = {
         "populate_by_name": True,
         "json_schema_extra": {
-            "example": {
-                "CreditScore": 600,
-                "Geography": _GEOGRAPHY_CATEGORIES[1],
-                "Gender": _GENDER_CATEGORIES[0],
-                "Age": 40,
-                "Tenure": 3,
-                "Balance": 60000.0,
-                "NumOfProducts": 2,
-                "HasCrCard": 1,
-                "IsActiveMember": 1,
-                "EstimatedSalary": 50000.0,
-                "Card Type": _CARD_TYPE_CATEGORIES[-1],
-                "Point Earned": 450,
-                "model_name": DEFAULT_SERVING_MODEL_NAME,
-            }
+            "example": RAW_PREDICTION_SINGLE_EXAMPLE,
         },
     }
 
@@ -169,10 +190,7 @@ class ChurnCustomerLookupRequest(BaseModel):
 
     model_config = {
         "json_schema_extra": {
-            "example": {
-                "customer_id": 15634602,
-                "model_name": "current",
-            }
+            "example": LOOKUP_PREDICTION_SINGLE_EXAMPLE,
         },
     }
 
@@ -191,6 +209,79 @@ class ChurnPredictionResponse(BaseModel):
     threshold: float
     feature_source: str
     customer_id: int | None = None
+
+
+class ChurnPredictionBatchItemResponse(BaseModel):
+    """Resultado unitário de uma inferência executada dentro de um lote."""
+
+    index: int = Field(ge=0)
+    status: Literal["ok", "error"]
+    result: ChurnPredictionResponse | None = None
+    error: str | None = None
+
+    @model_validator(mode="after")
+    def validate_result_state(self) -> ChurnPredictionBatchItemResponse:
+        if self.status == "ok":
+            if self.result is None or self.error is not None:
+                raise ValueError(
+                    "Itens com status 'ok' devem conter result e não podem conter error"
+                )
+            return self
+
+        if self.error is None or self.result is not None:
+            raise ValueError(
+                "Itens com status 'error' devem conter error e não podem conter result"
+            )
+        return self
+
+
+class ChurnPredictionBatchSummary(BaseModel):
+    """Resumo agregado do processamento em lote."""
+
+    total: int = Field(ge=0)
+    success: int = Field(ge=0)
+    errors: int = Field(ge=0)
+
+
+class ChurnPredictionBatchResponse(BaseModel):
+    """Resposta de inferência para múltiplos itens com sucesso parcial."""
+
+    items: list[ChurnPredictionBatchItemResponse]
+    summary: ChurnPredictionBatchSummary
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "items": [
+                    {
+                        "index": 0,
+                        "status": "ok",
+                        "result": {
+                            "churn_probability": 0.81,
+                            "churn_prediction": 1,
+                            "model_name": DEFAULT_SERVING_MODEL_NAME,
+                            "threshold": 0.5,
+                            "feature_source": "feast_online_store",
+                            "customer_id": 15634602,
+                        },
+                    },
+                    {
+                        "index": 1,
+                        "status": "error",
+                        "error": (
+                            "Nenhuma feature online encontrada para o customer_id "
+                            "15662085 na Feature Store."
+                        ),
+                    },
+                ],
+                "summary": {
+                    "total": 2,
+                    "success": 1,
+                    "errors": 1,
+                },
+            }
+        }
+    }
 
 
 SUPPORTED_TRAINING_ALGORITHMS = (
