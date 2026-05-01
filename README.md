@@ -382,29 +382,9 @@ Se você quiser subir somente um componente fora do Compose durante desenvolvime
 
 ### Feature Store
 
-Uma Feature Store local baseada em Feast, com Redis como online store, separa a camada offline, usada para preparo e materialização, da camada online, usada para consulta de baixa latência.
+A integração com Feature Store usa Feast + Redis para separar publicação offline de consulta online e manter o contrato de features consistente entre treino e serving.
 
-O consumo é governado por `FeatureServices` por versão de modelo. Isso deixa explícito qual contrato de features cada modelo usa no treino e no serving, mesmo quando diferentes versões compartilham a mesma `FeatureView` base.
-
-Fluxo recomendado:
-
-```bash
-poetry run dvc repro featurize
-poetry run dvc repro train
-poetry run dvc repro create_fs_offline
-docker compose up -d redis
-poetry run task feastapply
-poetry run task feastmaterialize
-poetry run task feastdemo
-```
-
-Arquivos principais dessa integração:
-
-- `feature_store/feature_store.yaml`
-- `feature_store/repo.py`
-- `src/feast_ops/export.py`
-- `src/feast_ops/demo.py`
-- `docs/FEATURE_STORE.md`
+O detalhamento da arquitetura, do fluxo operacional e dos comandos dessa trilha está em [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md).
 
 Serving:
 
