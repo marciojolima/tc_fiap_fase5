@@ -465,6 +465,13 @@ Isso significa:
 Essa decisao reduz risco e prioriza monitoramento e rastreabilidade antes da
 automatizacao da promocao do challenger.
 
+Nota importante:
+
+- o retreino atual fecha o fluxo de governança e operação do modelo, mas ainda
+  não fecha o loop de aprendizado com feedback real de produção
+- nesta versão, ele deve ser entendido como retreino operacional e auditável,
+  e não como `data-feedback retraining`
+
 ## Estrutura da Solicitacao de Retreino
 
 Quando o drift fica critico, o sistema gera um `retrain_request.json`.
