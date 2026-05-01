@@ -154,25 +154,14 @@ Essa trilha já permite demonstrar comportamento conversacional, recuperação c
 
 ## Arquitetura da Solução
 
-O fluxo principal do projeto pode ser resumido em seis etapas:
+O projeto parte de dados versionados com DVC, aplica engenharia e validação de
+features e gera bases prontas para treino e inferência. O treinamento é
+rastreado no MLflow, enquanto o serving desacoplado em FastAPI expõe os
+endpoints tabulares e a trilha conversacional com agente LLM.
 
-1. **Versionamento e ingestão dos dados**  
-   Os dados brutos são mantidos em `data/raw/`, com apoio do DVC para rastreabilidade e sincronização entre ambientes.
-
-2. **Engenharia e validação de features**  
-   A pipeline gera artefatos intermediários e finais em `data/interim/` e `data/processed/`, além de evidências de validação estrutural.
-
-3. **Treinamento rastreável**  
-   O treinamento registra parâmetros, métricas, tags e artefatos no MLflow, mantendo trilha de execução reproduzível.
-
-4. **Serving desacoplado**  
-   A API FastAPI carrega o pipeline persistido de features e o modelo atual para servir inferências com o mesmo contrato do treino.
-
-5. **Observabilidade e logging de inferências**  
-   As predições podem ser registradas para posterior monitoramento, enquanto métricas operacionais ficam disponíveis para Prometheus.
-
-6. **Drift e retreino auditável**  
-   O monitoramento compara dados de referência e correntes, gera relatórios de drift e pode acionar o fluxo de retreino com decisão champion-challenger.
+Na operação, o sistema registra inferências, expõe métricas para observabilidade
+e executa monitoramento batch de drift. Quando necessário, essa trilha pode
+abrir um fluxo auditável de retreino e comparação champion-challenger.
 
 ## Estrutura do Repositório
 
