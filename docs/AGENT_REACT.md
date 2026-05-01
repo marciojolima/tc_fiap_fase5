@@ -6,10 +6,10 @@ Esta trilha concentra a experiência conversacional do projeto. A API expõe um
 fluxo de perguntas e respostas com agente ReAct, RAG local, tools de negócio e
 guardrails, sem alterar o contrato do endpoint tabular `/predict`.
 
-O agente ReAct nao substitui o modelo tabular nem melhora diretamente a
-metrica principal de churn. Seu valor e indireto: transformar predicoes,
-simulacoes e sinais operacionais em apoio mais acessivel para decisao e acao
-de retencao.
+O agente ReAct não substitui o modelo tabular nem melhora diretamente a
+métrica principal de churn. Seu valor é indireto: transformar predições,
+simulações e sinais operacionais em apoio mais acessível para decisão e ação
+de retenção.
 
 ## Componentes principais
 
