@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | **Nome** | Datathon Churn Analysis Platform |
-| **Versão** | 0.1.0 |
+| **Versão** | 0.8.0 |
 | **Finalidade** | Predição de churn + análise assistida por agente LLM |
 | **Autores** | Grupo FIAP Pós-Tech MLET |
 
