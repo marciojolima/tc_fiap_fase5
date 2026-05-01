@@ -272,14 +272,7 @@ Observações importantes:
 
 #### Carga inicial de dados e geração de artefatos
 
-Faça o pull dos dados versionados no storage via DVC, incluindo arquivos como `data/raw/Customer-Churn-Records.csv`:
-
-Observação sobre a base de churn bancário:
-
-- a base utilizada no projeto foi obtida via Kaggle, a partir do dataset `Bank Customer Churn`
-- o uso neste repositório é voltado principalmente a fins educacionais, experimentais e de demonstração técnica
-- a referência de obtenção e a licença/procedência da base devem ser verificadas diretamente na página do dataset antes de qualquer redistribuição ou uso fora de contexto acadêmico
-- por esse motivo, este projeto não deve apresentar essa base como dado operacional real de clientes
+Faça o pull dos dados versionados no storage via DVC:
 
 ```bash
 poetry run dvc pull
@@ -343,13 +336,6 @@ Depois do remote e das credenciais estarem corretos, baixe os dados com:
 poetry run dvc pull
 ```
 
-#### Observações importantes
-
-- não versione `.dvc/config.local`
-- não publique `client_id` e `client_secret` em README, issue, commit ou pull request
-- `.dvc/config` define a configuração compartilhada do remote; `.dvc/config.local` guarda segredos e ajustes locais da máquina
-- ** para maiores detalhes consulte o arquivo: [`dvc.yaml`](dvc.yaml)**
-
 ### 4. Stack local com Docker Compose
 
 ```bash
@@ -357,7 +343,7 @@ cp .env.example .env
 poetry run task appstack
 ```
 
-Se preferir executar a stack sem as tasks do projeto, o modo normal também pode ser iniciado diretamente com:
+ou
 
 ```bash
 docker compose up -d
