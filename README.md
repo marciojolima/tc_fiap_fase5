@@ -53,6 +53,8 @@ Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritm
 - [Feature Store](#feature-store)
 - [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
+- [Stack local reproduzível](#stack-local-reproduzível)
+- [Fluxo sugerido para validação local](#fluxo-sugerido-para-validação-local)
 - [Artefatos Relevantes](#artefatos-relevantes)
 - [Documentação Complementar](#documentação-complementar)
 - [Autores](#autores)
@@ -460,7 +462,7 @@ Essa trilha documenta:
 - resultado consolidado da execução
 - decisão final de promoção ou manutenção do champion
 
-### Stack local reproduzível
+## Stack local reproduzível
 
 Quando a stack é iniciada com `poetry run task appstack`, os serviços ficam disponíveis em:
 
@@ -474,7 +476,7 @@ Quando a stack é iniciada com `poetry run task appstack`, os serviços ficam di
 
 O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis com o código do projeto. Com isso, o serving carrega o mesmo modelo champion e o mesmo pipeline de features materializados localmente, enquanto o MLflow expõe os experimentos rastreados no SQLite local `mlruns/mlflow.db`. A porta publicada da UI vem de `MLFLOW_PORT` no `.env` e usa `5000` apenas como padrão.
 
-### Fluxo sugerido para validação local
+## Fluxo sugerido para validação local
 
 1. Copie `.env.example` para `.env`, se quiser customizar portas ou credenciais.
 2. Suba a stack com `poetry run task appstack`.
