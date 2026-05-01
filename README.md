@@ -152,6 +152,7 @@ Essa trilha já permite demonstrar comportamento conversacional, recuperação c
 | `GET` | `/llm/health` | Healthcheck do router LLM | Diagnóstico rápido das rotas LLM. |
 | `GET` | `/llm/status` | Status do provider LLM e do RAG | Mostra provider ativo, modelo esperado e estado do índice. |
 | `POST` | `/llm/chat` | Chat com agente ReAct | Pode usar RAG e tools do domínio. |
+| `GET` | `/llm/playground` | Playground HTML do chat LLM | Interface simples para simular perguntas, respostas e trace do agente. |
 
 
 ## Arquitetura da Solução
