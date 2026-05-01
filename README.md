@@ -284,45 +284,17 @@ poetry run dvc repro
 
 ### 3. Sincronização de dados versionados
 
-O projeto utiliza DVC para dados e artefatos versionados. O remote padrão está definido em `.dvc/config` com o nome `datathon_remote` e apontando para um storage no Google Drive.
+O projeto utiliza DVC para dados e artefatos versionados. O remote padrão está
+definido em `.dvc/config`, enquanto credenciais e segredos locais devem ficar em
+`.dvc/config.local`.
 
 Ao longo deste README, os exemplos usam `poetry run dvc ...`.
 
-#### Como a configuração está organizada
+Na máquina local, configure o acesso ao storage remoto conforme o backend usado
+no projeto. Para isso, consulte a documentação oficial do DVC sobre remotes e
+storage providers, incluindo opções como Google Drive.
 
-- `.dvc/config`: arquivo versionado no Git com a configuração compartilhada do remote, como nome e URL
-- `.dvc/config.local`: arquivo local, não versionado, usado para credenciais e segredos de cada máquina
-
-#### 1. Configure o remote
-
-A configuração compartilhada aponta para o remote `datathon_remote`. Para recriá-lo manualmente em outra máquina:
-
-```bash
-poetry run dvc remote add -d datathon_remote gdrive://<REMOTE_ID>
-```
-
-#### 2. Configure as credenciais locais do Google Drive
-
-As credenciais OAuth não devem ir para o Git. Por isso, elas devem ser gravadas localmente com `--local`, o que escreve em `.dvc/config.local`:
-
-```bash
-poetry run dvc remote modify --local datathon_remote gdrive_client_id <ID>
-poetry run dvc remote modify --local datathon_remote gdrive_client_secret <SECRET>
-```
-
-#### 3. Configure o OAuth no Google Cloud Console
-
-Para que o DVC possa autenticar no Google Drive via OAuth, é necessário existir um cliente OAuth configurado no Google Cloud Console. Em linhas gerais:
-
-1. crie ou selecione um projeto no Google Cloud Console
-2. habilite a Google Drive API para esse projeto
-3. configure a tela de consentimento OAuth
-4. crie credenciais do tipo OAuth Client ID
-5. use o `client_id` e o `client_secret` gerados nos comandos `dvc remote modify --local ...`
-
-#### 4. Baixe os dados
-
-Depois do remote e das credenciais estarem corretos, baixe os dados com:
+Depois disso, baixe os dados com:
 
 ```bash
 poetry run dvc pull
