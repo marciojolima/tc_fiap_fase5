@@ -40,20 +40,23 @@ Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritm
 
 ## Sumário
 
+- [Tecnologias Utilizadas](#tecnologias-utilizadas)
+- [Problema de Negócio](#problema-de-negócio)
+- [Métrica de negócio](#métrica-de-negócio)
+- [Estratégia de seleção de modelo](#estratégia-de-seleção-de-modelo)
 - [Sobre o Projeto](#sobre-o-projeto)
-- [Instalação e Execução](#instalação-e-execução)
 - [O que o Projeto Entrega](#o-que-o-projeto-entrega)
 - [Endpoints da API](#endpoints-da-api)
 - [Arquitetura da Solução](#arquitetura-da-solução)
-- [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-- [LLM, agente ReAct e llm_provider](docs/AGENT_REACT.md)
+- [Instalação e Execução](#instalação-e-execução)
 - [Feature Store](#feature-store)
+- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
 - [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
 - [Artefatos Relevantes](#artefatos-relevantes)
 - [Documentação Complementar](#documentação-complementar)
-- [Referências](#referências)
 - [Autores](#autores)
+- [Referências](#referências)
 - [Licença](#licença)
 
 ## Sobre o Projeto
@@ -554,6 +557,15 @@ papel de cada arquivo relevante na operação do projeto.
 - [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
 - [docs/SYSTEM_CARD.md](docs/SYSTEM_CARD.md)
 
+## Autores
+
+**Turma 6MLET - FIAP**
+
+- Luca Poit - RM365678
+- Gabriel Jordan - RM365606
+- Luciana Ferreira - RM366171
+- Marcio Lima - RM365919
+
 ## Referências
 
 1. OWASP (2025). *Top 10 for Large Language Model Applications*.
@@ -567,15 +579,6 @@ Nota sobre a referência do Kaggle:
 - a página do dataset indica licença do tipo `Other (specified in description)`, então a eventual redistribuição ou uso fora do contexto acadêmico deve considerar essa ressalva e ser validada diretamente na origem
 - a citação acima documenta a fonte de obtenção da base, mas não substitui a verificação de licença, procedência e condições de uso
 
-## Autores
-
-**Turma 6MLET - FIAP**
-
-- Luca Poit - RM365678
-- Gabriel Jordan - RM365606
-- Luciana Ferreira - RM366171
-- Marcio Lima - RM365919
-
 ## Licença
 
-Este projeto adota a licença MIT para o código-fonte do repositório.
+MIT
