@@ -328,12 +328,6 @@ Quando o `llm_provider` ativo for `ollama`, use o override [docker-compose.ollam
 
 Com a stack em execução, a documentação interativa do FastAPI fica disponível no endpoint padrão de documentação do ambiente local (incluindo rotas tabulares, `/train` e `/llm/*`).
 
-**Modo desenvolvimento:** use `poetry run task appstack_dev` para subir a stack com o override [docker-compose.dev.yml](docker-compose.dev.yml). Nesse modo, o `serving` monta `./src` em `/app/src` e roda o Uvicorn com `--reload`, então alterações em arquivos Python dentro de `src/` não exigem rebuild da imagem.
-
-**Quando usar rebuild:** reconstrua a stack apenas quando mudar Dockerfile, `pyproject.toml`, `poetry.lock`, dependências ou alguma estrutura relevante de build. Para a stack base, use `poetry run task appstack_rebuild`; para desenvolvimento, use `poetry run task appstack_dev_rebuild`; para o cenário com Ollama local, use `poetry run task appstack_ollama_rebuild`.
-
-**Quando não precisa rebuild:** no modo desenvolvimento, mudanças em `src/` são recarregadas pelo Uvicorn. Configurações, dados e artefatos ficam disponíveis por volumes do Compose principal, incluindo `configs/`, `data/processed/`, `data/feature_store/`, `artifacts/` e `feature_store/`.
-
 Para encerrar os serviços:
 
 ```bash
