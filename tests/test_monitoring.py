@@ -285,8 +285,19 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
                             / "promotion_decision.json"
                         ),
                         "promotion_rules": {
-                            "primary_metric": "auc",
+                            "criteria": "criteria_guardrails_plus_score",
+                            "primary_metric": "recall",
                             "minimum_improvement": 0.005,
+                            "metric_weights": {
+                                "recall": 0.35,
+                                "precision": 0.25,
+                                "f1": 0.25,
+                                "auc": 0.15,
+                            },
+                            "metric_guardrails": {
+                                "recall": -0.02,
+                                "precision": -0.02,
+                            },
                         },
                     },
                 }
@@ -328,7 +339,11 @@ def test_run_drift_monitoring_writes_metrics_and_retraining_placeholder(
         == "configs/model_lifecycle/current.json"
     )
     assert retrain_payload["promotion_policy"] == "manual_approval_required"
-    assert retrain_payload["promotion_rules"]["primary_metric"] == "auc"
+    assert (
+        retrain_payload["promotion_rules"]["criteria"]
+        == "criteria_guardrails_plus_score"
+    )
+    assert retrain_payload["promotion_rules"]["primary_metric"] == "recall"
     history_payload = json.loads(
         runs_history_path.read_text(encoding="utf-8").splitlines()[0]
     )
@@ -408,8 +423,19 @@ def test_run_drift_monitoring_executes_retraining_for_auto_mode(
                             / "promotion_decision.json"
                         ),
                         "promotion_rules": {
-                            "primary_metric": "auc",
+                            "criteria": "criteria_guardrails_plus_score",
+                            "primary_metric": "recall",
                             "minimum_improvement": 0.005,
+                            "metric_weights": {
+                                "recall": 0.35,
+                                "precision": 0.25,
+                                "f1": 0.25,
+                                "auc": 0.15,
+                            },
+                            "metric_guardrails": {
+                                "recall": -0.02,
+                                "precision": -0.02,
+                            },
                         },
                     },
                 }
@@ -511,8 +537,19 @@ def test_run_drift_monitoring_blocks_retraining_when_current_sample_is_too_small
                             / "promotion_decision.json"
                         ),
                         "promotion_rules": {
-                            "primary_metric": "auc",
+                            "criteria": "criteria_guardrails_plus_score",
+                            "primary_metric": "recall",
                             "minimum_improvement": 0.005,
+                            "metric_weights": {
+                                "recall": 0.35,
+                                "precision": 0.25,
+                                "f1": 0.25,
+                                "auc": 0.15,
+                            },
+                            "metric_guardrails": {
+                                "recall": -0.02,
+                                "precision": -0.02,
+                            },
                         },
                     },
                 }

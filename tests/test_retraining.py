@@ -32,8 +32,19 @@ def build_request_payload() -> dict[str, object]:
             "artifacts/evaluation/model/retraining/promotion_decision.json"
         ),
         "promotion_rules": {
-            "primary_metric": "auc",
+            "criteria": "criteria_guardrails_plus_score",
+            "primary_metric": "recall",
             "minimum_improvement": 0.005,
+            "metric_weights": {
+                "recall": 0.35,
+                "precision": 0.25,
+                "f1": 0.25,
+                "auc": 0.15,
+            },
+            "metric_guardrails": {
+                "recall": -0.02,
+                "precision": -0.02,
+            },
         },
         "drift_status": "critical",
         "max_feature_psi": 0.25,
@@ -98,7 +109,8 @@ def test_load_retraining_request_parses_contract(tmp_path: Path) -> None:
     assert request.status == "requested"
     assert request.training_config_path == "configs/model_lifecycle/current.json"
     assert request.drifted_features == ["Age"]
-    assert request.promotion_rules["primary_metric"] == "auc"
+    assert request.promotion_rules["criteria"] == "criteria_guardrails_plus_score"
+    assert request.promotion_rules["primary_metric"] == "recall"
     assert request.reference_row_count == EXPECTED_REFERENCE_ROW_COUNT
     assert request.current_row_count == EXPECTED_CURRENT_ROW_COUNT
 

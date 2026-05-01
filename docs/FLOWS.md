@@ -615,6 +615,11 @@ decisão de promoção
 **Observações**
 
 - O projeto não promove automaticamente o challenger.
+- A decisão auditável pode usar três estratégias configuráveis:
+  `criteria_best_single_metric`, `criteria_best_general` e
+  `criteria_guardrails_plus_score`.
+- A configuração padrão atual usa guardrails de negócio para `recall` e
+  `precision` antes de considerar o score composto do challenger.
 - A separação é intencional para manter auditoria e controle operacional.
 
 ## 4. Flows de Experimentos e Cenários
