@@ -30,8 +30,6 @@ O desenho atende ao que a Datathon cobra nas etapas de:
 As referencias principais de requisito sao:
 
 - [README.md](../README.md)
-- [STATUS_ATUAL_PROJETO.md](../STATUS_ATUAL_PROJETO.md)
-- [STATUS_CHECK_LIST.md](../STATUS_CHECK_LIST.md)
 
 ## Fontes de Contexto
 

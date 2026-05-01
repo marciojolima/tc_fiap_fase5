@@ -244,8 +244,7 @@ tc_fiap_fase5/
 ├── tests/                  # suíte de testes automatizados
 ├── docker-compose.yml
 ├── pyproject.toml
-├── README.md
-└── STATUS_ATUAL_PROJETO.md
+└── README.md
 ```
 
 ## Instalação e Execução
