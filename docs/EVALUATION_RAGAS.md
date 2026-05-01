@@ -23,13 +23,13 @@ A visao consolidada da avaliacao do projeto fica em [EVALUATION.md](EVALUATION.m
 Para a arquitetura e a operacao da trilha conversacional, veja tambem
 [AGENT_REACT.md](AGENT_REACT.md).
 
-## Requisitos atendidos
+## Escopo implementado
 
-| Requisito | Evidencia no projeto |
+| Frente | Evidencia no projeto |
 | --------- | -------------------- |
-| Golden set com >= 20 pares relevantes ao dominio | [data/golden-set.json](../data/golden-set.json) possui 24 itens alinhados a churn bancario, MLOps, API, observabilidade e RAG/LLM. |
-| RAGAS: 4 metricas calculadas e reportadas | [src/evaluation/llm_agent/ragas_eval.py](../src/evaluation/llm_agent/ragas_eval.py) calcula `faithfulness`, `answer_relevancy`, `context_precision` e `context_recall`; resultado em `artifacts/evaluation/llm_agent/results/ragas_scores.json`. |
-| LLM-as-judge com >= 3 criterios, incluindo negocio | [src/evaluation/llm_agent/llm_judge.py](../src/evaluation/llm_agent/llm_judge.py) usa `adequacao_negocio`, `correcao_conteudo` e `clareza_utilidade`. |
+| Golden set do dominio | [data/golden-set.json](../data/golden-set.json) possui 24 itens alinhados a churn bancario, MLOps, API, observabilidade e RAG/LLM. |
+| RAGAS com 4 metricas | [src/evaluation/llm_agent/ragas_eval.py](../src/evaluation/llm_agent/ragas_eval.py) calcula `faithfulness`, `answer_relevancy`, `context_precision` e `context_recall`; resultado em `artifacts/evaluation/llm_agent/results/ragas_scores.json`. |
+| LLM-as-judge com criterio de negocio | [src/evaluation/llm_agent/llm_judge.py](../src/evaluation/llm_agent/llm_judge.py) usa `adequacao_negocio`, `correcao_conteudo` e `clareza_utilidade`. |
 
 ## Golden set
 
@@ -48,8 +48,8 @@ Contrato principal de cada item:
 - `expected_tools`: tools esperadas quando aplicavel
 - `metadata`: categoria, dificuldade e tipo
 
-No estado atual, o arquivo possui 24 pares. Isso passa o requisito de pelo menos
-20 pares relevantes ao dominio.
+No estado atual, o arquivo possui 24 pares relevantes ao dominio, cobrindo
+perguntas sobre churn, API, observabilidade, agente e RAG.
 
 Validador:
 

@@ -11,7 +11,7 @@
 - [Limites da implementacao](#limites-da-implementacao)
 
 Este projeto registra metadados minimos de governanca no fluxo de treino
-para atender ao requisito de rastreabilidade esperado no Datathon.
+para sustentar rastreabilidade, comparacao entre versoes e auditoria do ciclo de vida do modelo.
 
 ## Onde isso acontece
 
@@ -19,7 +19,7 @@ O enriquecimento de metadados acontece em
 `src/model_lifecycle/train.py`, durante o logging da run no MLflow.
 
 Os valores sao definidos a partir de duas fontes:
-- configuracao declarativa do experimento em `configs/model_lifecycle/*.yaml`
+- configuracao declarativa do experimento em `configs/model_lifecycle/*.json`
 - metadados tecnicos calculados automaticamente no momento do treino
 
 ## Metadados registrados no MLflow
@@ -46,19 +46,22 @@ Esses campos sao registrados como `params` e/ou `tags`, para facilitar:
 
 ## Origem de cada campo
 
-### Declarados no YAML do experimento
+### Declarados no contrato do experimento
 
 Exemplo em `configs/model_lifecycle/current.json`:
 
-```yaml
-experiment:
-  name: current
-  run_name: current
-  version: 0.2.0
-
-governance:
-  risk_level: high
-  fairness_checked: false
+```json
+{
+  "experiment": {
+    "name": "current",
+    "run_name": "current",
+    "version": "0.2.0"
+  },
+  "governance": {
+    "risk_level": "high",
+    "fairness_checked": false
+  }
+}
 ```
 
 Campos vindos do contrato:
@@ -105,14 +108,14 @@ Valores sugeridos:
 ### `fairness_checked`
 
 Indica se houve verificacao explicita de fairness/bias para a versao treinada.
-O campo atende a governanca e ao preparo de evolucao futura.
+O campo reforca a trilha de governanca documentada para cada versao treinada.
 
 ## Objetivo desta abordagem
 
 Esta implementacao nao substitui um Model Registry completo, mas cria a base
 necessaria para:
 - versionamento consistente
-- promotion workflow futuro
+- promotion workflow auditavel
 - champion/challenger com metadata confiavel
 - compliance com os requisitos de governanca do Datathon
 

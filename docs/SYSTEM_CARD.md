@@ -37,7 +37,7 @@
 ### 5. Avaliação (Etapa 3)
 - **RAGAS**: 4 métricas (faithfulness, answer_relevancy, context_precision, context_recall)
 - **LLM-as-judge**: 3 critérios (incluindo adequação ao negócio)
-- **Golden Set**: pares em `configs/evaluation/golden_set.yaml`
+- **Golden Set**: pares em `data/golden-set.json`
 
 ### 6. Observabilidade (Etapa 3)
 - **Métricas**: Prometheus (latência, throughput, erros, métricas do RAG)
@@ -82,4 +82,4 @@ User Query -> InputGuardrail -> Agente (ReAct + Provider LLM)
 - **LGPD**: plano em [LGPD_PLAN.md](LGPD_PLAN.md)
 - **OWASP LLM**: mapeamento em [OWASP_MAPPING.md](OWASP_MAPPING.md)
 - **Fairness**: documentação no [MODEL_CARD.md](MODEL_CARD.md)
-- **Explicabilidade**: interpretação global por importância de features; explicabilidade local permanece evolução futura
+- **Explicabilidade**: interpretação global por importância de features; a camada local explicativa não faz parte do escopo implementado nesta versão

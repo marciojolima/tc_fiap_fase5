@@ -1,4 +1,4 @@
-# Scenario Analysis
+# Análise de Cenários
 
 O modulo `src.scenario_experiments.inference_cases` executa cenarios hipoteticos
 de churn e registra cada execucao em um experimento separado no MLflow.

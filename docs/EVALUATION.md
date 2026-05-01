@@ -1,4 +1,4 @@
-# Evaluation
+# Avaliação
 
 ## Indice
 
@@ -95,11 +95,11 @@ A avaliacao generativa fica concentrada em:
 - [src/evaluation/llm_agent/llm_judge.py](../src/evaluation/llm_agent/llm_judge.py)
 - [src/evaluation/llm_agent/ab_test_prompts.py](../src/evaluation/llm_agent/ab_test_prompts.py)
 
-Ela cobre os requisitos:
+Ela cobre as frentes principais da trilha generativa:
 
-- golden set com pelo menos 20 pares relevantes ao dominio
+- golden set com perguntas relevantes ao dominio
 - RAGAS com 4 metricas calculadas e reportadas
-- LLM-as-judge com pelo menos 3 criterios, incluindo criterio de negocio
+- LLM-as-judge com 3 criterios, incluindo criterio de negocio
 - benchmark de prompts com 3 configuracoes
 
 A explicacao completa esta em [EVALUATION_RAGAS.md](EVALUATION_RAGAS.md).

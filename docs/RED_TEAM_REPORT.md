@@ -1,13 +1,13 @@
 # Red Team Report
 
-Relatório mínimo de cenários adversariais para evidenciar guardrails de input e
+Relatorio de cenarios adversariais para evidenciar guardrails de input e
 output no endpoint LLM.
 
 ## Escopo
 
 - Componente avaliado: `InputGuardrail` e `OutputGuardrail`
 - Fluxo alvo: `POST /llm/chat`
-- Objetivo: cumprir requisito de >= 5 cenários adversariais testados e documentados
+- Objetivo: demonstrar a resposta do projeto a ataques comuns contra a trilha conversacional
 
 ## Cenários Executados
 
@@ -26,7 +26,7 @@ output no endpoint LLM.
 - Implementação: `src/security/guardrails.py`, `src/security/pii_detection.py`
 - Integração no serving: `src/serving/llm_routes.py`
 
-## Limitações Conhecidas (fase mínima)
+## Limitações Conhecidas
 
 - Detecção de prompt injection é baseada em padrões regex (heurística simples).
 - Não há classificador semântico de jailbreak/toxidade.

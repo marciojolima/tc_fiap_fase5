@@ -1,6 +1,6 @@
-# OWASP Mapping
+# Mapeamento OWASP para LLM
 
-Mapeamento mínimo de ameaças OWASP para a trilha LLM/Agente do projeto, com
+Mapeamento de ameacas OWASP para a trilha LLM/agente do projeto, com
 foco em evidências já existentes no repositório.
 
 | Ameaça (OWASP LLM) | Risco no projeto | Mitigação aplicada | Gap residual | Evidência |

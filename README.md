@@ -145,7 +145,7 @@ modelo identifica risco; o agente ajuda a tornar esse risco utilizável pelas
 
 - **Golden set (RAG / judge):** [data/golden-set.json](data/golden-set.json) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
 
-- **RAGAS (4 métricas):** [src/evaluation/llm_agent/ragas_eval.py](src/evaluation/llm_agent/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set chamando o endpoint real `POST /llm/chat`; os contextos vêm da trace de `rag_search`. Embeddings multilingues via FastEmbed, sem `sentence-transformers` nem `torch`. Execução local: `poetry run task eval_ragas` (requer serving e provider LLM configurados). Saída típica: `artifacts/evaluation/llm_agent/results/ragas_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/ragas_runs.jsonl`.
+- **RAGAS (4 métricas):** [src/evaluation/llm_agent/ragas_eval.py](src/evaluation/llm_agent/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set chamando o endpoint real `POST /llm/chat`; os contextos vêm da trace de `rag_search`. Embeddings multilingues via FastEmbed, sem dependência operacional de `sentence-transformers` ou `torch`. Execução local: `poetry run task eval_ragas` (requer serving e provider LLM configurados). Saída típica: `artifacts/evaluation/llm_agent/results/ragas_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/ragas_runs.jsonl`.
 
 - **LLM-as-judge (3 critérios):** [src/evaluation/llm_agent/llm_judge.py](src/evaluation/llm_agent/llm_judge.py) — avalia respostas do RAG nos critérios `adequacao_negocio`, `correcao_conteudo` e `clareza_utilidade`. Execução local: `poetry run task eval_llm_judge`. Saída típica: `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/llm_judge_runs.jsonl`.
 
@@ -155,7 +155,7 @@ modelo identifica risco; o agente ajuda a tornar esse risco utilizável pelas
 
   As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
 
-**Extensões previstas para essa trilha:** ampliação do CI/CD e documentação agregada de resultados de avaliação.
+Essa trilha já permite demonstrar comportamento conversacional, recuperação contextual e avaliação estruturada do agente em execução real.
 
 ## Endpoints da API
 
@@ -239,7 +239,7 @@ tc_fiap_fase5/
 │   ├── model_lifecycle/    # treino, promoção e retreino
 │   ├── monitoring/         # métricas operacionais
 │   ├── scenario_experiments/ # cenários de negócio
-│   ├── security/           # guardrails e PII em evolução
+│   ├── security/           # guardrails e proteção básica de PII
 │   └── serving/            # aplicação FastAPI e pipeline de inferência
 ├── tests/                  # suíte de testes automatizados
 ├── docker-compose.yml

@@ -1,4 +1,4 @@
-# RAG Explanation
+# Explicação do RAG
 
 ## Índice
 
