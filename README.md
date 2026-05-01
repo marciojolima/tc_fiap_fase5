@@ -114,6 +114,14 @@ O repositório reúne uma base funcional e demonstrável nas seguintes frentes:
 
 Implementação alinhada a uma camada de provider LLM configurável, integrada à API FastAPI sem alterar o contrato do endpoint tabular `/predict`.
 
+Nesta arquitetura, o agente ReAct nao substitui o modelo tabular de churn nem
+melhora diretamente a metrica principal de negocio. O ganho principal continua
+vindo da qualidade da predicao. O papel do agente e indireto, mas relevante:
+transformar score, simulacoes de cenario e sinais operacionais em suporte mais
+acessivel para decisao, investigacao e acao de retencao. Em outras palavras, o
+modelo identifica risco; o agente ajuda a tornar esse risco utilizavel pelas
+areas de negocio, operacao e acompanhamento do ciclo de vida do modelo.
+
 - **API (FastAPI)**  
   - `GET /llm/health` — health do router LLM.  
   - `GET /llm/status` — provider ativo (`llm.active_provider`), modelo esperado, diagnóstico específico do provider e status do RAG.  

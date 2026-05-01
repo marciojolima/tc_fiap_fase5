@@ -6,6 +6,11 @@ Esta trilha concentra a experiência conversacional do projeto. A API expõe um
 fluxo de perguntas e respostas com agente ReAct, RAG local, tools de negócio e
 guardrails, sem alterar o contrato do endpoint tabular `/predict`.
 
+O agente ReAct nao substitui o modelo tabular nem melhora diretamente a
+metrica principal de churn. Seu valor e indireto: transformar predicoes,
+simulacoes e sinais operacionais em apoio mais acessivel para decisao e acao
+de retencao.
+
 ## Componentes principais
 
 - **API LLM:** [src/serving/llm_routes.py](../src/serving/llm_routes.py) expõe `GET /llm/health`, `GET /llm/status` e `POST /llm/chat`.
