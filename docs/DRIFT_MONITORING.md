@@ -423,8 +423,17 @@ retraining:
   run_path: artifacts/evaluation/model/retraining/retrain_run.json
   promotion_decision_path: artifacts/evaluation/model/retraining/promotion_decision.json
   promotion_rules:
-    primary_metric: auc
+    criteria: criteria_guardrails_plus_score
+    primary_metric: recall
     minimum_improvement: 0.005
+    metric_weights:
+      recall: 0.35
+      precision: 0.25
+      f1: 0.25
+      auc: 0.15
+    metric_guardrails:
+      recall: -0.02
+      precision: -0.02
 ```
 
 Interpretacao dos campos:
@@ -435,7 +444,7 @@ Interpretacao dos campos:
 - `request_path`: onde fica a solicitacao auditavel
 - `run_path`: onde fica o resultado da execucao do retreino
 - `promotion_decision_path`: onde fica a decisao auditavel champion vs challenger
-- `promotion_rules`: regra minima para considerar o challenger elegivel
+- `promotion_rules`: estrategia e limites usados para considerar o challenger elegivel
 
 ## Estrategia de Automacao
 
@@ -474,8 +483,19 @@ Exemplo conceitual:
   "promotion_policy": "manual_approval_required",
   "promotion_decision_path": "artifacts/evaluation/model/retraining/promotion_decision.json",
   "promotion_rules": {
-    "primary_metric": "auc",
-    "minimum_improvement": 0.005
+    "criteria": "criteria_guardrails_plus_score",
+    "primary_metric": "recall",
+    "minimum_improvement": 0.005,
+    "metric_weights": {
+      "recall": 0.35,
+      "precision": 0.25,
+      "f1": 0.25,
+      "auc": 0.15
+    },
+    "metric_guardrails": {
+      "recall": -0.02,
+      "precision": -0.02
+    }
   },
   "drift_status": "critical",
   "max_feature_psi": 0.25,
@@ -547,10 +567,21 @@ Essa decisao nao promove nada sozinha. Ela apenas responde:
 - qual foi a regra usada?
 - qual o delta entre champion e challenger?
 
-A regra minima padrao e:
+As estrategias suportadas sao:
 
-- `primary_metric = auc`
+- `criteria_best_single_metric`: compara uma metrica principal isolada
+- `criteria_best_general`: compara um score ponderado entre metricas
+- `criteria_guardrails_plus_score`: exige guardrails minimos em metricas criticas e, entre os elegiveis, usa score ponderado
+
+A regra padrao atual e:
+
+- `criteria = criteria_guardrails_plus_score`
+- `primary_metric = recall`
 - `minimum_improvement = 0.005`
+- guardrails minimos de delta:
+  `recall >= -0.02` e `precision >= -0.02`
+- score ponderado com pesos:
+  `recall = 0.35`, `precision = 0.25`, `f1 = 0.25`, `auc = 0.15`
 
 ## Leitura do Core
 
