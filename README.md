@@ -535,18 +535,24 @@ papel de cada arquivo relevante na operação do projeto.
 
 ## Documentação Complementar
 
-- [docs/ARTIFACTS.md](docs/ARTIFACTS.md)
-- [docs/EVALUATION.md](docs/EVALUATION.md)
-- [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
-- [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
-- [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
-- [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
-- [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
-- [docs/EVALUATION_MODEL_METRICS.md](docs/EVALUATION_MODEL_METRICS.md)
 - [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
+- [docs/ARTIFACTS.md](docs/ARTIFACTS.md)
+- [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
+- [docs/EVALUATION.md](docs/EVALUATION.md)
+- [docs/EVALUATION_MODEL_METRICS.md](docs/EVALUATION_MODEL_METRICS.md)
 - [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md)
+- [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md)
+- [docs/FLOWS.md](docs/FLOWS.md)
 - [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
+- [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
+- [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
+- [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
+- [docs/OWASP_MAPPING.md](docs/OWASP_MAPPING.md)
+- [docs/RAG_EXPLANATION.md](docs/RAG_EXPLANATION.md)
+- [docs/RED_TEAM_REPORT.md](docs/RED_TEAM_REPORT.md)
+- [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
 - [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
+- [docs/SYSTEM_CARD.md](docs/SYSTEM_CARD.md)
 
 ## Referências
 
