@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from http import HTTPStatus
 
 import pytest
 from prometheus_client import generate_latest
@@ -11,7 +12,7 @@ from agent.llm_gateway.providers.ollama import OllamaProvider
 from agent.react_agent import AgentRunResult
 from agent.tools import AgentTool
 from serving.app import create_app
-from serving.llm_routes import chat_with_react_agent
+from serving.llm_routes import chat_with_react_agent, llm_chat_playground
 from serving.schemas import LLMChatRequest
 
 CANONICAL_CASES = (
@@ -189,7 +190,19 @@ def test_app_registers_llm_routes() -> None:
     paths = {getattr(route, "path", "") for route in app.routes}
     assert "/llm/chat" in paths
     assert "/llm/health" in paths
+    assert "/llm/playground" in paths
     assert "/llm/status" in paths
+
+
+def test_llm_playground_returns_html() -> None:
+    response = llm_chat_playground()
+    html = response.body.decode("utf-8")
+
+    assert response.status_code == HTTPStatus.OK
+    assert "text/html" in response.media_type
+    assert "Consumer simples do /llm/chat" in html
+    assert 'fetch("/llm/chat"' in html
+    assert "function renderMarkdown(value)" in html
 
 
 def test_chat_with_react_agent_returns_structured_response(monkeypatch) -> None:

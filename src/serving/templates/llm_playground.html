@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TC FIAP Fase 5 | LLM Chat</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3efe7;
+      --panel: #fffdf9;
+      --panel-alt: #f7f1e7;
+      --border: #d8cdbd;
+      --text: #1f2a37;
+      --muted: #5d6b7b;
+      --accent: #0d9488;
+      --accent-dark: #0f766e;
+      --danger: #b91c1c;
+      --shadow: 0 20px 45px rgba(31, 42, 55, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(13, 148, 136, 0.18), transparent 30%),
+        linear-gradient(135deg, #f7f3ea 0%, #f1ece2 50%, #ece6db 100%);
+      color: var(--text);
+    }
+
+    main {
+      width: min(1100px, calc(100vw - 32px));
+      margin: 32px auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    .hero,
+    .panel {
+      background: rgba(255, 253, 249, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 720px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    }
+
+    .panel {
+      padding: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font: inherit;
+      color: var(--text);
+      background: var(--panel);
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+    }
+
+    .checkbox input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 18px;
+      font: inherit;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: wait;
+      transform: none;
+    }
+
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: var(--panel-alt);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .output {
+      display: grid;
+      gap: 16px;
+    }
+
+    .status {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: 18px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .answer {
+      line-height: 1.65;
+    }
+
+    .answer p {
+      margin: 0 0 12px;
+    }
+
+    .answer p:last-child {
+      margin-bottom: 0;
+    }
+
+    .answer code {
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: var(--panel-alt);
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.92em;
+    }
+
+    .tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>Consumer simples do /llm/chat</h1>
+      <p>
+        Interface leve para simular perguntas, variar o estilo da resposta e
+        inspecionar a trace do agente ReAct sem precisar montar payload manual.
+      </p>
+    </section>
+
+    <section class="grid">
+      <form class="panel" id="chat-form">
+        <label for="message">Pergunta</label>
+        <textarea
+          id="message"
+          name="message"
+          placeholder="Ex.: Quais tools do agente ReAct são usadas no datathon?"
+          required
+        ></textarea>
+
+        <div class="controls">
+          <div>
+            <label for="answer-style">Estilo da resposta</label>
+            <select id="answer-style" name="answer_style">
+              <option value="short">short</option>
+              <option value="medium" selected>medium</option>
+              <option value="long">long</option>
+            </select>
+          </div>
+
+          <label class="checkbox" for="include-trace">
+            <input id="include-trace" name="include_trace" type="checkbox" checked />
+            Incluir trace para depuração
+          </label>
+
+          <button id="submit-button" type="submit">Enviar para /llm/chat</button>
+        </div>
+
+        <div class="examples">
+          <button
+            class="chip"
+            type="button"
+            data-prompt="Quais tools do agente ReAct são usadas no datathon?"
+          >
+            Tools do agente
+          </button>
+          <button
+            class="chip"
+            type="button"
+            data-prompt="Como o RAG do projeto obtém contexto para uma pergunta?"
+          >
+            Como o RAG funciona
+          </button>
+          <button
+            class="chip"
+            type="button"
+            data-prompt="O que o monitoramento de drift identifica neste projeto?"
+          >
+            Drift
+          </button>
+        </div>
+      </form>
+
+      <section class="output">
+        <div id="status" class="status">Pronto para testar.</div>
+
+        <article class="card">
+          <h2>Resposta</h2>
+          <div id="answer" class="answer">
+            <p>Nenhuma resposta ainda.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Tools usadas</h2>
+          <div id="tools" class="tools">
+            <span class="chip">aguardando chamada</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Trace</h2>
+          <pre id="trace">[]</pre>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("chat-form");
+    const messageInput = document.getElementById("message");
+    const answerStyleInput = document.getElementById("answer-style");
+    const includeTraceInput = document.getElementById("include-trace");
+    const submitButton = document.getElementById("submit-button");
+    const answerEl = document.getElementById("answer");
+    const toolsEl = document.getElementById("tools");
+    const traceEl = document.getElementById("trace");
+    const statusEl = document.getElementById("status");
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", isError);
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function renderInlineMarkdown(value) {
+      return value
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    }
+
+    function renderMarkdown(value) {
+      const safeValue = escapeHtml(value.trim());
+      if (!safeValue) {
+        return "<p>Nenhuma resposta disponível.</p>";
+      }
+
+      return safeValue
+        .split(/\n{2,}/)
+        .map((block) => `<p>${renderInlineMarkdown(block).replace(/\n/g, "<br />")}</p>`)
+        .join("");
+    }
+
+    function renderAnswer(value) {
+      answerEl.innerHTML = renderMarkdown(value);
+    }
+
+    function renderTools(tools) {
+      toolsEl.innerHTML = "";
+      if (!Array.isArray(tools) || tools.length === 0) {
+        toolsEl.innerHTML = '<span class="chip">nenhuma tool informada</span>';
+        return;
+      }
+
+      tools.forEach((tool) => {
+        const tag = document.createElement("span");
+        tag.className = "chip";
+        tag.textContent = tool;
+        toolsEl.appendChild(tag);
+      });
+    }
+
+    document.querySelectorAll("[data-prompt]").forEach((button) => {
+      button.addEventListener("click", () => {
+        messageInput.value = button.dataset.prompt || "";
+        messageInput.focus();
+      });
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        message: messageInput.value.trim(),
+        include_trace: includeTraceInput.checked,
+        answer_style: answerStyleInput.value,
+      };
+
+      if (!payload.message) {
+        setStatus("Digite uma pergunta antes de enviar.", true);
+        return;
+      }
+
+      submitButton.disabled = true;
+      setStatus("Consultando o agente...");
+      renderAnswer("Carregando resposta...");
+      traceEl.textContent = "[]";
+      renderTools([]);
+
+      try {
+        const response = await fetch("/llm/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Falha ao consultar o endpoint.");
+        }
+
+        renderAnswer(data.answer || "");
+        renderTools(data.used_tools || []);
+        traceEl.textContent = JSON.stringify(data.trace || [], null, 2);
+        setStatus("Resposta recebida com sucesso.");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Erro inesperado.";
+        renderAnswer("Nenhuma resposta disponível.");
+        renderTools([]);
+        traceEl.textContent = "[]";
+        setStatus(message, true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

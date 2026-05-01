@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import HTMLResponse
 
 from agent.llm_gateway.factory import build_llm_client
 from agent.rag_pipeline import get_rag_runtime_summary
@@ -20,11 +24,30 @@ from serving.schemas import LLMChatRequest, LLMChatResponse
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 logger = get_logger("serving.llm_routes")
+_PLAYGROUND_TEMPLATE_PATH = Path(__file__).with_name("templates").joinpath(
+    "llm_playground.html"
+)
+
+
+@lru_cache(maxsize=1)
+def _load_chat_playground_html() -> str:
+    return _PLAYGROUND_TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
 @router.get("/health")
 def llm_healthcheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get(
+    "/playground",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def llm_chat_playground() -> HTMLResponse:
+    """Interface HTML simples para testar o endpoint /llm/chat."""
+
+    return HTMLResponse(content=_load_chat_playground_html())
 
 
 @router.get("/status")
