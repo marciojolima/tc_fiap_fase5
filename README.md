@@ -121,48 +121,17 @@ O repositório reúne uma base funcional e demonstrável nas seguintes frentes:
 
 ### 6. LLM, agente ReAct, RAG e segurança
 
-Implementação alinhada a uma camada de provider LLM configurável, integrada à API FastAPI sem alterar o contrato do endpoint tabular `/predict`.
+O projeto inclui uma trilha conversacional com provider LLM configurável, agente ReAct, RAG local e guardrails, integrada à API sem alterar o contrato tabular de `/predict`.
 
-Nesta arquitetura, o agente ReAct não substitui o modelo tabular de churn nem
-melhora diretamente a métrica principal de negócio. O ganho principal continua
-vindo da qualidade da predição. O papel do agente é indireto, mas relevante:
-transformar score, simulações de cenário e sinais operacionais em suporte mais
-acessível para decisão, investigação e ação de retenção. Em outras palavras, o
-modelo identifica risco; o agente ajuda a tornar esse risco utilizável pelas
-áreas de negócio, operação e acompanhamento do ciclo de vida do modelo.
+O agente não substitui o modelo de churn. Seu papel é transformar predições, cenários e sinais operacionais em respostas mais acessíveis para análise e apoio à decisão.
 
-- **API (FastAPI)**  
-  - `GET /llm/health` — health do router LLM.  
-  - `GET /llm/status` — provider ativo (`llm.active_provider`), modelo esperado, diagnóstico específico do provider e status do RAG.  
-  - `POST /llm/chat` — pergunta do usuário, resposta do agente, lista de tools usadas e trace opcional.
+- **API LLM:** `GET /llm/health`, `GET /llm/status` e `POST /llm/chat`.
+- **Agente e tools:** [src/agent/react_agent.py](src/agent/react_agent.py) e [src/agent/tools.py](src/agent/tools.py), com `rag_search`, `predict_churn`, `drift_status` e `scenario_prediction`.
+- **RAG e segurança:** [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py), [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py).
+- **Avaliação:** golden set em [data/golden-set.json](data/golden-set.json), RAGAS, LLM-as-judge e benchmark de prompts em `src/evaluation/llm_agent/`.
+- **Configuração:** [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml) e `.env` para chaves externas.
 
-- **Agente ReAct** — [src/agent/react_agent.py](src/agent/react_agent.py): loop no estilo pensar → agir → observar, com limite de iterações e integração com guardrails de entrada e saída.
-
-- **Tools (≥4)** — [src/agent/tools.py](src/agent/tools.py): `rag_search` (contexto sobre documentação e metadados do projeto), `predict_churn` (mesmo contrato do `/predict/raw`, com payload bruto), `drift_status` (artefatos de drift), `scenario_prediction` (cenários hipotéticos).
-
-- **RAG** — [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py): recuperação vetorial local com FastEmbed/ONNX e rerank lexical leve sobre arquivos versionados (por exemplo `README.md`, docs e metadados em `data/processed/` quando existirem).
-  O modelo de embeddings do RAG usa cache persistente local em `artifacts/rag/fastembed_model_cache`, reduzindo downloads repetidos entre reinícios da stack.
-
-- **Segurança** — [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py): validação básica de input e mascaramento de PII na resposta.
-
-- **Configuração** — blocos `llm`, `agent`, `rag` e `security` em [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml); o `llm_provider` ativo, `model_name`, `base_url`, `max_tokens` e demais parâmetros ficam no YAML. Chaves de API de providers externos ficam no `.env` (ex.: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`).
-  Em ambiente Docker, `LLM_BASE_URL` pode sobrescrever a `base_url` do provider ativo quando for necessário ajustar o endpoint interno do container.
-
-- **Testes** — [tests/test_agent.py](tests/test_agent.py), [tests/test_guardrails.py](tests/test_guardrails.py), [tests/test_llm_routes.py](tests/test_llm_routes.py).
-
-- **Utilitário** — [scripts/list_ollama_models.py](scripts/list_ollama_models.py) (task `ollama_list`): diagnóstico opcional para ambientes em que o `llm_provider` ativo é `ollama`.
-
-- **Golden set (RAG / judge):** [data/golden-set.json](data/golden-set.json) — 24 pares `query` / `expected_answer` alinhados ao domínio (churn, MLOps, API, observabilidade, RAG/LLM). Validação mínima em [tests/test_golden_set.py](tests/test_golden_set.py).
-
-- **RAGAS (4 métricas):** [src/evaluation/llm_agent/ragas_eval.py](src/evaluation/llm_agent/ragas_eval.py) — calcula *faithfulness*, *answer relevancy*, *context precision* e *context recall* sobre o golden set chamando o endpoint real `POST /llm/chat`; os contextos vêm da trace de `rag_search`. Embeddings multilingues via FastEmbed, sem dependência operacional de `sentence-transformers` ou `torch`. Execução local: `poetry run task eval_ragas` (requer serving e provider LLM configurados). Saída típica: `artifacts/evaluation/llm_agent/results/ragas_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/ragas_runs.jsonl`.
-
-- **LLM-as-judge (3 critérios):** [src/evaluation/llm_agent/llm_judge.py](src/evaluation/llm_agent/llm_judge.py) — avalia respostas do RAG nos critérios `adequacao_negocio`, `correcao_conteudo` e `clareza_utilidade`. Execução local: `poetry run task eval_llm_judge`. Saída típica: `artifacts/evaluation/llm_agent/results/llm_judge_scores.json`, com histórico em `artifacts/evaluation/llm_agent/runs/llm_judge_runs.jsonl`.
-
-- **Prompt A/B (3 variantes):** [src/evaluation/llm_agent/ab_test_prompts.py](src/evaluation/llm_agent/ab_test_prompts.py) — benchmark offline com três variantes de prompt sobre o golden set, comparando cobertura lexical mínima da resposta e, opcionalmente, notas do `llm_judge`. Execução local: `poetry run task eval_ab_test_prompts` ou `poetry run python -m src.evaluation.llm_agent.ab_test_prompts --with-judge`. Saída típica: `artifacts/evaluation/llm_agent/results/prompt_ab_results.json`, com histórico em `artifacts/evaluation/llm_agent/runs/prompt_ab_runs.jsonl`.
-
-- **Execução completa:** `poetry run task eval_all` executa RAGAS, LLM-as-judge e Prompt A/B em sequência. O RAGAS reutiliza o cache local do FastEmbed configurado para o RAG e, por padrão, chama `http://127.0.0.1:8000/llm/chat` (`RAGAS_SERVING_BASE_URL` permite sobrescrever).
-
-  As tasks de avaliação usam o provider configurado em `configs/pipeline_global_config.yaml`. Para providers externos, a chave pode estar exportada no shell ou preenchida no `.env` local (`ANTHROPIC_API_KEY` para Claude, `OPENAI_API_KEY` para OpenAI).
+Detalhes de arquitetura, operação e avaliação estão em [docs/AGENT_REACT.md](docs/AGENT_REACT.md), [docs/RAG_EXPLANATION.md](docs/RAG_EXPLANATION.md) e [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md).
 
 Essa trilha já permite demonstrar comportamento conversacional, recuperação contextual e avaliação estruturada do agente em execução real.
 
