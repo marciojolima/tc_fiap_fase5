@@ -2,16 +2,25 @@
 # Previsão de Churn Bancário com Machine Learning + Agente LLM
 # FIAP Pós-Tech MLET | Grupo 30 | Maio 2026  
 
+## Tecnologias Utilizadas
+
 ![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python)
+![Scikit--learn](https://img.shields.io/badge/Scikit--learn-modeling-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
+![XGBoost](https://img.shields.io/badge/XGBoost-boosting-EC6B23?style=for-the-badge)
 ![MLflow](https://img.shields.io/badge/MLflow-3.10.1-0194E2?style=for-the-badge&logo=mlflow)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?style=for-the-badge&logo=fastapi)
+![Uvicorn](https://img.shields.io/badge/Uvicorn-serving-4051B5?style=for-the-badge)
 ![DVC](https://img.shields.io/badge/DVC-data%20versioning-13ADC7?style=for-the-badge&logo=dvc)
 ![Evidently](https://img.shields.io/badge/Evidently-drift%20monitoring-6E56CF?style=for-the-badge)
 ![Prometheus](https://img.shields.io/badge/Prometheus-monitoring-E6522C?style=for-the-badge&logo=prometheus)
 ![Grafana](https://img.shields.io/badge/Grafana-observability-F46800?style=for-the-badge&logo=grafana)
 ![Feast](https://img.shields.io/badge/Feast-feature%20store-2F855A?style=for-the-badge)
 ![Redis](https://img.shields.io/badge/Redis-online%20store-DC382D?style=for-the-badge&logo=redis)
+![Pandera](https://img.shields.io/badge/Pandera-data%20validation-7A3E9D?style=for-the-badge)
 ![Poetry](https://img.shields.io/badge/Poetry-dependencies-60A5FA?style=for-the-badge&logo=poetry)
+![Pytest](https://img.shields.io/badge/Pytest-tests-0A9EDC?style=for-the-badge&logo=pytest)
+![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-D7FF64?style=for-the-badge)
+![Docker Compose](https://img.shields.io/badge/Docker%20Compose-local%20orchestration-2496ED?style=for-the-badge&logo=docker)
 
 ## Problema de Negócio
 
@@ -170,17 +179,6 @@ Essa trilha já permite demonstrar comportamento conversacional, recuperação c
 | `GET` | `/llm/status` | Status do provider LLM e do RAG | Mostra provider ativo, modelo esperado e estado do índice. |
 | `POST` | `/llm/chat` | Chat com agente ReAct | Pode usar RAG e tools do domínio. |
 
-Notas de serving:
-
-- `POST /predict` e `POST /predict/raw` mantêm compatibilidade com o contrato antigo para payload unitário.
-- Se a requisição tiver apenas 1 item, envie um objeto JSON e a API responderá com um objeto JSON de predição.
-- Se a requisição tiver 2 ou mais itens, envie um array JSON e a API responderá com um objeto de lote contendo `items` e `summary`.
-- Em lote, cada item é processado de forma isolada, permitindo sucesso parcial e erro parcial no mesmo request.
-- `POST /predict/raw` continua recebendo apenas o payload mínimo de inferência, não o registro bruto completo com as 18 colunas do CSV original.
-- `POST /train` não sobrescreve `artifacts/models/current.pkl` e retorna erro se o payload tentar apontar para o modelo champion ativo.
-- `POST /train` reutiliza o módulo de treino existente, registra métricas/artefatos no MLflow e retorna `training_time_seconds`, mas não limpa cache nem altera o modelo carregado pelo serving em memória.
-- Em Docker, o serviço `serving` também precisa do volume `./mlruns:/app/mlruns`, porque o endpoint registra runs diretamente no backend SQLite do MLflow.
-- O fluxo recomendado para servir um novo modelo continua sendo treino de challenger, avaliação e promoção explícita.
 
 ## Arquitetura da Solução
 
@@ -203,22 +201,6 @@ O fluxo principal do projeto pode ser resumido em seis etapas:
 
 6. **Drift e retreino auditável**  
    O monitoramento compara dados de referência e correntes, gera relatórios de drift e pode acionar o fluxo de retreino com decisão champion-challenger.
-
-## Tecnologias Utilizadas
-
-- **Linguagem:** Python 3.13
-- **Gerenciamento de dependências:** Poetry
-- **Treinamento e modelagem:** Scikit-learn, XGBoost
-- **Experiment tracking:** MLflow
-- **Versionamento de dados:** DVC
-- **Feature Store:** Feast
-- **Online store:** Redis
-- **Validação de dados:** Pandera
-- **Serving:** FastAPI, Uvicorn
-- **Monitoramento de drift:** Evidently
-- **Observabilidade:** Prometheus, Grafana
-- **Qualidade de código:** Pytest, Ruff
-- **Orquestração local:** Docker Compose
 
 ## Estrutura do Repositório
 
