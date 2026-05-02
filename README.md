@@ -439,6 +439,7 @@ papel de cada arquivo relevante na operação do projeto.
 ## Documentação
 
 - [docs/ADR/ADR-001.md](docs/ADR/ADR-001.md)
+- [docs/ADR/ADR-002.md](docs/ADR/ADR-002.md)
 - [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
 - [docs/ARTIFACTS.md](docs/ARTIFACTS.md)
 - [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
