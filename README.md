@@ -443,6 +443,7 @@ papel de cada arquivo relevante na operação do projeto.
 - [docs/ADR/ADR-003.md](docs/ADR/ADR-003.md)
 - [docs/ADR/ADR-004.md](docs/ADR/ADR-004.md)
 - [docs/ADR/ADR-005.md](docs/ADR/ADR-005.md)
+- [docs/ADR/ADR-006.md](docs/ADR/ADR-006.md)
 - [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
 - [docs/ARTIFACTS.md](docs/ARTIFACTS.md)
 - [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
