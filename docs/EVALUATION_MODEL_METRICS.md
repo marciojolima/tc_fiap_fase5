@@ -16,6 +16,11 @@
 - [Conclusões Finais](#conclusões-finais)
 - [Conexão com o Fluxo de Retreino](#conexão-com-o-fluxo-de-retreino)
 
+As justificativas arquiteturais para o uso dessas métricas e para o mapeamento
+com a métrica de negócio estão registradas em
+[ADRs/ADR-004.md](ADRs/ADR-004.md) e [ADRs/ADR-008.md](ADRs/ADR-008.md). Aqui o
+foco fica nos resultados e na interpretação técnica.
+
 Ordenadas da mais importante para a menos importante no contexto de churn bancário,
 onde **perder um cliente sem perceber** custa mais do que acionar um cliente fiel por engano.
 

@@ -6,10 +6,10 @@ Esta trilha concentra a experiência conversacional do projeto. A API expõe um
 fluxo de perguntas e respostas com agente ReAct, RAG local, tools de negócio e
 guardrails, sem alterar o contrato do endpoint tabular `/predict`.
 
-O agente ReAct não substitui o modelo tabular nem melhora diretamente a
-métrica principal de churn. Seu valor é indireto: transformar predições,
-simulações e sinais operacionais em apoio mais acessível para decisão e ação
-de retenção.
+As decisões arquiteturais dessa trilha estão consolidadas em
+[ADRs/ADR-002.md](ADRs/ADR-002.md) e [ADRs/ADR-003.md](ADRs/ADR-003.md). Este
+documento fica concentrado no funcionamento operacional da camada
+conversacional.
 
 ## Componentes principais
 

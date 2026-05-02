@@ -20,7 +20,12 @@
 
 ## Objetivo no contexto do projeto
 
-Este documento descreve a Feature Store do projeto de churn bancário sem reescrever o pipeline existente. A arquitetura aproxima a solução de um cenário produtivo, mantendo a execução local simples, didática e defensável em banca.
+Este documento descreve a Feature Store do projeto de churn bancário sem
+reescrever o pipeline existente.
+
+As decisões arquiteturais e a lacuna residual de maturidade dessa trilha ficam
+concentradas em [ADRs/ADR-011.md](ADRs/ADR-011.md). Aqui o foco é explicar
+como a Feature Store opera no repositório atual.
 
 No desenho da solução:
 
@@ -132,7 +137,7 @@ No dataset acadêmico de churn não existe um timestamp operacional real. Por is
 - materialização incremental
 - demonstração arquitetural coerente em ambiente local
 
-Essa decisão é uma adaptação didática, explicitamente registrada, e não pretende simular um CDC real de produção.
+Essa adaptação não pretende simular um CDC real de produção.
 
 ## O que `apply` e `materialize` fazem
 

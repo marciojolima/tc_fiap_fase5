@@ -438,36 +438,9 @@ papel de cada arquivo relevante na operação do projeto.
 
 ## Documentação
 
-- [docs/ADR/ADR-001.md](docs/ADR/ADR-001.md)
-- [docs/ADR/ADR-002.md](docs/ADR/ADR-002.md)
-- [docs/ADR/ADR-003.md](docs/ADR/ADR-003.md)
-- [docs/ADR/ADR-004.md](docs/ADR/ADR-004.md)
-- [docs/ADR/ADR-006.md](docs/ADR/ADR-006.md)
-- [docs/ADR/ADR-007.md](docs/ADR/ADR-007.md)
-- [docs/ADR/ADR-008.md](docs/ADR/ADR-008.md)
-- [docs/ADR/ADR-009.md](docs/ADR/ADR-009.md)
-- [docs/ADR/ADR-010.md](docs/ADR/ADR-010.md)
-- [docs/ADR/ADR-011.md](docs/ADR/ADR-011.md)
-- [docs/ADR/ADR-012.md](docs/ADR/ADR-012.md)
-- [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
-- [docs/ARTIFACTS.md](docs/ARTIFACTS.md)
-- [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
-- [docs/EVALUATION.md](docs/EVALUATION.md)
-- [docs/EVALUATION_MODEL_METRICS.md](docs/EVALUATION_MODEL_METRICS.md)
-- [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md)
-- [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md)
-- [docs/FLOWS.md](docs/FLOWS.md)
-- [docs/LGPD_PLAN.md](docs/LGPD_PLAN.md)
-- [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
-- [docs/MODEL_VERSIONING.md](docs/MODEL_VERSIONING.md)
-- [docs/MONITORING_OBSERVABILITY.md](docs/MONITORING_OBSERVABILITY.md)
-- [docs/OPERATIONS_DASHBOARD.md](docs/OPERATIONS_DASHBOARD.md)
-- [docs/OWASP_MAPPING.md](docs/OWASP_MAPPING.md)
-- [docs/RAG_EXPLANATION.md](docs/RAG_EXPLANATION.md)
-- [docs/RED_TEAM_REPORT.md](docs/RED_TEAM_REPORT.md)
-- [docs/SCENARIO_ANALYSIS.md](docs/SCENARIO_ANALYSIS.md)
-- [docs/SYNTHETIC_PREDICTIONS_GENERATOR.md](docs/SYNTHETIC_PREDICTIONS_GENERATOR.md)
-- [docs/SYSTEM_CARD.md](docs/SYSTEM_CARD.md)
+O conjunto completo de documentos, ADRs e guias operacionais foi concentrado em
+[docs/SUMARIO.md](docs/SUMARIO.md). Esse sumário organiza a navegação por tema e
+reduz a repetição de links no `README` principal.
 
 ## Autores
 

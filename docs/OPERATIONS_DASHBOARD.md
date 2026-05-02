@@ -9,6 +9,10 @@
 
 O projeto expõe métricas Prometheus no serving por meio do endpoint `GET /metrics`.
 
+O recorte arquitetural dessa observabilidade, incluindo seus limites na trilha
+LLM, está consolidado em [ADRs/ADR-007.md](ADRs/ADR-007.md). Este documento
+fica restrito ao uso operacional do dashboard.
+
 As métricas operacionais iniciais são:
 
 - `churn_serving_predict_latency_seconds`: latência do endpoint `POST /predict`

@@ -10,8 +10,13 @@
 - [Conexao com o fluxo do projeto](#conexao-com-o-fluxo-do-projeto)
 - [Limites da implementacao](#limites-da-implementacao)
 
-Este projeto registra metadados minimos de governanca no fluxo de treino
-para sustentar rastreabilidade, comparacao entre versoes e auditoria do ciclo de vida do modelo.
+Este projeto registra metadados minimos de governanca no fluxo de treino para
+sustentar rastreabilidade, comparacao entre versoes e auditoria do ciclo de
+vida do modelo.
+
+As decisoes arquiteturais sobre esse recorte de registry e governanca ficam em
+[ADRs/ADR-006.md](ADRs/ADR-006.md). Este documento descreve como o mecanismo foi
+materializado no repositorio.
 
 ## Onde isso acontece
 

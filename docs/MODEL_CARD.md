@@ -19,6 +19,10 @@ Este documento descreve o modelo tabular atualmente mantido como champion no
 projeto de churn bancário. O objetivo não é só listar métricas e features, mas
 explicar como essas informações devem ser lidas no contexto de negócio.
 
+As decisões arquiteturais relacionadas a fairness e explicabilidade ficam
+concentradas em [ADRs/ADR-010.md](ADRs/ADR-010.md). Aqui o foco permanece na
+leitura do champion atual e nas cautelas de uso.
+
 No problema de churn, a pergunta central é:
 
 - quais clientes apresentam maior risco de encerrar relacionamento com o banco?
@@ -69,9 +73,9 @@ Leitura dos campos:
 No contexto deste projeto, **fairness** é a análise de possíveis diferenças
 indevidas de comportamento do modelo entre grupos. Em churn, isso pode incluir,
 por exemplo, verificar se o modelo apresenta desempenho ou propensão de score
-muito diferentes entre recortes de `Gender` ou `Geography` sem justificativa
-adequada do domínio. O valor `false` aqui significa que essa auditoria ainda
-não foi concluída de forma automatizada e versionada no pipeline atual.
+muito diferentes entre recortes de `Gender` ou `Geography`. O valor `false`
+aqui significa que essa auditoria ainda não foi concluída de forma
+automatizada e versionada no pipeline atual.
 
 ### Métricas atuais do champion
 
