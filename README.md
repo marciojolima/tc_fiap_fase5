@@ -22,9 +22,8 @@
 ![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-D7FF64?style=for-the-badge)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-local%20orchestration-2496ED?style=for-the-badge&logo=docker)
 
-## Documentação
+## 📚 [Documentação](docs/SUMARIO.md)
 
-📚 Acesse o [sumário da documentação](docs/SUMARIO.md) para navegar pelas ADRs, guias operacionais, avaliação, governança e arquitetura do projeto.
 
 ## Instalação e Execução
 
