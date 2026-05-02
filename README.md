@@ -22,6 +22,10 @@
 ![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-D7FF64?style=for-the-badge)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-local%20orchestration-2496ED?style=for-the-badge&logo=docker)
 
+## Documentação
+
+📚 Acesse o [sumário da documentação](docs/SUMARIO.md) para navegar pelas ADRs, guias operacionais, avaliação, governança e arquitetura do projeto.
+
 ## Instalação e Execução
 
 ### Pré-requisitos
@@ -367,12 +371,6 @@ O Compose monta `configs/`, `artifacts/` e `mlruns/` com caminhos compatíveis c
 Os principais artefatos de dados, modelos, monitoramento e avaliação foram
 extraídos para [docs/ARTIFACTS.md](docs/ARTIFACTS.md), que concentra a visão do
 papel de cada arquivo relevante na operação do projeto.
-
-## Documentação
-
-O conjunto completo de documentos, ADRs e guias operacionais foi concentrado em
-[docs/SUMARIO.md](docs/SUMARIO.md). Esse sumário organiza a navegação por tema e
-reduz a repetição de links no `README` principal.
 
 ## Autores
 
