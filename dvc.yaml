@@ -91,7 +91,8 @@ stages:
       - README.md
       - artifacts/models/current_metadata.json  # output de train → ordem garantida
     outs:
-      - artifacts/rag
+      - path: artifacts/rag
+        cache: false  # desabilita cache do DVC para o RAG, pois é reconstruído do zero a cada execução
 
   # ──────────────────────────────────────────────────────────
   # 6. Experimentos MLflow (champion + challengers + cenários)
