@@ -56,7 +56,7 @@ Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritm
 - [Stack local reproduzível](#stack-local-reproduzível)
 - [Fluxo sugerido para validação local](#fluxo-sugerido-para-validação-local)
 - [Artefatos Relevantes](#artefatos-relevantes)
-- [Documentação Complementar](#documentação-complementar)
+- [Documentação](#documentação)
 - [Autores](#autores)
 - [Referências](#referências)
 - [Licença](#licença)
@@ -435,8 +435,9 @@ Os principais artefatos de dados, modelos, monitoramento e avaliação foram
 extraídos para [docs/ARTIFACTS.md](docs/ARTIFACTS.md), que concentra a visão do
 papel de cada arquivo relevante na operação do projeto.
 
-## Documentação Complementar
+## Documentação
 
+- [docs/ADR/ADR-001.md](docs/ADR/ADR-001.md)
 - [docs/AGENT_REACT.md](docs/AGENT_REACT.md)
 - [docs/ARTIFACTS.md](docs/ARTIFACTS.md)
 - [docs/DRIFT_MONITORING.md](docs/DRIFT_MONITORING.md)
