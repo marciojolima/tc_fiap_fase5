@@ -54,18 +54,6 @@ Instale todas as dependências do projeto. O ambiente virtual é criado automati
 poetry install --all-extras
 ```
 
-Se quiser ativar um shell dentro do ambiente virtual, instale o plugin `poetry-plugin-shell`:
-
-```bash
-poetry self add poetry-plugin-shell
-```
-
-Depois, abra o shell do Poetry:
-
-```bash
-poetry shell
-```
-
 Crie também o arquivo `.env` a partir do modelo de referência:
 
 ```bash
@@ -102,58 +90,29 @@ Faça o pull dos dados versionados no storage via DVC:
 poetry run dvc pull
 ```
 
-Suba a infraestrutura mínima para execução local, com Redis e MLflow:
+Suba a infraestrutura mínima para execução local, com Redis:
 
 ```bash
 poetry run task infra_up_only_one_time
 ```
 
-Execute o pipeline principal para gerar os artefatos do projeto, incluindo engenharia de features, treinamento, indexação de embeddings, experimentos pré-configurados, análise de cenários e geração de dados sintéticos para simulação de drift:
+Execute o pipeline principal para gerar os artefatos necessários e observáveis do projeto:
 
 ```bash
 poetry run dvc repro
 ```
 
-### 3. Sincronização de dados versionados
-
-O projeto utiliza DVC para dados e artefatos versionados. O remote padrão está
-definido em `.dvc/config`, enquanto credenciais e segredos locais devem ficar em
-`.dvc/config.local`.
-
-Ao longo deste README, os exemplos usam `poetry run dvc ...`.
-
-Na máquina local, configure o acesso ao storage remoto conforme o backend usado
-no projeto. Para isso, consulte a documentação oficial do DVC sobre remotes e
-storage providers, incluindo opções como Google Drive.
-
-Depois disso, baixe os dados com:
-
-```bash
-poetry run dvc pull
-```
-
-### 4. Stack local com Docker Compose
+### 3. Stack local com Docker Compose
 
 ```bash
 cp .env.example .env
 poetry run task appstack
 ```
 
-ou
 
-```bash
-docker compose up -d
-```
+Quando o `llm_provider` ativo for `ollama`, use o override [docker-compose.ollama.yml](docker-compose.ollama.yml) via `poetry run task appstack_ollama` ou `poetry run task appstack_ollama_rebuild`.
 
-A stack local sobe os seguintes serviços de forma integrada:
-
-- serving FastAPI
-- Redis
-- MLflow server
-- Prometheus
-- Grafana
-
-Quando o `llm_provider` ativo for `ollama`, use o override [docker-compose.ollama.yml](docker-compose.ollama.yml) via `poetry run task appstack_ollama` ou `poetry run task appstack_ollama_rebuild`. Nesse modo, a stack adiciona:
+Nesse modo, a stack adiciona:
 
 - **Ollama** (volume `ollama_data` para modelos)
 - job **one-shot** `ollama-pull`, que executa `ollama pull` do modelo definido em `llm.providers.ollama.model_name`
@@ -163,10 +122,8 @@ Com a stack em execução, a documentação interativa do FastAPI fica disponív
 Para encerrar os serviços:
 
 ```bash
-poetry run task appstack_down
+docker compose down
 ```
-
-### 5. Execução manual isolada
 
 ## Problema de Negócio
 
@@ -183,29 +140,6 @@ A escolha do modelo não é fixa, sendo orientada pelo objetivo de negócio e pe
 - Em cenários com limitação de capacidade operacional (ex: equipe de retenção reduzida), são priorizados modelos com **maior precisão (precision)**, garantindo maior eficiência nas ações.
 
 Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritmos) podem ser promovidos a modelo em produção conforme o critério de negócio vigente, caracterizando uma abordagem orientada a valor e não apenas a métricas técnicas isoladas.
-
-## Sumário
-
-- [Tecnologias Utilizadas](#tecnologias-utilizadas)
-- [Instalação e Execução](#instalação-e-execução)
-- [Problema de Negócio](#problema-de-negócio)
-- [Métrica de negócio](#métrica-de-negócio)
-- [Estratégia de seleção de modelo](#estratégia-de-seleção-de-modelo)
-- [Sobre o Projeto](#sobre-o-projeto)
-- [O que o Projeto Entrega](#o-que-o-projeto-entrega)
-- [Endpoints da API](#endpoints-da-api)
-- [Arquitetura da Solução](#arquitetura-da-solução)
-- [Estrutura do Repositório](#estrutura-do-repositório)
-- [Feature Store](#feature-store)
-- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
-- [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
-- [Stack local reproduzível](#stack-local-reproduzível)
-- [Fluxo sugerido para validação local](#fluxo-sugerido-para-validação-local)
-- [Artefatos Relevantes](#artefatos-relevantes)
-- [Documentação](#documentação)
-- [Autores](#autores)
-- [Referências](#referências)
-- [Licença](#licença)
 
 ## Sobre o Projeto
 
@@ -339,39 +273,37 @@ tc_fiap_fase5/
 └── README.md
 ```
 
+## Execução pontual de componentes
 
-Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
+Se você quiser subir componentes isolados fora do Compose durante o
+desenvolvimento local, use os comandos abaixo.
 
 ### Feature Store
 
-A integração com Feature Store usa Feast + Redis para separar publicação offline de consulta online e manter o contrato de features consistente entre treino e serving.
+A integração com Feature Store usa Feast + Redis para separar publicação
+offline de consulta online e manter o contrato de features consistente entre
+treino e serving.
 
 O detalhamento da arquitetura, do fluxo operacional e dos comandos dessa trilha está em [docs/FEATURE_STORE.md](docs/FEATURE_STORE.md).
 
-Serving:
+### Serving
 
 ```bash
 poetry run uvicorn serving.app:app --host 0.0.0.0 --port 8000
 ```
 
-MLflow:
+### MLflow
 
 ```bash
 poetry run task mlflow
 ```
 
-### 6. Monitoramento e demonstração de drift
+### Monitoramento de drift
 
 Monitoramento batch:
 
 ```bash
 poetry run task mldrift
-```
-
-Execução demonstrável com base de teste:
-
-```bash
-poetry run task mldriftdemo
 ```
 
 Geração de cenários sintéticos:
@@ -380,7 +312,7 @@ Geração de cenários sintéticos:
 poetry run task mlflowsyntheticdrift
 ```
 
-### 7. Testes
+### Testes
 
 ```bash
 poetry run task test
