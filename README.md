@@ -22,177 +22,6 @@
 ![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-D7FF64?style=for-the-badge)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-local%20orchestration-2496ED?style=for-the-badge&logo=docker)
 
-## Problema de Negócio
-
-Identificar clientes com alta probabilidade de evasão (churn) para permitir ações de retenção proativas pelo banco.
-
-## Métrica de negócio  
-**≥ 70%** dos clientes que realmente evadem devem estar entre os 20% com maior risco previsto (recall@top20% ≥ 0.70).
-
-
-## Estratégia de seleção de modelo  
-A escolha do modelo não é fixa, sendo orientada pelo objetivo de negócio e pelas restrições operacionais.
-
-- Em cenários onde o objetivo é maximizar a retenção e evitar perda de clientes a qualquer custo, são priorizados modelos com **maior recall**.
-- Em cenários com limitação de capacidade operacional (ex: equipe de retenção reduzida), são priorizados modelos com **maior precisão (precision)**, garantindo maior eficiência nas ações.
-
-Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritmos) podem ser promovidos a modelo em produção conforme o critério de negócio vigente, caracterizando uma abordagem orientada a valor e não apenas a métricas técnicas isoladas.
-
-## Sumário
-
-- [Tecnologias Utilizadas](#tecnologias-utilizadas)
-- [Problema de Negócio](#problema-de-negócio)
-- [Métrica de negócio](#métrica-de-negócio)
-- [Estratégia de seleção de modelo](#estratégia-de-seleção-de-modelo)
-- [Sobre o Projeto](#sobre-o-projeto)
-- [O que o Projeto Entrega](#o-que-o-projeto-entrega)
-- [Endpoints da API](#endpoints-da-api)
-- [Arquitetura da Solução](#arquitetura-da-solução)
-- [Estrutura do Repositório](#estrutura-do-repositório)
-- [Instalação e Execução](#instalação-e-execução)
-- [Feature Store](#feature-store)
-- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
-- [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
-- [Stack local reproduzível](#stack-local-reproduzível)
-- [Fluxo sugerido para validação local](#fluxo-sugerido-para-validação-local)
-- [Artefatos Relevantes](#artefatos-relevantes)
-- [Documentação](#documentação)
-- [Autores](#autores)
-- [Referências](#referências)
-- [Licença](#licença)
-
-## Sobre o Projeto
-
-Este projeto foi organizado como uma plataforma de machine learning aplicada a churn bancário. A proposta é cobrir uma trilha de ponta a ponta, desde dados versionados e engenharia de features até serving, monitoramento de drift e retreino auditável.
-
-Um ponto importante da narrativa do repositório é a transformação de um experimento centrado em notebook em uma solução mais robusta de engenharia de ML. O notebook [notebooks/churn_bancario_sem_mlops.ipynb](notebooks/churn_bancario_sem_mlops.ipynb) representa a base exploratória executada em Jupyter ou Colab. O restante do repositório organiza essa base em uma estrutura com separação de responsabilidades, versionamento de dados, treino rastreável, serving, monitoramento, governança e documentação operacional.
-
-Em outras palavras, este repositório não busca apenas mostrar um modelo de churn funcionando, mas também evidenciar a diferença entre um experimento isolado e uma solução com preocupações reais de MLOps.
-
-O foco principal está em demonstrar práticas de engenharia de ML esperadas no contexto do Datathon:
-
-- pipeline de dados reproduzível
-- consistência entre treino e inferência
-- treinamento rastreável com MLflow
-- serving desacoplado via FastAPI
-- cenários de negócio versionados
-- monitoramento batch de drift com artefatos auditáveis
-- feature store local com Feast + Redis para materialização online incremental
-- stack local reproduzível com serving, MLflow, Prometheus e Grafana
-
-## O que o Projeto Entrega
-
-O repositório reúne uma base funcional e demonstrável nas seguintes frentes:
-
-### 1. Dados, features e preparação
-
-- versionamento de dados com DVC
-- separação entre camadas `raw`, `interim` e `processed`
-- pipeline de engenharia de features em [src/feature_engineering/feature_engineering.py](src/feature_engineering/feature_engineering.py)
-- componentes reutilizáveis em [src/feature_engineering/pipeline_components.py](src/feature_engineering/pipeline_components.py)
-- validação estrutural com Pandera em [src/feature_engineering/schema_validation.py](src/feature_engineering/schema_validation.py)
-- persistência de datasets preparados e artefatos auxiliares para reuso
-
-### 2. Treinamento e gestão de modelo
-
-- treinamento principal em [src/model_lifecycle/train.py](src/model_lifecycle/train.py)
-- rastreamento de parâmetros, métricas e artefatos com MLflow
-- múltiplas configurações de experimento em `configs/model_lifecycle/experiments/`
-- persistência do modelo champion, challengers e metadados em `artifacts/models/`
-- apoio a promoção champion-challenger em [src/model_lifecycle/promotion.py](src/model_lifecycle/promotion.py)
-
-### 3. Serving e inferência
-
-- API FastAPI em [src/serving/app.py](src/serving/app.py)
-- endpoints de serving e treino síncrono em [src/serving/routes.py](src/serving/routes.py)
-- contratos de entrada e saída em [src/serving/schemas.py](src/serving/schemas.py)
-- carregamento compartilhado do pipeline de features e do modelo em [src/serving/pipeline.py](src/serving/pipeline.py)
-- endpoint `POST /train` com validação Pydantic, treino síncrono e sem promoção automática do modelo ativo
-
-### 4. Cenários de negócio e validação
-
-- suíte de cenários versionados em [configs/scenario_experiments/inference_cases.yaml](configs/scenario_experiments/inference_cases.yaml)
-- execução automatizada em [src/scenario_experiments/inference_cases.py](src/scenario_experiments/inference_cases.py)
-- geração de lotes sintéticos de drift em [src/evaluation/model/drift/synthetic_drifts.py](src/evaluation/model/drift/synthetic_drifts.py)
-
-### 5. Monitoramento e operação
-
-- logging de inferências em [src/evaluation/model/drift/prediction_logger.py](src/evaluation/model/drift/prediction_logger.py)
-- métricas operacionais expostas em [src/monitoring/metrics.py](src/monitoring/metrics.py)
-- detecção batch de drift com Evidently e PSI em [src/evaluation/model/drift/drift.py](src/evaluation/model/drift/drift.py)
-- relatórios HTML e arquivos JSON para auditoria em `artifacts/evaluation/model/`
-- stack local reproduzível com serving, MLflow, Prometheus e Grafana
-- workflow básico de CI em [.github/workflows/ci.yml](.github/workflows/ci.yml)
-
-### 6. LLM, agente ReAct, RAG e segurança
-
-O projeto inclui uma trilha conversacional com provider LLM configurável, agente ReAct, RAG local e guardrails, integrada à API sem alterar o contrato tabular de `/predict`.
-
-O agente não substitui o modelo de churn. Seu papel é transformar predições, cenários e sinais operacionais em respostas mais acessíveis para análise e apoio à decisão.
-
-- **API LLM:** `GET /llm/health`, `GET /llm/status` e `POST /llm/chat`.
-- **Agente e tools:** [src/agent/react_agent.py](src/agent/react_agent.py) e [src/agent/tools.py](src/agent/tools.py), com `rag_search`, `predict_churn`, `drift_status` e `scenario_prediction`.
-- **RAG e segurança:** [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py), [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py).
-- **Avaliação:** golden set em [data/golden-set.json](data/golden-set.json), RAGAS, LLM-as-judge e benchmark de prompts em `src/evaluation/llm_agent/`.
-- **Configuração:** [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml) e `.env` para chaves externas.
-
-Detalhes de arquitetura, operação e avaliação estão em [docs/AGENT_REACT.md](docs/AGENT_REACT.md), [docs/RAG_EXPLANATION.md](docs/RAG_EXPLANATION.md) e [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md).
-
-Essa trilha já permite demonstrar comportamento conversacional, recuperação contextual e avaliação estruturada do agente em execução real.
-
-## Endpoints da API
-
-| Método | Endpoint | Objetivo | Observações |
-|---|---|---|---|
-| `GET` | `/health` | Healthcheck simples da API tabular | Retorna `{"status":"ok"}`. |
-| `POST` | `/predict` | Predição online por `customer_id` | Aceita objeto único ou array; com 1 item retorna objeto, com 2+ retorna `items` + `summary`. |
-| `POST` | `/predict/raw` | Predição por payload bruto mínimo | Aceita objeto único ou array; com 1 item retorna objeto, com 2+ retorna `items` + `summary`. |
-| `POST` | `/train` | Treino síncrono de um experimento individual | Valida o schema com Pydantic, recebe JSON no formato lógico do config de treino, salva challenger e retorna o tempo de treino em segundos. |
-| `GET` | `/metrics` | Exposição de métricas Prometheus | Foco atual em `/predict` e `/llm/chat`. |
-| `GET` | `/llm/health` | Healthcheck do router LLM | Diagnóstico rápido das rotas LLM. |
-| `GET` | `/llm/status` | Status do provider LLM e do RAG | Mostra provider ativo, modelo esperado e estado do índice. |
-| `POST` | `/llm/chat` | Chat com agente ReAct | Pode usar RAG e tools do domínio. |
-| `GET` | `/llm/playground` | Playground HTML do chat LLM | Interface simples para simular perguntas, respostas e trace do agente. |
-
-
-## Arquitetura da Solução
-
-O projeto parte de dados versionados com DVC, aplica engenharia e validação de
-features e gera bases prontas para treino e inferência. O treinamento é
-rastreado no MLflow, enquanto o serving desacoplado em FastAPI expõe os
-endpoints tabulares e a trilha conversacional com agente LLM.
-
-Na operação, o sistema registra inferências, expõe métricas para observabilidade
-e executa monitoramento batch de drift. Quando necessário, essa trilha pode
-abrir um fluxo auditável de retreino e comparação champion-challenger.
-
-## Estrutura do Repositório
-
-```text
-tc_fiap_fase5/
-├── artifacts/              # modelos, relatórios de drift e saídas de retreino
-├── configs/                # treino, cenários, monitoramento e observabilidade
-├── data/                   # camadas raw, interim e processed
-├── docs/                   # documentação técnica e de governança
-├── feature_store/          # repositório Feast e definições da feature store
-├── notebooks/              # notebooks exploratórios e de apoio
-├── scripts/                # utilitários auxiliares
-├── src/
-│   ├── agent/              # agente, RAG e gateway de LLM
-│   ├── common/             # utilidades compartilhadas
-│   ├── evaluation/         # avaliação de LLM e de modelo/drift
-│   ├── feature_engineering/ # engenharia e validação de features
-│   ├── model_lifecycle/    # treino, promoção e retreino
-│   ├── monitoring/         # métricas operacionais
-│   ├── scenario_experiments/ # cenários de negócio
-│   ├── security/           # guardrails e proteção básica de PII
-│   └── serving/            # aplicação FastAPI e pipeline de inferência
-├── tests/                  # suíte de testes automatizados
-├── docker-compose.yml
-├── pyproject.toml
-└── README.md
-```
-
 ## Instalação e Execução
 
 ### Pré-requisitos
@@ -338,6 +167,178 @@ poetry run task appstack_down
 ```
 
 ### 5. Execução manual isolada
+
+## Problema de Negócio
+
+Identificar clientes com alta probabilidade de evasão (churn) para permitir ações de retenção proativas pelo banco.
+
+## Métrica de negócio  
+**≥ 70%** dos clientes que realmente evadem devem estar entre os 20% com maior risco previsto (recall@top20% ≥ 0.70).
+
+
+## Estratégia de seleção de modelo  
+A escolha do modelo não é fixa, sendo orientada pelo objetivo de negócio e pelas restrições operacionais.
+
+- Em cenários onde o objetivo é maximizar a retenção e evitar perda de clientes a qualquer custo, são priorizados modelos com **maior recall**.
+- Em cenários com limitação de capacidade operacional (ex: equipe de retenção reduzida), são priorizados modelos com **maior precisão (precision)**, garantindo maior eficiência nas ações.
+
+Dessa forma, diferentes experimentos (variações de hiperparâmetros e algoritmos) podem ser promovidos a modelo em produção conforme o critério de negócio vigente, caracterizando uma abordagem orientada a valor e não apenas a métricas técnicas isoladas.
+
+## Sumário
+
+- [Tecnologias Utilizadas](#tecnologias-utilizadas)
+- [Instalação e Execução](#instalação-e-execução)
+- [Problema de Negócio](#problema-de-negócio)
+- [Métrica de negócio](#métrica-de-negócio)
+- [Estratégia de seleção de modelo](#estratégia-de-seleção-de-modelo)
+- [Sobre o Projeto](#sobre-o-projeto)
+- [O que o Projeto Entrega](#o-que-o-projeto-entrega)
+- [Endpoints da API](#endpoints-da-api)
+- [Arquitetura da Solução](#arquitetura-da-solução)
+- [Estrutura do Repositório](#estrutura-do-repositório)
+- [Feature Store](#feature-store)
+- [LLM, agente ReAct e llm_provider](#llm-agente-react-e-llm_provider)
+- [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
+- [Stack local reproduzível](#stack-local-reproduzível)
+- [Fluxo sugerido para validação local](#fluxo-sugerido-para-validação-local)
+- [Artefatos Relevantes](#artefatos-relevantes)
+- [Documentação](#documentação)
+- [Autores](#autores)
+- [Referências](#referências)
+- [Licença](#licença)
+
+## Sobre o Projeto
+
+Este projeto foi organizado como uma plataforma de machine learning aplicada a churn bancário. A proposta é cobrir uma trilha de ponta a ponta, desde dados versionados e engenharia de features até serving, monitoramento de drift e retreino auditável.
+
+Um ponto importante da narrativa do repositório é a transformação de um experimento centrado em notebook em uma solução mais robusta de engenharia de ML. O notebook [notebooks/churn_bancario_sem_mlops.ipynb](notebooks/churn_bancario_sem_mlops.ipynb) representa a base exploratória executada em Jupyter ou Colab. O restante do repositório organiza essa base em uma estrutura com separação de responsabilidades, versionamento de dados, treino rastreável, serving, monitoramento, governança e documentação operacional.
+
+Em outras palavras, este repositório não busca apenas mostrar um modelo de churn funcionando, mas também evidenciar a diferença entre um experimento isolado e uma solução com preocupações reais de MLOps.
+
+O foco principal está em demonstrar práticas de engenharia de ML esperadas no contexto do Datathon:
+
+- pipeline de dados reproduzível
+- consistência entre treino e inferência
+- treinamento rastreável com MLflow
+- serving desacoplado via FastAPI
+- cenários de negócio versionados
+- monitoramento batch de drift com artefatos auditáveis
+- feature store local com Feast + Redis para materialização online incremental
+- stack local reproduzível com serving, MLflow, Prometheus e Grafana
+
+## O que o Projeto Entrega
+
+O repositório reúne uma base funcional e demonstrável nas seguintes frentes:
+
+### 1. Dados, features e preparação
+
+- versionamento de dados com DVC
+- separação entre camadas `raw`, `interim` e `processed`
+- pipeline de engenharia de features em [src/feature_engineering/feature_engineering.py](src/feature_engineering/feature_engineering.py)
+- componentes reutilizáveis em [src/feature_engineering/pipeline_components.py](src/feature_engineering/pipeline_components.py)
+- validação estrutural com Pandera em [src/feature_engineering/schema_validation.py](src/feature_engineering/schema_validation.py)
+- persistência de datasets preparados e artefatos auxiliares para reuso
+
+### 2. Treinamento e gestão de modelo
+
+- treinamento principal em [src/model_lifecycle/train.py](src/model_lifecycle/train.py)
+- rastreamento de parâmetros, métricas e artefatos com MLflow
+- múltiplas configurações de experimento em `configs/model_lifecycle/experiments/`
+- persistência do modelo champion, challengers e metadados em `artifacts/models/`
+- apoio a promoção champion-challenger em [src/model_lifecycle/promotion.py](src/model_lifecycle/promotion.py)
+
+### 3. Serving e inferência
+
+- API FastAPI em [src/serving/app.py](src/serving/app.py)
+- endpoints de serving e treino síncrono em [src/serving/routes.py](src/serving/routes.py)
+- contratos de entrada e saída em [src/serving/schemas.py](src/serving/schemas.py)
+- carregamento compartilhado do pipeline de features e do modelo em [src/serving/pipeline.py](src/serving/pipeline.py)
+- endpoint `POST /train` com validação Pydantic, treino síncrono e sem promoção automática do modelo ativo
+
+### 4. Cenários de negócio e validação
+
+- suíte de cenários versionados em [configs/scenario_experiments/inference_cases.yaml](configs/scenario_experiments/inference_cases.yaml)
+- execução automatizada em [src/scenario_experiments/inference_cases.py](src/scenario_experiments/inference_cases.py)
+- geração de lotes sintéticos de drift em [src/evaluation/model/drift/synthetic_drifts.py](src/evaluation/model/drift/synthetic_drifts.py)
+
+### 5. Monitoramento e operação
+
+- logging de inferências em [src/evaluation/model/drift/prediction_logger.py](src/evaluation/model/drift/prediction_logger.py)
+- métricas operacionais expostas em [src/monitoring/metrics.py](src/monitoring/metrics.py)
+- detecção batch de drift com Evidently e PSI em [src/evaluation/model/drift/drift.py](src/evaluation/model/drift/drift.py)
+- relatórios HTML e arquivos JSON para auditoria em `artifacts/evaluation/model/`
+- stack local reproduzível com serving, MLflow, Prometheus e Grafana
+- workflow básico de CI em [.github/workflows/ci.yml](.github/workflows/ci.yml)
+
+### 6. LLM, agente ReAct, RAG e segurança
+
+O projeto inclui uma trilha conversacional com provider LLM configurável, agente ReAct, RAG local e guardrails, integrada à API sem alterar o contrato tabular de `/predict`.
+
+O agente não substitui o modelo de churn. Seu papel é transformar predições, cenários e sinais operacionais em respostas mais acessíveis para análise e apoio à decisão.
+
+- **API LLM:** `GET /llm/health`, `GET /llm/status` e `POST /llm/chat`.
+- **Agente e tools:** [src/agent/react_agent.py](src/agent/react_agent.py) e [src/agent/tools.py](src/agent/tools.py), com `rag_search`, `predict_churn`, `drift_status` e `scenario_prediction`.
+- **RAG e segurança:** [src/agent/rag_pipeline.py](src/agent/rag_pipeline.py), [src/security/guardrails.py](src/security/guardrails.py) e [src/security/pii_detection.py](src/security/pii_detection.py).
+- **Avaliação:** golden set em [data/golden-set.json](data/golden-set.json), RAGAS, LLM-as-judge e benchmark de prompts em `src/evaluation/llm_agent/`.
+- **Configuração:** [configs/pipeline_global_config.yaml](configs/pipeline_global_config.yaml) e `.env` para chaves externas.
+
+Detalhes de arquitetura, operação e avaliação estão em [docs/AGENT_REACT.md](docs/AGENT_REACT.md), [docs/RAG_EXPLANATION.md](docs/RAG_EXPLANATION.md) e [docs/EVALUATION_RAGAS.md](docs/EVALUATION_RAGAS.md).
+
+Essa trilha já permite demonstrar comportamento conversacional, recuperação contextual e avaliação estruturada do agente em execução real.
+
+## Endpoints da API
+
+| Método | Endpoint | Objetivo | Observações |
+|---|---|---|---|
+| `GET` | `/health` | Healthcheck simples da API tabular | Retorna `{"status":"ok"}`. |
+| `POST` | `/predict` | Predição online por `customer_id` | Aceita objeto único ou array; com 1 item retorna objeto, com 2+ retorna `items` + `summary`. |
+| `POST` | `/predict/raw` | Predição por payload bruto mínimo | Aceita objeto único ou array; com 1 item retorna objeto, com 2+ retorna `items` + `summary`. |
+| `POST` | `/train` | Treino síncrono de um experimento individual | Valida o schema com Pydantic, recebe JSON no formato lógico do config de treino, salva challenger e retorna o tempo de treino em segundos. |
+| `GET` | `/metrics` | Exposição de métricas Prometheus | Foco atual em `/predict` e `/llm/chat`. |
+| `GET` | `/llm/health` | Healthcheck do router LLM | Diagnóstico rápido das rotas LLM. |
+| `GET` | `/llm/status` | Status do provider LLM e do RAG | Mostra provider ativo, modelo esperado e estado do índice. |
+| `POST` | `/llm/chat` | Chat com agente ReAct | Pode usar RAG e tools do domínio. |
+| `GET` | `/llm/playground` | Playground HTML do chat LLM | Interface simples para simular perguntas, respostas e trace do agente. |
+
+
+## Arquitetura da Solução
+
+O projeto parte de dados versionados com DVC, aplica engenharia e validação de
+features e gera bases prontas para treino e inferência. O treinamento é
+rastreado no MLflow, enquanto o serving desacoplado em FastAPI expõe os
+endpoints tabulares e a trilha conversacional com agente LLM.
+
+Na operação, o sistema registra inferências, expõe métricas para observabilidade
+e executa monitoramento batch de drift. Quando necessário, essa trilha pode
+abrir um fluxo auditável de retreino e comparação champion-challenger.
+
+## Estrutura do Repositório
+
+```text
+tc_fiap_fase5/
+├── artifacts/              # modelos, relatórios de drift e saídas de retreino
+├── configs/                # treino, cenários, monitoramento e observabilidade
+├── data/                   # camadas raw, interim e processed
+├── docs/                   # documentação técnica e de governança
+├── feature_store/          # repositório Feast e definições da feature store
+├── notebooks/              # notebooks exploratórios e de apoio
+├── scripts/                # utilitários auxiliares
+├── src/
+│   ├── agent/              # agente, RAG e gateway de LLM
+│   ├── common/             # utilidades compartilhadas
+│   ├── evaluation/         # avaliação de LLM e de modelo/drift
+│   ├── feature_engineering/ # engenharia e validação de features
+│   ├── model_lifecycle/    # treino, promoção e retreino
+│   ├── monitoring/         # métricas operacionais
+│   ├── scenario_experiments/ # cenários de negócio
+│   ├── security/           # guardrails e proteção básica de PII
+│   └── serving/            # aplicação FastAPI e pipeline de inferência
+├── tests/                  # suíte de testes automatizados
+├── docker-compose.yml
+├── pyproject.toml
+└── README.md
+```
+
 
 Se você quiser subir somente um componente fora do Compose durante desenvolvimento local:
 
