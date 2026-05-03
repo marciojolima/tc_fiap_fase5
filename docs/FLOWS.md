@@ -839,8 +839,7 @@ rota LLM
 ### 6.2 Avaliação LLM completa
 
 **Tipo:** batch manual
-**Start:** `task eval_all`, `task eval_all_offline`, `task eval_all_docker` ou
-variantes `sample`
+**Start:** `task eval_all`, `task eval_all_docker` ou variantes `sample`
 
 **Cadeia**
 
