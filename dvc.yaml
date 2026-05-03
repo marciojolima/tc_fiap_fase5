@@ -91,7 +91,7 @@ stages:
       - README.md
       - artifacts/models/current_metadata.json  # output de train → ordem garantida
     outs:
-      - path: artifacts/rag
+      artifacts/rag:
         cache: false  # desabilita cache do DVC para o RAG, pois é reconstruído do zero a cada execução
 
   # ──────────────────────────────────────────────────────────
