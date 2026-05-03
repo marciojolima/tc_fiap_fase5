@@ -15,8 +15,8 @@ uma descrição curta do papel de cada arquivo.
 - Proxies técnicas para representar a métrica de negócio: [ADRs/ADR-008.md](ADRs/ADR-008.md)
 - CI com gates de qualidade, sem deploy para staging: [ADRs/ADR-009.md](ADRs/ADR-009.md)
 - Fairness e explicabilidade mantidas em nível documental: [ADRs/ADR-010.md](ADRs/ADR-010.md)
-- Lacunas residuais de maturidade em capacidades já entregues: [ADRs/ADR-011.md](ADRs/ADR-011.md)
-- RAG com índice vetorial em memória e cache local: [ADRs/ADR-012.md](ADRs/ADR-012.md)
+- RAG com índice vetorial em memória e cache local: [ADRs/ADR-011.md](ADRs/ADR-011.md)
+- Lacunas residuais de maturidade em capacidades já entregues: [ADRs/ADR-012.md](ADRs/ADR-012.md)
 
 ## Arquitetura e Operação
 

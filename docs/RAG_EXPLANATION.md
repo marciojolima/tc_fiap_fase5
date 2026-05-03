@@ -23,7 +23,7 @@ endpoint `POST /llm/chat`.
 
 A decisao arquitetural de manter o indice vetorial em memoria com cache local,
 sem vector store externo, esta formalizada em
-[ADRs/ADR-012.md](ADRs/ADR-012.md).
+[ADRs/ADR-011.md](ADRs/ADR-011.md).
 
 O desenho atende ao que a Datathon cobra nas etapas de:
 
@@ -113,7 +113,7 @@ Isso significa que a busca nao depende apenas de overlap lexical bruto.
 
 O RAG usa cache em disco para evitar reembeddar o corpus inteiro sempre que a
 stack sobe. O racional arquitetural dessa escolha esta registrado em
-[ADRs/ADR-012.md](ADRs/ADR-012.md).
+[ADRs/ADR-011.md](ADRs/ADR-011.md).
 
 Arquivos gerados:
 
@@ -151,7 +151,7 @@ O RAG usa memoria principalmente em tres componentes:
 
 Nao ha banco vetorial separado nesse desenho. O indice fica no proprio
 processo Python do serving, conforme a decisao registrada em
-[ADRs/ADR-012.md](ADRs/ADR-012.md).
+[ADRs/ADR-011.md](ADRs/ADR-011.md).
 
 As metricas expostas incluem:
 

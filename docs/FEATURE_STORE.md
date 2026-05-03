@@ -24,7 +24,7 @@ Este documento descreve a Feature Store do projeto de churn bancário sem
 reescrever o pipeline existente.
 
 As decisões arquiteturais e a lacuna residual de maturidade dessa trilha ficam
-concentradas em [ADRs/ADR-011.md](ADRs/ADR-011.md). Aqui o foco é explicar
+concentradas em [ADRs/ADR-012.md](ADRs/ADR-012.md). Aqui o foco é explicar
 como a Feature Store opera no repositório atual.
 
 No desenho da solução:
