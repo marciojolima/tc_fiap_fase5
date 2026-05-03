@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -22,6 +23,10 @@ from feast_ops.config import (  # noqa: E402
     FEATURE_STORE_EXPORT_PATH,
     FEATURE_VIEW_NAME,
 )
+
+MODEL_CONFIG_DIR = PROJECT_ROOT / "configs" / "model_lifecycle"
+CURRENT_MODEL_CONFIG_PATH = MODEL_CONFIG_DIR / "current.json"
+EXPERIMENT_MODEL_CONFIG_DIR = MODEL_CONFIG_DIR / "experiments"
 
 customer_features_source = FileSource(
     name="customer_features_source",
@@ -71,42 +76,48 @@ customer_churn_features = FeatureView(
     },
 )
 
-customer_churn_rf_v1 = FeatureService(
-    name="customer_churn_rf_v1",
-    features=[customer_churn_features],
-)
 
-customer_churn_rf_v2 = FeatureService(
-    name="customer_churn_rf_v2",
-    features=[customer_churn_features],
-)
+def _load_model_config(config_path: Path) -> dict:
+    with open(config_path, encoding="utf-8") as file_obj:
+        return json.load(file_obj)
 
-customer_churn_rf_v3 = FeatureService(
-    name="customer_churn_rf_v3",
-    features=[customer_churn_features],
-)
 
-customer_churn_gb_v1 = FeatureService(
-    name="customer_churn_gb_v1",
-    features=[customer_churn_features],
-)
+def _discover_feature_service_names() -> list[str]:
+    config_paths = [CURRENT_MODEL_CONFIG_PATH]
+    config_paths.extend(sorted(EXPERIMENT_MODEL_CONFIG_DIR.glob("*.json")))
 
-customer_churn_gb_v2 = FeatureService(
-    name="customer_churn_gb_v2",
-    features=[customer_churn_features],
-)
+    feature_service_names: list[str] = []
+    seen_feature_service_names: set[str] = set()
 
-customer_churn_gb_v3 = FeatureService(
-    name="customer_churn_gb_v3",
-    features=[customer_churn_features],
-)
+    for config_path in config_paths:
+        model_config = _load_model_config(config_path)
+        feature_service_name = (
+            model_config.get("feast", {}).get("feature_service_name", "").strip()
+        )
+        if (
+            not feature_service_name
+            or feature_service_name in seen_feature_service_names
+        ):
+            continue
 
-customer_churn_gb_v4 = FeatureService(
-    name="customer_churn_gb_v4",
-    features=[customer_churn_features],
-)
+        seen_feature_service_names.add(feature_service_name)
+        feature_service_names.append(feature_service_name)
 
-customer_churn_xgb_v1 = FeatureService(
-    name="customer_churn_xgb_v1",
-    features=[customer_churn_features],
-)
+    return feature_service_names
+
+
+def _register_feature_services() -> list[FeatureService]:
+    feature_services: list[FeatureService] = []
+
+    for feature_service_name in _discover_feature_service_names():
+        feature_service = FeatureService(
+            name=feature_service_name,
+            features=[customer_churn_features],
+        )
+        globals()[feature_service_name] = feature_service
+        feature_services.append(feature_service)
+
+    return feature_services
+
+
+REGISTERED_FEATURE_SERVICES = _register_feature_services()
