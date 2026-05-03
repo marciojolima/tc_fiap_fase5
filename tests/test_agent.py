@@ -567,6 +567,67 @@ def test_scenario_prediction_tool_compares_two_scenarios(monkeypatch) -> None:
     assert payload["result"]["better_scenario_for_retention"] == "improved_scenario"
 
 
+def test_scenario_prediction_tool_parses_natural_language_comparison(
+    monkeypatch,
+) -> None:
+    expected_age = 48
+    expected_credit_score = 610
+    expected_balance = 125000.0
+    expected_improved_products = 3
+    captured_payloads: dict[str, dict[str, object]] = {}
+
+    def fake_run_scenario_prediction(scenario):
+        captured_payloads[scenario.name] = scenario.payload
+        probability = 0.71 if scenario.name.endswith("_baseline") else 0.33
+        return type(
+            "ScenarioResult",
+            (),
+            {
+                "_asdict": lambda self: {
+                    "scenario_name": scenario.name,
+                    "churn_probability": probability,
+                    "churn_prediction": int(probability >= PREDICTION_THRESHOLD),
+                    "threshold": PREDICTION_THRESHOLD,
+                    "model_name": "modelo_teste",
+                    "run_name": "run_teste",
+                }
+            },
+        )()
+
+    monkeypatch.setattr(
+        "agent.tools.run_scenario_prediction",
+        fake_run_scenario_prediction,
+    )
+
+    payload = json.loads(
+        agent_tools._scenario_prediction_tool(
+            (
+                "Use scenario_prediction com baseline_scenario: cliente de 48 "
+                "anos, Alemanha, credit score 610, saldo 125000, 1 produto e "
+                "inativo. improved_scenario: mesmo cliente, mas com 3 produtos "
+                "e ativo."
+            )
+        )
+    )
+
+    assert payload["status"] == "ok"
+    assert payload["result"]["better_scenario_for_retention"] == "improved_scenario"
+    baseline = captured_payloads["agent_scenario_baseline"]
+    improved = captured_payloads["agent_scenario_improved"]
+    assert baseline["Age"] == expected_age
+    assert baseline["Geography"] == "Germany"
+    assert baseline["CreditScore"] == expected_credit_score
+    assert baseline["Balance"] == expected_balance
+    assert baseline["NumOfProducts"] == 1
+    assert baseline["IsActiveMember"] == 0
+    assert improved["Age"] == expected_age
+    assert improved["Geography"] == "Germany"
+    assert improved["CreditScore"] == expected_credit_score
+    assert improved["Balance"] == expected_balance
+    assert improved["NumOfProducts"] == expected_improved_products
+    assert improved["IsActiveMember"] == 1
+
+
 def test_predict_churn_tool_accepts_python_literal_like_payload(monkeypatch) -> None:
     cfg = SimpleNamespace(threshold=0.5, model_name="modelo_teste")
     monkeypatch.setattr(

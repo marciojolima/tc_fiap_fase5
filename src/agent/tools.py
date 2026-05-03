@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import ast
 import json
+import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -23,6 +25,30 @@ from serving.pipeline import (
 from serving.schemas import ChurnPredictionRequest
 
 logger = get_logger("agent.tools")
+_SCENARIO_FIELD_PATTERNS = {
+    "Age": re.compile(r"\b(\d{2})\s+anos\b"),
+    "CreditScore": re.compile(r"(?:credit score|score)\s*(\d{3})\b"),
+    "Balance": re.compile(r"\bsaldo(?:\s+de)?\s*(\d+(?:[.,]\d+)?)\b"),
+    "NumOfProducts": re.compile(r"\b(\d)\s+produt"),
+    "Tenure": re.compile(
+        r"(?:tenure|relacionamento|anos de conta|anos no banco)\s*(\d+)\b"
+    ),
+}
+_GEOGRAPHY_BY_TERM = {
+    "alemanha": "Germany",
+    "espanha": "Spain",
+    "franca": "France",
+    "frança": "France",
+    "germany": "Germany",
+    "spain": "Spain",
+    "france": "France",
+}
+_GENDER_BY_TERM = {
+    "feminino": "Female",
+    "female": "Female",
+    "masculino": "Male",
+    "male": "Male",
+}
 
 
 @dataclass(frozen=True)
@@ -56,6 +82,114 @@ def _parse_structured_tool_input(raw_input: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("O payload precisa ser um objeto JSON.")
     return parsed
+
+
+def _strip_accents(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text)
+    return "".join(char for char in normalized if not unicodedata.combining(char))
+
+
+def _default_scenario_payload() -> dict[str, Any]:
+    return ChurnPredictionRequest().model_dump(by_alias=True)
+
+
+def _extract_scenario_overrides(raw_text: str) -> dict[str, Any]:
+    """Extract lightweight customer feature hints from natural language."""
+
+    normalized = " ".join(raw_text.split())
+    lowered = normalized.lower()
+    overrides: dict[str, Any] = {}
+
+    for field_name, pattern in _SCENARIO_FIELD_PATTERNS.items():
+        match = pattern.search(lowered)
+        if not match:
+            continue
+        raw_value = match.group(1).replace(",", ".")
+        if field_name == "Balance":
+            overrides[field_name] = float(raw_value)
+        else:
+            overrides[field_name] = int(raw_value)
+
+    for term, geography in _GEOGRAPHY_BY_TERM.items():
+        if term in lowered:
+            overrides["Geography"] = geography
+            break
+
+    for term, gender in _GENDER_BY_TERM.items():
+        if term in lowered:
+            overrides["Gender"] = gender
+            break
+
+    if any(
+        marker in lowered
+        for marker in ("inativo", "sem atividade", "sem atividade recente")
+    ):
+        overrides["IsActiveMember"] = 0
+    elif any(
+        marker in lowered for marker in ("ativo", "atividade recente", "engajado")
+    ):
+        overrides["IsActiveMember"] = 1
+
+    return overrides
+
+
+def _extract_comparison_segments(raw_input: str) -> tuple[str | None, str | None]:
+    """Split simple comparison prompts into baseline and improved fragments."""
+
+    normalized = " ".join(raw_input.strip().split())
+    lowered = _strip_accents(normalized.lower())
+
+    explicit_match = re.search(
+        (
+            r"baseline(?:_scenario)?\s*[:=]?\s*(.*?)\s+"
+            r"improved(?:_scenario)?\s*[:=]?\s*(.*)"
+        ),
+        lowered,
+    )
+    if explicit_match:
+        return explicit_match.group(1).strip(), explicit_match.group(2).strip()
+
+    paired_match = re.search(r"\bum com\b\s*(.*?)\s*\boutro com\b\s*(.*)", lowered)
+    if paired_match:
+        return paired_match.group(1).strip(), paired_match.group(2).strip()
+
+    return None, None
+
+
+def _parse_natural_language_scenario_input(raw_input: str) -> dict[str, Any]:
+    """Build scenario payloads from natural language when JSON is absent."""
+
+    baseline_text, improved_text = _extract_comparison_segments(raw_input)
+    if baseline_text is None or improved_text is None:
+        return {
+            **_default_scenario_payload(),
+            **_extract_scenario_overrides(raw_input),
+        }
+
+    global_overrides = _extract_scenario_overrides(raw_input)
+    baseline_overrides = _extract_scenario_overrides(baseline_text)
+    improved_overrides = _extract_scenario_overrides(improved_text)
+
+    baseline_payload = {
+        **_default_scenario_payload(),
+        **global_overrides,
+        **baseline_overrides,
+    }
+    improved_payload = baseline_payload.copy()
+
+    same_customer_markers = ("mesmo cliente", "mesma cliente", "same customer")
+    if not any(marker in improved_text for marker in same_customer_markers):
+        improved_payload = {
+            **_default_scenario_payload(),
+            **global_overrides,
+        }
+
+    improved_payload.update(improved_overrides)
+    return {
+        "baseline_scenario": baseline_payload,
+        "improved_scenario": improved_payload,
+        "comparison_description": _short_text(raw_input, limit=180),
+    }
 
 
 def _comparison_payload(
@@ -306,14 +440,21 @@ def _scenario_prediction_tool(raw_input: str) -> str:
     try:
         payload = _parse_structured_tool_input(raw_input)
     except (json.JSONDecodeError, SyntaxError, ValueError) as exc:
-        return _json_tool_output(
-            {
-                "tool_name": "scenario_prediction",
-                "status": "error",
-                "input_summary": "payload JSON de cenário",
-                "error": f"JSON inválido para cenário: {exc}",
-            }
-        )
+        try:
+            payload = _parse_natural_language_scenario_input(raw_input)
+        except (TypeError, ValueError) as parse_exc:
+            return _json_tool_output(
+                {
+                    "tool_name": "scenario_prediction",
+                    "status": "error",
+                    "input_summary": "payload JSON de cenário",
+                    "error": (
+                        "Entrada inválida para cenário. Não foi possível "
+                        f"interpretar JSON nem linguagem natural: {parse_exc}"
+                    ),
+                    "raw_error": str(exc),
+                }
+            )
 
     baseline_payload, improved_payload, scenario_name = _comparison_payload(payload)
 
