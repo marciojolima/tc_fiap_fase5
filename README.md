@@ -134,6 +134,7 @@ Identificar clientes com alta probabilidade de evasão (churn) para permitir aç
 
 ## Métrica de negócio  
 **≥ 70%** dos clientes que realmente evadem devem estar entre os 20% com maior risco previsto (recall@top20% ≥ 0.70).
+Dentro dos 20% de clientes com maior risco previsto, ao menos 35% devem ser clientes que realmente evadiram (precision@top20% ≥ 0.35).
 
 
 ## Estratégia de seleção de modelo  

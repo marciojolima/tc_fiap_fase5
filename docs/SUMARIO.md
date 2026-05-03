@@ -12,7 +12,7 @@ uma descrição curta do papel de cada arquivo.
 - RAGAS com quatro métricas calculadas e reportadas: [ADRs/ADR-005.md](ADRs/ADR-005.md)
 - Model registry simplificado com MLflow e sidecars: [ADRs/ADR-006.md](ADRs/ADR-006.md)
 - Telemetria LLM centrada em Prometheus e Grafana: [ADRs/ADR-007.md](ADRs/ADR-007.md)
-- Proxies técnicas para representar a métrica de negócio: [ADRs/ADR-008.md](ADRs/ADR-008.md)
+- Métricas de negócio registradas explicitamente no treino: [ADRs/ADR-008.md](ADRs/ADR-008.md)
 - CI com gates de qualidade, sem deploy para staging: [ADRs/ADR-009.md](ADRs/ADR-009.md)
 - Fairness e explicabilidade mantidas em nível documental: [ADRs/ADR-010.md](ADRs/ADR-010.md)
 - RAG com índice vetorial em memória e cache local: [ADRs/ADR-011.md](ADRs/ADR-011.md)

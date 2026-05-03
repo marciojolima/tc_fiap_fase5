@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 import mlflow
 import mlflow.sklearn
+import numpy as np
 import pandas as pd
 from joblib import dump
 from mlflow.tracking import MlflowClient
@@ -32,9 +33,28 @@ from common.config_loader import (
 )
 from common.logger import get_logger
 from common.seed import set_global_seed
+from model_lifecycle.business_metrics import (
+    BusinessMetricsEvaluator,
+    PrecisionAtTopK,
+    RecallAtTopK,
+)
 from model_lifecycle.catalog import build_model
 
 logger = get_logger("model_lifecycle.train")
+
+DEFAULT_RECALL_TOP_K = 0.20
+DEFAULT_RECALL_TARGET = 0.70
+DEFAULT_PRECISION_TOP_K = 0.20
+DEFAULT_PRECISION_TARGET = 0.35
+
+
+class BusinessMetricsConfig(NamedTuple):
+    """Configuração centralizada das métricas de negócio do treino."""
+
+    recall_top_k: float
+    recall_target: float
+    precision_top_k: float
+    precision_target: float
 
 
 class ExperimentTrainingConfig(NamedTuple):
@@ -59,6 +79,7 @@ class ExperimentTrainingConfig(NamedTuple):
     git_nearest_tag: str
     risk_level: str
     fairness_checked: bool
+    business_metrics: BusinessMetricsConfig
     mlflow_cfg: dict[str, Any]
     registry_cfg: dict[str, Any]
 
@@ -112,6 +133,7 @@ def build_experiment_training_config(
         "phase": active_global_cfg["mlflow"]["phase"],
         "dataset_name": active_global_cfg["mlflow"]["dataset_name"],
     }
+    business_metrics_cfg = active_global_cfg.get("business_metrics", {})
     mlflow_tags.update(experiment_cfg["mlflow"].get("tags", {}))
 
     return ExperimentTrainingConfig(
@@ -140,6 +162,26 @@ def build_experiment_training_config(
         git_nearest_tag=resolve_git_nearest_tag(),
         risk_level=governance_cfg.get("risk_level", "medium"),
         fairness_checked=governance_cfg.get("fairness_checked", False),
+        business_metrics=BusinessMetricsConfig(
+            recall_top_k=float(
+                business_metrics_cfg.get("recall_top_k", DEFAULT_RECALL_TOP_K)
+            ),
+            recall_target=float(
+                business_metrics_cfg.get("recall_target", DEFAULT_RECALL_TARGET)
+            ),
+            precision_top_k=float(
+                business_metrics_cfg.get(
+                    "precision_top_k",
+                    DEFAULT_PRECISION_TOP_K,
+                )
+            ),
+            precision_target=float(
+                business_metrics_cfg.get(
+                    "precision_target",
+                    DEFAULT_PRECISION_TARGET,
+                )
+            ),
+        ),
         mlflow_cfg={
             "tracking_uri": active_global_cfg["mlflow"]["tracking_uri"],
             "experiment_name": experiment_cfg["mlflow"].get(
@@ -414,19 +456,46 @@ def evaluate_model(
     X_test: pd.DataFrame,
     y_test: pd.Series,
     threshold: float,
+    business_metrics_evaluator: BusinessMetricsEvaluator | None = None,
 ) -> dict[str, float]:
     """Calcula métricas de classificação no conjunto de teste."""
 
     y_pred_proba = model.predict_proba(X_test)[:, 1]
     y_pred = (y_pred_proba >= threshold).astype(int)
 
-    return {
+    metrics = {
         "auc": roc_auc_score(y_test, y_pred_proba),
         "f1": f1_score(y_test, y_pred, zero_division=0),
         "precision": precision_score(y_test, y_pred, zero_division=0),
         "recall": recall_score(y_test, y_pred, zero_division=0),
         "accuracy": accuracy_score(y_test, y_pred),
     }
+    if business_metrics_evaluator is None:
+        return metrics
+
+    return metrics | business_metrics_evaluator.evaluate(
+        np.asarray(y_test),
+        y_pred_proba,
+    )
+
+
+def build_business_metrics_evaluator(
+    cfg: BusinessMetricsConfig,
+) -> BusinessMetricsEvaluator:
+    """Cria o agregador das métricas de negócio configuradas."""
+
+    return BusinessMetricsEvaluator(
+        metrics=(
+            RecallAtTopK(
+                top_k=cfg.recall_top_k,
+                target=cfg.recall_target,
+            ),
+            PrecisionAtTopK(
+                top_k=cfg.precision_top_k,
+                target=cfg.precision_target,
+            ),
+        )
+    )
 
 
 def log_run_metadata(
@@ -445,6 +514,10 @@ def log_run_metadata(
     mlflow.log_param("feature_set", cfg.feature_set)
     mlflow.log_param("feature_service_name", cfg.feature_service_name)
     mlflow.log_param("fairness_checked", cfg.fairness_checked)
+    mlflow.log_param("recall_top_k", cfg.business_metrics.recall_top_k)
+    mlflow.log_param("recall_target", cfg.business_metrics.recall_target)
+    mlflow.log_param("precision_top_k", cfg.business_metrics.precision_top_k)
+    mlflow.log_param("precision_target", cfg.business_metrics.precision_target)
 
     mlflow.set_tag("model_type", "classification")
     mlflow.set_tag("framework", cfg.flavor)
@@ -528,6 +601,9 @@ def train_and_log_model(
             datasets.X_test,
             datasets.y_test,
             threshold=cfg.threshold,
+            business_metrics_evaluator=build_business_metrics_evaluator(
+                cfg.business_metrics
+            ),
         )
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(model, name="model")
@@ -553,6 +629,12 @@ def train_and_log_model(
                     "git_nearest_tag": cfg.git_nearest_tag,
                     "risk_level": cfg.risk_level,
                     "fairness_checked": cfg.fairness_checked,
+                    "business_metrics": {
+                        "recall_top_k": cfg.business_metrics.recall_top_k,
+                        "recall_target": cfg.business_metrics.recall_target,
+                        "precision_top_k": cfg.business_metrics.precision_top_k,
+                        "precision_target": cfg.business_metrics.precision_target,
+                    },
                     "mlflow_experiment_name": cfg.mlflow_cfg["experiment_name"],
                     "metrics": metrics,
                 },

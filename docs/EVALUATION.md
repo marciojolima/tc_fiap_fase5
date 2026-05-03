@@ -44,6 +44,10 @@ Metricas calculadas:
 - `precision`
 - `recall`
 - `accuracy`
+- `churn_recall_top`
+- `churn_precision_top`
+- `retention_recall_k`
+- `retention_precision_k`
 
 Essas metricas comparam execucoes, sustentam o champion e entram no fluxo de
 retreino. A prioridade de negocio para churn esta detalhada em
