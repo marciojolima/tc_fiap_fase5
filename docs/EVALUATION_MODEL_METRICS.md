@@ -55,10 +55,10 @@ o cliente errado tem custo real.
 > No projeto com `class_weight=balanced`, o modelo compensa o desequilíbrio das classes
 > e dá mais peso ao recall — que é a escolha certa para churn bancário.
 
-As metas operacionais declaradas para o recorte top 20% sao:
+As metas operacionais declaradas para os recortes operacionais sao:
 
-- `recall@top20% >= 0.70`
-- `precision@top20% >= 0.35`
+- `recall@top25% >= 0.70`
+- `precision@top20% >= 0.45`
 
 ## Análise de Modelos de Classificação — Churn Bancário
 
