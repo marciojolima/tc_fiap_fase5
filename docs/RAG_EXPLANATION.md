@@ -21,6 +21,10 @@ Este documento descreve como a trilha de RAG do projeto funciona, como o
 indice e carregado, como o cache acelera reinicios e como interpretar o uso do
 endpoint `POST /llm/chat`.
 
+A decisao arquitetural de manter o indice vetorial em memoria com cache local,
+sem vector store externo, esta formalizada em
+[ADRs/ADR-012.md](ADRs/ADR-012.md).
+
 O desenho atende ao que a Datathon cobra nas etapas de:
 
 - agente com tools de negocio
@@ -108,7 +112,8 @@ Isso significa que a busca nao depende apenas de overlap lexical bruto.
 ## Cache Persistido
 
 O RAG usa cache em disco para evitar reembeddar o corpus inteiro sempre que a
-stack sobe.
+stack sobe. O racional arquitetural dessa escolha esta registrado em
+[ADRs/ADR-012.md](ADRs/ADR-012.md).
 
 Arquivos gerados:
 
@@ -145,7 +150,8 @@ O RAG usa memoria principalmente em tres componentes:
 - matriz de embeddings normalizada usada na busca vetorial
 
 Nao ha banco vetorial separado nesse desenho. O indice fica no proprio
-processo Python do serving.
+processo Python do serving, conforme a decisao registrada em
+[ADRs/ADR-012.md](ADRs/ADR-012.md).
 
 As metricas expostas incluem:
 
