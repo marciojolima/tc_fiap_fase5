@@ -26,8 +26,6 @@ MLflow as metricas de negocio orientadas a ranking:
 
 - `churn_recall_top`
 - `churn_precision_top`
-- `retention_recall_k`
-- `retention_precision_k`
 
 Ordenadas da mais importante para a menos importante no contexto de churn bancário,
 onde **perder um cliente sem perceber** custa mais do que acionar um cliente fiel por engano.

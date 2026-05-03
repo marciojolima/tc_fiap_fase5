@@ -26,8 +26,6 @@ def test_business_metrics_evaluator_returns_expected_metrics_for_top_20() -> Non
 
     assert metrics["churn_recall_top"] == EXPECTED_HALF_RECALL
     assert metrics["churn_precision_top"] == 1.0
-    assert metrics["retention_recall_k"] == EXPECTED_TOP_K
-    assert metrics["retention_precision_k"] == EXPECTED_TOP_K
 
 
 def test_recall_at_top_k_returns_zero_when_dataset_is_empty() -> None:
@@ -36,7 +34,6 @@ def test_recall_at_top_k_returns_zero_when_dataset_is_empty() -> None:
     result = metric.evaluate(y_true=[], y_score=[])
 
     assert result["churn_recall_top"] == 0.0
-    assert result["retention_recall_k"] == EXPECTED_TOP_K
 
 
 def test_precision_at_top_k_returns_zero_when_dataset_is_empty() -> None:
@@ -45,7 +42,6 @@ def test_precision_at_top_k_returns_zero_when_dataset_is_empty() -> None:
     result = metric.evaluate(y_true=[], y_score=[])
 
     assert result["churn_precision_top"] == 0.0
-    assert result["retention_precision_k"] == EXPECTED_TOP_K
 
 
 def test_recall_at_top_k_returns_zero_when_no_positive_exists() -> None:

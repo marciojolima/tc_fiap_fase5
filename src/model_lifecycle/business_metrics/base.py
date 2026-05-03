@@ -12,7 +12,6 @@ class BusinessMetric(Protocol):
     """Contrato mínimo de uma métrica de negócio calculada por ranking."""
 
     metric_name: str
-    top_k_metric_name: str
     top_k: float
     target: float
 

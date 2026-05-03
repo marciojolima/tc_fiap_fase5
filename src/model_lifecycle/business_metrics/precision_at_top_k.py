@@ -12,7 +12,6 @@ class PrecisionAtTopK:
     """Mede a pureza do recorte top-k por risco previsto."""
 
     metric_name = "churn_precision_top"
-    top_k_metric_name = "retention_precision_k"
 
     def __init__(self, *, top_k: float, target: float) -> None:
         self.top_k = float(top_k)
@@ -30,7 +29,4 @@ class PrecisionAtTopK:
         )
         positives_in_top = int(np.count_nonzero(y_true_array & top_mask))
         metric_value = float(positives_in_top / top_count) if top_count > 0 else 0.0
-        return {
-            self.metric_name: metric_value,
-            self.top_k_metric_name: self.top_k,
-        }
+        return {self.metric_name: metric_value}

@@ -12,7 +12,6 @@ class RecallAtTopK:
     """Mede cobertura de churners reais dentro do top-k por risco previsto."""
 
     metric_name = "churn_recall_top"
-    top_k_metric_name = "retention_recall_k"
 
     def __init__(self, *, top_k: float, target: float) -> None:
         self.top_k = float(top_k)
@@ -35,7 +34,4 @@ class RecallAtTopK:
             if positive_count > 0
             else 0.0
         )
-        return {
-            self.metric_name: metric_value,
-            self.top_k_metric_name: self.top_k,
-        }
+        return {self.metric_name: metric_value}

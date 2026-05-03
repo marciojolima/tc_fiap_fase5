@@ -335,8 +335,6 @@ def test_evaluate_model_returns_expected_metrics() -> None:
     assert 0.0 <= metrics["auc"] <= 1.0
     assert metrics["churn_recall_top"] == 1.0
     assert metrics["churn_precision_top"] == 1.0
-    assert metrics["retention_recall_k"] == EXPECTED_EVAL_TOP_K
-    assert metrics["retention_precision_k"] == EXPECTED_EVAL_TOP_K
 
 
 def test_evaluate_model_respects_configured_threshold() -> None:
