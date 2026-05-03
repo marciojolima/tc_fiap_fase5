@@ -81,6 +81,28 @@ DOCUMENTAL_PATTERNS = (
     "qual rota",
     "quais rotas",
 )
+SCENARIO_COMPARISON_KEYWORDS = (
+    "baseline",
+    "cenário base",
+    "cenario base",
+    "cenário ajustado",
+    "cenario ajustado",
+    "compare",
+    "comparar",
+    "comparação",
+    "comparacao",
+    "dois cenários",
+    "dois cenarios",
+    "improved",
+    "melhor para retenção",
+    "melhor para retencao",
+    "outro com",
+    "simule dois cenários",
+    "simule dois cenarios",
+    "um com",
+    "versus",
+    "vs",
+)
 
 REACT_SYSTEM_PROMPT = """You are an AI agent specialized in the bank customer
 churn project.
@@ -199,6 +221,40 @@ def is_documental_question(user_input: str) -> bool:
     return any(pattern in normalized for pattern in DOCUMENTAL_PATTERNS)
 
 
+def is_comparative_scenario_question(user_input: str) -> bool:
+    """Detecta perguntas que pedem comparação explícita entre cenários."""
+
+    normalized = " ".join(user_input.lower().split())
+    if not normalized:
+        return False
+
+    scenario_terms = ("cenário", "cenario", "retenção", "retencao", "churn")
+    has_scenario_term = any(term in normalized for term in scenario_terms)
+    has_comparison_term = any(
+        keyword in normalized for keyword in SCENARIO_COMPARISON_KEYWORDS
+    )
+    return has_scenario_term and has_comparison_term
+
+
+def _scenario_observation_is_comparative(observation: str) -> bool:
+    """Check whether a scenario tool observation contains two scenarios."""
+
+    try:
+        payload = json.loads(observation)
+    except json.JSONDecodeError:
+        return False
+
+    if not isinstance(payload, dict):
+        return False
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return False
+    return isinstance(result.get("baseline_scenario"), dict) and isinstance(
+        result.get("improved_scenario"),
+        dict,
+    )
+
+
 def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
     user_input: str,
     llm_client: LLMClientProtocol,
@@ -230,6 +286,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
         return AgentRunResult(answer=reason, trace=[], used_tools=[])
 
     question_mode = "documental" if is_documental_question(user_input) else "default"
+    comparative_scenario_question = is_comparative_scenario_question(user_input)
     if question_mode == "documental":
         rag_tool = next(
             (tool for tool in active_tools if tool.name == "rag_search"),
@@ -249,6 +306,7 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
     used_tools: list[str] = []
     scratchpad: list[str] = []
     documentary_context_observed = False
+    comparative_scenario_observed = False
 
     for step in range(max_steps):
         iteration_start = perf_counter()
@@ -311,6 +369,41 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
                         "fallback_reason": (
                             "Pergunta documental sem uso prévio de "
                             "rag_search."
+                        ),
+                        "raw_llm_output": llm_answer,
+                        "observation": observation,
+                        "llm_metadata": llm_metadata,
+                        "iteration_latency_seconds": round(
+                            perf_counter() - iteration_start,
+                            6,
+                        ),
+                    }
+                )
+                scratchpad.append(f"Thought: {thought}")
+                scratchpad.append(
+                    "Attempted Final Answer: "
+                    f"{str(parsed['final_answer']).strip()}"
+                )
+                scratchpad.append(f"Observation: {observation}")
+                continue
+            if comparative_scenario_question and not comparative_scenario_observed:
+                observation = (
+                    "A pergunta pede comparação entre cenários. Antes da resposta "
+                    "final, use scenario_prediction com um payload JSON contendo "
+                    "baseline_scenario e improved_scenario, e depois explique as "
+                    "probabilidades de ambos e qual cenário é melhor para retenção."
+                )
+                trace.append(
+                    {
+                        "iteration": step + 1,
+                        "question_mode": question_mode,
+                        "answer_style": resolved_answer_style,
+                        "thought": thought,
+                        "final_answer": str(parsed["final_answer"]),
+                        "parse_status": "missing_comparative_scenario_evidence",
+                        "fallback_reason": (
+                            "Pergunta comparativa sem comparação estruturada "
+                            "observada em scenario_prediction."
                         ),
                         "raw_llm_output": llm_answer,
                         "observation": observation,
@@ -393,6 +486,19 @@ def run_react_agent(  # noqa: PLR0912, PLR0914, PLR0915
                 used_tools.append(action_name)
                 if question_mode == "documental" and action_name == "rag_search":
                     documentary_context_observed = True
+                if action_name == "scenario_prediction":
+                    comparative_result = _scenario_observation_is_comparative(
+                        observation
+                    )
+                    if comparative_result:
+                        comparative_scenario_observed = True
+                    elif comparative_scenario_question:
+                        observation = (
+                            "Pergunta comparativa detectada, mas a tool retornou "
+                            "apenas um cenário. Reexecute scenario_prediction com "
+                            "um JSON contendo baseline_scenario e "
+                            "improved_scenario para comparar os dois casos."
+                        )
             except Exception as exc:  # noqa: BLE001
                 observation = f"Erro ao executar ferramenta {action_name}: {exc}"
 

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from agent import tools as agent_tools
 from agent.react_agent import (
     LLMClientProtocol,
+    is_comparative_scenario_question,
     is_documental_question,
     run_react_agent,
 )
@@ -217,6 +218,16 @@ def test_is_documental_question_detects_repository_grounded_prompt() -> None:
     )
 
 
+def test_is_comparative_scenario_question_detects_two_scenarios() -> None:
+    assert is_comparative_scenario_question(
+        "Simule dois cenários para este cliente: um com saldo maior e "
+        "inatividade, outro com mais produtos e atividade."
+    )
+    assert not is_comparative_scenario_question(
+        "Avalie este payload de churn para um cliente novo."
+    )
+
+
 class DocumentaryQuestionLLMClient(LLMClientProtocol):
     def __init__(self):
         self.calls = 0
@@ -236,6 +247,36 @@ class DocumentaryQuestionLLMClient(LLMClientProtocol):
         return (
             '{"thought":"agora respondo com base no repositório",'
             '"final_answer":"As rotas são /llm/health, /llm/status e /llm/chat."}'
+        )
+
+
+class ComparativeScenarioRecoveryLLMClient(LLMClientProtocol):
+    def __init__(self):
+        self.calls = 0
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        self.calls += 1
+        if self.calls == 1:
+            return (
+                '{"thought":"vou testar um cenário inicial",'
+                '"action":"scenario_prediction","action_input":{"Age":45}}'
+            )
+        if self.calls == SECOND_CALL:
+            return json.dumps(
+                {
+                    "thought": "vou comparar baseline e improved",
+                    "action": "scenario_prediction",
+                    "action_input": {
+                        "baseline_scenario": {"Age": 45, "NumOfProducts": 1},
+                        "improved_scenario": {"Age": 45, "NumOfProducts": 3},
+                    },
+                },
+                ensure_ascii=False,
+            )
+        return (
+            '{"thought":"agora consigo concluir",'
+            '"final_answer":"O cenário ajustado reduz o risco de churn em relação '
+            'ao cenário base e é melhor para retenção."}'
         )
 
 
@@ -325,6 +366,71 @@ def test_react_agent_requires_rag_search_before_documental_final_answer() -> Non
         result.trace[0]["parse_status"] == "missing_documentary_evidence"
     )
     assert "use rag_search antes da resposta final" in result.trace[0]["observation"]
+
+
+def test_react_agent_requires_comparative_scenario_evidence() -> None:
+    def scenario_tool(raw_input: str) -> str:
+        payload = json.loads(raw_input)
+        if "baseline_scenario" in payload:
+            return json.dumps(
+                {
+                    "tool_name": "scenario_prediction",
+                    "status": "ok",
+                    "result": {
+                        "baseline_scenario": {
+                            "churn_probability": 0.71,
+                            "churn_prediction": 1,
+                        },
+                        "improved_scenario": {
+                            "churn_probability": 0.33,
+                            "churn_prediction": 0,
+                        },
+                        "probability_delta": -0.38,
+                        "better_scenario_for_retention": "improved_scenario",
+                    },
+                },
+                ensure_ascii=False,
+            )
+        return json.dumps(
+            {
+                "tool_name": "scenario_prediction",
+                "status": "ok",
+                "result": {
+                    "churn_probability": 0.62,
+                    "churn_prediction": 1,
+                },
+            },
+            ensure_ascii=False,
+        )
+
+    scenario = AgentTool(
+        name="scenario_prediction",
+        description="Cenário",
+        run=scenario_tool,
+    )
+    aux_tool_1 = AgentTool(
+        name="predict_churn",
+        description="Predição",
+        run=lambda _: "não deveria executar",
+    )
+    aux_tool_2 = AgentTool(
+        name="rag_search",
+        description="Busca",
+        run=lambda _: "não deveria executar",
+    )
+
+    result = run_react_agent(
+        "Simule dois cenários para este cliente: um com saldo maior e "
+        "inatividade, outro com mais produtos e atividade. Qual deles parece "
+        "melhor para retenção?",
+        llm_client=ComparativeScenarioRecoveryLLMClient(),
+        tools=[scenario, aux_tool_1, aux_tool_2],
+        max_iterations=3,
+    )
+
+    assert "melhor para retenção" in result.answer
+    assert result.used_tools == ["scenario_prediction", "scenario_prediction"]
+    assert "baseline_scenario" in result.trace[0]["observation"]
 
 
 def test_rag_search_tool_returns_structured_evidence(monkeypatch) -> None:
