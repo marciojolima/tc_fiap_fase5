@@ -9,7 +9,7 @@ stages:
       size: 1921
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
-      md5: 40a6721631237eb84808eeaf812be4a5
+      md5: e1f801fc3e35bd41568e1bcf28d52eb8
       size: 835032
     - path: src/common/config_loader.py
       hash: md5
@@ -38,12 +38,12 @@ stages:
     outs:
     - path: artifacts/models/feature_pipeline.joblib
       hash: md5
-      md5: 08417ea33d6661f844daa13d9bc40695
+      md5: f4d9d131d672a06d2ec25879b5166b9e
       size: 5541
     - path: data/interim/cleaned.parquet
       hash: md5
-      md5: 956c9c2cc6a074d0a181b7ff00fb14c8
-      size: 198620
+      md5: 3a1d0f5eec7f4ba9654f7407ed5f469c
+      size: 198646
     - path: data/processed/feature_columns.json
       hash: md5
       md5: dc1ef6465a238c6e3e675733800d0f57
@@ -54,12 +54,12 @@ stages:
       size: 85
     - path: data/processed/test.parquet
       hash: md5
-      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
-      size: 92842
+      md5: 4b77ac6e25f5dfef88de2003e2d7854b
+      size: 93390
     - path: data/processed/train.parquet
       hash: md5
-      md5: a3a5e1a3656ed445478bda742a397f01
-      size: 323094
+      md5: 6a46d8b6096e9ec362c3aa6ed617a2f1
+      size: 322160
   train:
     cmd: python -m src.model_lifecycle.train
     deps:
@@ -73,12 +73,12 @@ stages:
       size: 1921
     - path: data/processed/test.parquet
       hash: md5
-      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
-      size: 92842
+      md5: 4b77ac6e25f5dfef88de2003e2d7854b
+      size: 93390
     - path: data/processed/train.parquet
       hash: md5
-      md5: a3a5e1a3656ed445478bda742a397f01
-      size: 323094
+      md5: 6a46d8b6096e9ec362c3aa6ed617a2f1
+      size: 322160
     - path: src/common/config_loader.py
       hash: md5
       md5: 66a5c71777fd2abae531dc0ff4f08f68
@@ -102,12 +102,12 @@ stages:
     outs:
     - path: artifacts/models/current.pkl
       hash: md5
-      md5: 60a4c5f77bf39da8b5d7a171474a7c82
-      size: 712682
+      md5: e0d15b24f9027d62f0c4d2363ed9e137
+      size: 720458
     - path: artifacts/models/current_metadata.json
       hash: md5
-      md5: f832cfc7d122961b120127ac12981dca
-      size: 989
+      md5: 44923ab87251c71323002c32bfe8f990
+      size: 991
   export_feature_store:
     cmd: python -m src.feast_ops.export
     deps:
@@ -165,7 +165,7 @@ stages:
     deps:
     - path: artifacts/models/feature_pipeline.joblib
       hash: md5
-      md5: 08417ea33d6661f844daa13d9bc40695
+      md5: f4d9d131d672a06d2ec25879b5166b9e
       size: 5541
     - path: configs/pipeline_global_config.yaml
       hash: md5
@@ -173,7 +173,7 @@ stages:
       size: 1921
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
-      md5: 40a6721631237eb84808eeaf812be4a5
+      md5: e1f801fc3e35bd41568e1bcf28d52eb8
       size: 835032
     - path: src/common/config_loader.py
       hash: md5
@@ -206,11 +206,11 @@ stages:
     outs:
     - path: data/feature_store/customer_features.parquet
       hash: md5
-      md5: 875df45d04825c0abe6967933171bb57
+      md5: da2bbb1a0df8e5f4b32b78532e8f308e
       size: 640953
     - path: data/feature_store/export_metadata.json
       hash: md5
-      md5: 8a517122ed357757983b5b47576c177f
+      md5: eeb926c5851ab553f52f8132a6904017
       size: 415
   materialize_fs_online:
     cmd: "sh -c ' until docker exec tc-fiap-redis redis-cli ping | grep -q PONG; do
@@ -220,16 +220,16 @@ stages:
     deps:
     - path: data/feature_store/customer_features.parquet
       hash: md5
-      md5: 875df45d04825c0abe6967933171bb57
+      md5: da2bbb1a0df8e5f4b32b78532e8f308e
       size: 640953
     - path: data/feature_store/export_metadata.json
       hash: md5
-      md5: 8a517122ed357757983b5b47576c177f
+      md5: eeb926c5851ab553f52f8132a6904017
       size: 415
     - path: feature_store
       hash: md5
-      md5: de8941924eba7d53af50a37aaa1a2fe6.dir
-      size: 14718
+      md5: 33c831450b5cad786be7041acb760da1.dir
+      size: 14756
       nfiles: 5
   build_rag_cache:
     cmd: python -m src.agent.rag_pipeline --force-rebuild
@@ -240,8 +240,8 @@ stages:
       size: 19091
     - path: artifacts/models/current_metadata.json
       hash: md5
-      md5: f832cfc7d122961b120127ac12981dca
-      size: 989
+      md5: 44923ab87251c71323002c32bfe8f990
+      size: 991
     - path: configs
       hash: md5
       md5: f0c55e44ed5dc8aa1458ce636b536092.dir
@@ -254,14 +254,14 @@ stages:
       nfiles: 33
     - path: src/agent
       hash: md5
-      md5: e7b3500639872c380deaaa22053a6533.dir
-      size: 166829
+      md5: fbd2832b1d4ba1b3fa9d44959208b0c9.dir
+      size: 177735
       nfiles: 22
     outs:
     - path: artifacts/rag
       hash: md5
-      md5: c6d9d77b971677846cd45b362dc8a1c3.dir
-      size: 504856753
+      md5: 47f05e4758dbc5c1373b0b8251f834e2.dir
+      size: 504856763
       nfiles: 16
   run_mlflow_experiments:
     cmd: sh -c ' python -m src.model_lifecycle.train && python -m 
@@ -275,13 +275,19 @@ stages:
       configs/model_lifecycle/experiments/xgboost_v1.json && python -m 
       src.model_lifecycle.train --config 
       configs/model_lifecycle/experiments/gradient_boosting_v1.json && python -m
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/gradient_boosting_v2.json && python -m
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/gradient_boosting_v3.json && python -m
+      src.model_lifecycle.train --config 
+      configs/model_lifecycle/experiments/gradient_boosting_v4.json && python -m
       src.scenario_experiments.inference_cases --suite-file 
       configs/scenario_experiments/inference_cases.yaml '
     deps:
     - path: artifacts/models/current.pkl
       hash: md5
-      md5: 60a4c5f77bf39da8b5d7a171474a7c82
-      size: 712682
+      md5: e0d15b24f9027d62f0c4d2363ed9e137
+      size: 720458
     - path: configs/model_lifecycle
       hash: md5
       md5: 7ed3db98c6f38adbb4c3e74d38f68f98.dir
@@ -294,12 +300,12 @@ stages:
       nfiles: 1
     - path: data/processed/test.parquet
       hash: md5
-      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
-      size: 92842
+      md5: 4b77ac6e25f5dfef88de2003e2d7854b
+      size: 93390
     - path: data/processed/train.parquet
       hash: md5
-      md5: a3a5e1a3656ed445478bda742a397f01
-      size: 323094
+      md5: 6a46d8b6096e9ec362c3aa6ed617a2f1
+      size: 322160
     - path: src/model_lifecycle
       hash: md5
       md5: e2a12a6425997761ea6daf079d62920a.dir
@@ -315,17 +321,17 @@ stages:
     deps:
     - path: artifacts/models/current.pkl
       hash: md5
-      md5: 60a4c5f77bf39da8b5d7a171474a7c82
-      size: 712682
+      md5: e0d15b24f9027d62f0c4d2363ed9e137
+      size: 720458
     - path: artifacts/rag
       hash: md5
-      md5: 6d3742518e4c42415ea8b319ff84c2bc.dir
-      size: 504857389
+      md5: 47f05e4758dbc5c1373b0b8251f834e2.dir
+      size: 504856763
       nfiles: 16
     - path: data/processed/test.parquet
       hash: md5
-      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
-      size: 92842
+      md5: 4b77ac6e25f5dfef88de2003e2d7854b
+      size: 93390
     - path: src/evaluation/model/drift
       hash: md5
       md5: 5de25d27a01f435f13b210aee922c04f.dir
@@ -334,6 +340,6 @@ stages:
     outs:
     - path: artifacts/evaluation/model/scenario_experiments/drift
       hash: md5
-      md5: af70dece7887720c8df2eae5f5b858ed.dir
-      size: 22244150
+      md5: 2963c532aa902036b8cdd76955746426.dir
+      size: 22232828
       nfiles: 15
