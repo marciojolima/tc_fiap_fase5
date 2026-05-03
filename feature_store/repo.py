@@ -91,6 +91,21 @@ customer_churn_gb_v1 = FeatureService(
     features=[customer_churn_features],
 )
 
+customer_churn_gb_v2 = FeatureService(
+    name="customer_churn_gb_v2",
+    features=[customer_churn_features],
+)
+
+customer_churn_gb_v3 = FeatureService(
+    name="customer_churn_gb_v3",
+    features=[customer_churn_features],
+)
+
+customer_churn_gb_v4 = FeatureService(
+    name="customer_churn_gb_v4",
+    features=[customer_churn_features],
+)
+
 customer_churn_xgb_v1 = FeatureService(
     name="customer_churn_xgb_v1",
     features=[customer_churn_features],

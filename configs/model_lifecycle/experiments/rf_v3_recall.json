@@ -20,7 +20,7 @@
     }
   },
   "inference": {
-    "threshold": 0.4
+    "threshold": 0.5
   },
   "feast": {
     "feature_service_name": "customer_churn_rf_v3"
