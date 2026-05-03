@@ -6,153 +6,153 @@
     "items": [
         {
             "id": "gs-001",
-            "question": "O que significa a variável alvo Exited neste projeto de churn bancário?",
-            "expected_answer": "Exited é a variável alvo: indica se o cliente deixou o banco (churn). Valores tipicamente 0 (permaneceu) ou 1 (saiu). O modelo aprende a prever essa saída a partir das features após o pré-processamento.",
+            "question": "Quais rotas HTTP o projeto expõe especificamente para o assistente LLM e diagnóstico do provider LLM?",
+            "expected_answer": "Deve acionar rag_search e responder mencionando /llm/health, /llm/status e /llm/chat, explicando que servem para health check, diagnóstico do provider/modelo ativo e interação com o agente.",
             "contexts": [
-                "A variável Exited representa o target do modelo de churn.",
-                "O problema é uma classificação binária onde 1 indica churn e 0 indica retenção."
+                "As rotas /llm incluem health, status e chat.",
+                "Essas rotas servem para diagnóstico do provider/modelo ativo e interação com o agente ReAct."
             ],
             "expected_tools": [
                 "rag_search"
             ],
             "metadata": {
-                "category": "negocio_churn",
-                "difficulty": "easy",
+                "category": "rag_llm",
+                "difficulty": "medium",
                 "type": "rag"
             }
         },
         {
             "id": "gs-002",
-            "question": "Quais colunas são removidas na preparação dos dados por conterem identificadores e não serem usadas no modelo?",
-            "expected_answer": "O pipeline remove colunas como RowNumber, CustomerId e Surname (identificadores ou não preditivos), conforme configuração em pipeline_global_config e o fluxo de feature engineering.",
+            "question": "Em linhas gerais, como o RAG do projeto obtém contexto para responder perguntas sobre o repositório?",
+            "expected_answer": "O RAG do projeto indexa arquivos do repositório (documentação em docs/, JSONs e configurações) em um índice vetorial em memória. No startup, monta um manifesto com hash SHA-256 de cada fonte; se o manifesto for igual ao anterior, carrega o índice do cache (artifacts/rag/cache/index.joblib). Se qualquer arquivo mudar, o índice é reconstruído automaticamente, permitindo manutenção simples: basta adicionar arquivos e reiniciar a stack.",
             "contexts": [
-                "Colunas identificadoras são removidas para evitar leakage.",
-                "RowNumber, CustomerId e Surname não possuem valor preditivo."
+                "O RAG indexa documentação, JSONs e configurações do repositório.",
+                "O índice vetorial é mantido em memória com cache local e manifesto por hash SHA-256 para detectar mudanças."
             ],
             "expected_tools": [
                 "rag_search"
             ],
             "metadata": {
-                "category": "negocio_churn",
-                "difficulty": "easy",
+                "category": "rag_llm",
+                "difficulty": "medium",
                 "type": "rag"
             }
         },
         {
             "id": "gs-003",
-            "question": "O que representa NumOfProducts no contexto do datathon e por que importa para churn?",
-            "expected_answer": "NumOfProducts é o número de produtos bancários ativos do cliente. Clientes com muitos ou muito poucos produtos podem ter padrão de risco de saída diferente; a feature entra no pipeline de modelagem de churn.",
+            "question": "Cite pelo menos três tools do agente ReAct ligadas ao domínio do datathon.",
+            "expected_answer": "As três principais tools do agente ReAct para o domínio do datathon de churn bancário são: (1) predict_churn - realiza predições de churn em payloads brutos de clientes; (2) scenario_prediction - simula mudanças em features e compara cenários; (3) drift_status - monitora saúde do modelo e detecção de drift em dados.",
             "contexts": [
-                "NumOfProducts indica quantidade de produtos contratados.",
-                "A quantidade de produtos impacta diretamente no engajamento do cliente. PORÉM: um cliente com NumOfProducts muito alto ou em faixa pouco observada no treino pode gerar uma resposta que não reflete a interpretação clássica de “mais produtos = mais vínculo”"
+                "O agente ReAct expõe tools para predição, simulação de cenários e monitoramento operacional.",
+                "As tools de domínio documentadas incluem predict_churn, scenario_prediction e drift_status."
             ],
             "expected_tools": [
                 "rag_search"
             ],
             "metadata": {
-                "category": "negocio_churn",
-                "difficulty": "medium",
-                "type": "rag"
-            }
-        },
-        {
-            "id": "gs-004",
-            "question": "Qual o papel de Geography e como ela entra no modelo após o pré-processamento?",
-            "expected_answer": "Geography indica o país (ex.: France, Germany, Spain). No pipeline vira features categóricas (ex. one-hot) e está entre colunas com governança/LGPD documentada no serving.",
-            "contexts": [
-                "Geography é uma variável categórica.",
-                "A variável é transformada via one-hot encoding no pipeline."
-            ],
-            "expected_tools": [
-                "rag_search"
-            ],
-            "metadata": {
-                "category": "negocio_churn",
-                "difficulty": "medium",
-                "type": "rag"
-            }
-        },
-        {
-            "id": "gs-005",
-            "question": "O que é Tenure e como se relaciona com fidelidade do cliente?",
-            "expected_answer": "Tenure é o tempo (em anos) como cliente do banco. Em geral, maior permanência pode indicar relacionamento estabelecido; o modelo usa essa variável numérica entre outras para estimar risco de churn.",
-            "contexts": [
-                "Tenure mede o tempo de relacionamento com o cliente.",
-                "Clientes com maior tenure tendem a ter menor churn."
-            ],
-            "expected_tools": [
-                "rag_search"
-            ],
-            "metadata": {
-                "category": "negocio_churn",
+                "category": "rag_llm",
                 "difficulty": "easy",
                 "type": "rag"
             }
         },
         {
-            "id": "gs-006",
-            "question": "Explique de forma resumida o que o endpoint POST /predict retorna para o time de negócios.",
-            "expected_answer": "O endpoint retorna a probabilidade de churn, a decisão binária (acima/abaixo do limiar), o nome do experimento/modelo e o limiar (threshold) usado na inferência, alinhado ao treino e ao MLflow.",
+            "id": "gs-004",
+            "question": "Considere um cliente de 42 anos, da Alemanha, com saldo alto, dois produtos, inativo e com 650 de credit score. Qual seria a previsão de churn?",
+            "expected_answer": "Deve acionar predict_churn e responder com probabilidade de churn e classe prevista.",
             "contexts": [
-                "O endpoint /predict retorna probabilidade e classe.",
-                "O threshold define a decisão final de churn."
+                "Perguntas com perfil explícito de cliente devem acionar predict_churn.",
+                "A resposta esperada inclui probabilidade prevista e classe de churn para o payload informado."
             ],
             "expected_tools": [
                 "predict_churn"
             ],
             "metadata": {
-                "category": "negocio_churn",
+                "category": "predicao",
+                "difficulty": "medium",
+                "type": "tool_use"
+            }
+        },
+        {
+            "id": "gs-005",
+            "question": "Com base neste perfil de cliente bancário, o modelo predict_churn indicaria maior risco de evasão? Cliente com 48 anos, saldo de 125000, 1 produto contratado, sem atividade recente, credit score 610 e residente na Alemanha.",
+            "expected_answer": "Deve acionar predict_churn e devolver uma conclusão objetiva sobre risco baixo ou alto, acompanhada da probabilidade prevista.",
+            "contexts": [
+                "A tool predict_churn avalia risco a partir de um perfil bruto de cliente.",
+                "A resposta esperada combina classificação de risco e probabilidade prevista para churn."
+            ],
+            "expected_tools": [
+                "predict_churn"
+            ],
+            "metadata": {
+                "category": "predicao",
+                "difficulty": "medium",
+                "type": "tool_use"
+            }
+        },
+        {
+            "id": "gs-006",
+            "question": "Use predict_churn para avaliar um cliente com baixa atividade, saldo relevante e poucos produtos. A tendência é de churn ou não?",
+            "expected_answer": "Deve acionar predict_churn e responder se a tendência prevista é churn ou não churn, informando também a probabilidade estimada.",
+            "contexts": [
+                "Perguntas de tendência de churn para um cliente devem usar predict_churn.",
+                "A resposta deve informar a tendência prevista e a probabilidade estimada."
+            ],
+            "expected_tools": [
+                "predict_churn"
+            ],
+            "metadata": {
+                "category": "predicao",
                 "difficulty": "medium",
                 "type": "tool_use"
             }
         },
         {
             "id": "gs-007",
-            "question": "Onde ficam o pipeline de features e o modelo champion usados em produção pelo serving?",
-            "expected_answer": "Artefatos em artifacts/models/ — em particular feature_pipeline.joblib (transformações) e current.pkl com metadados em current_metadata.json, alinhados ao experimento champion em configs/model_lifecycle/current.json.",
+            "question": "Se o mesmo cliente passar a ser ativo e aumentar o número de produtos, como muda a previsão de churn?",
+            "expected_answer": "Deve acionar scenario_prediction e comparar o cenário atual com o ajustado, informando se a probabilidade de churn cai ou sobe.",
             "contexts": [
-                "Os artefatos do modelo ficam em artifacts/models.",
-                "O pipeline de features é salvo separadamente do modelo."
+                "Perguntas sobre mudança de atributos do mesmo cliente devem usar scenario_prediction.",
+                "A comparação deve mostrar se o risco previsto de churn cai ou sobe após o ajuste."
             ],
             "expected_tools": [
-                "rag_search"
+                "scenario_prediction"
             ],
             "metadata": {
-                "category": "mlops",
+                "category": "cenarios",
                 "difficulty": "medium",
-                "type": "rag"
+                "type": "tool_use"
             }
         },
         {
             "id": "gs-008",
-            "question": "Qual ferramenta o projeto usa para rastreio de experimentos e em qual diretório local isso costuma ser armazenado em desenvolvimento?",
-            "expected_answer": "O projeto usa MLflow; a URI padrão no config global aponta para sqlite:///mlruns/mlflow.db e os runs podem ser visualizados pela UI do MLflow quando o servidor for iniciado sobre esse mesmo store.",
+            "question": "Simule dois cenários para este cliente: um com saldo maior e inatividade, outro com mais produtos e atividade. Qual deles parece melhor para retenção?",
+            "expected_answer": "Deve acionar scenario_prediction e comparar os dois cenários, mostrar as probabilidades previstas e concluir qual combinação reduz mais o risco de churn.",
             "contexts": [
-                "MLflow é utilizado para tracking de experimentos.",
-                "Os dados são armazenados localmente em mlruns/mlflow.db e em mlruns/artifacts."
+                "A tool scenario_prediction compara cenários alternativos do mesmo cliente ou de perfis próximos.",
+                "A resposta esperada inclui probabilidades previstas nos dois cenários e conclusão sobre retenção."
             ],
             "expected_tools": [
-                "rag_search"
+                "scenario_prediction"
             ],
             "metadata": {
-                "category": "mlops",
-                "difficulty": "easy",
-                "type": "rag"
+                "category": "cenarios",
+                "difficulty": "medium",
+                "type": "tool_use"
             }
         },
         {
             "id": "gs-009",
-            "question": "O que o monitoramento de drift com Evidently e PSI busca identificar neste repositório?",
-            "expected_answer": "Comparar a distribuição de dados de referência com dados correntes, calcular métricas como PSI por feature, sinalizar alerta (warning/critical) e apoiar decisão de retreino com artefatos em artifacts/evaluation/model/drift/.",
+            "question": "Use scenario_prediction para comparar o mesmo cliente em dois cenários: no primeiro, ele está inativo e tem 1 produto; no segundo, ele está ativo e tem 3 produtos. Diga a probabilidade de churn em cada cenário, se o risco diminui e qual cenário é melhor para retenção",
+            "expected_answer": "Deve acionar scenario_prediction e responder comparando baseline e improved, dizendo se o risco previsto diminui e qual cenário é mais favorável.",
             "contexts": [
-                "PSI mede mudança na distribuição das features.",
-                "Evidently é usado para detectar drift."
+                "Comparações entre baseline e improved devem usar scenario_prediction.",
+                "A resposta esperada deve deixar claro se o risco previsto diminui e qual cenário é mais favorável para retenção."
             ],
             "expected_tools": [
-                "drift_status"
+                "scenario_prediction"
             ],
             "metadata": {
-                "category": "mlops",
+                "category": "cenarios",
                 "difficulty": "medium",
                 "type": "tool_use"
             }
