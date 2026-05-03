@@ -91,8 +91,8 @@ stages:
       - README.md
       - artifacts/models/current_metadata.json  # output de train → ordem garantida
     outs:
-      artifacts/rag:
-        cache: false  # desabilita cache do DVC para o RAG, pois é reconstruído do zero a cada execução
+      - artifacts/rag:
+          cache: false  # desabilita cache do DVC para o RAG, pois é reconstruído do zero a cada execução
 
   # ──────────────────────────────────────────────────────────
   # 6. Experimentos MLflow (champion + challengers + cenários)
@@ -107,6 +107,9 @@ stages:
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/rf_v3_recall.json &&
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/xgboost_v1.json &&
       python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v1.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v2.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v3.json &&
+      python -m src.model_lifecycle.train --config configs/model_lifecycle/experiments/gradient_boosting_v4.json &&
       python -m src.scenario_experiments.inference_cases --suite-file configs/scenario_experiments/inference_cases.yaml
       '
     deps:

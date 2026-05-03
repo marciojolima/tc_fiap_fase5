@@ -5,12 +5,12 @@ stages:
     deps:
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 87f07c7b750a630c249dc9a3802ab022
-      size: 1810
+      md5: f8ee4f12c98f6a2eb82f4b599c6f94bb
+      size: 1921
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
-      md5: e37acb179fefe4cac8a33e280a12f62c
-      size: 837415
+      md5: 40a6721631237eb84808eeaf812be4a5
+      size: 835032
     - path: src/common/config_loader.py
       hash: md5
       md5: 66a5c71777fd2abae531dc0ff4f08f68
@@ -38,12 +38,12 @@ stages:
     outs:
     - path: artifacts/models/feature_pipeline.joblib
       hash: md5
-      md5: 1031bbd4e8d4df4abc6f5cb82e969cd0
+      md5: 08417ea33d6661f844daa13d9bc40695
       size: 5541
     - path: data/interim/cleaned.parquet
       hash: md5
-      md5: 6ca8c33d4d89b12f65d1ba2311f4cdeb
-      size: 198614
+      md5: 956c9c2cc6a074d0a181b7ff00fb14c8
+      size: 198620
     - path: data/processed/feature_columns.json
       hash: md5
       md5: dc1ef6465a238c6e3e675733800d0f57
@@ -54,31 +54,31 @@ stages:
       size: 85
     - path: data/processed/test.parquet
       hash: md5
-      md5: 7f1a2bbcf281161a66843145231c3c24
-      size: 93065
+      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
+      size: 92842
     - path: data/processed/train.parquet
       hash: md5
-      md5: 1a15939f1d7c262d568cad4be64f1380
-      size: 322297
+      md5: a3a5e1a3656ed445478bda742a397f01
+      size: 323094
   train:
     cmd: python -m src.model_lifecycle.train
     deps:
     - path: configs/model_lifecycle/current.json
       hash: md5
-      md5: 26d15a04ebd416a9413431db32475b11
-      size: 1056
+      md5: 0fff96d69ae64762a105a84e26be568c
+      size: 1090
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 87f07c7b750a630c249dc9a3802ab022
-      size: 1810
+      md5: f8ee4f12c98f6a2eb82f4b599c6f94bb
+      size: 1921
     - path: data/processed/test.parquet
       hash: md5
-      md5: 7f1a2bbcf281161a66843145231c3c24
-      size: 93065
+      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
+      size: 92842
     - path: data/processed/train.parquet
       hash: md5
-      md5: 1a15939f1d7c262d568cad4be64f1380
-      size: 322297
+      md5: a3a5e1a3656ed445478bda742a397f01
+      size: 323094
     - path: src/common/config_loader.py
       hash: md5
       md5: 66a5c71777fd2abae531dc0ff4f08f68
@@ -97,17 +97,17 @@ stages:
       size: 1378
     - path: src/model_lifecycle/train.py
       hash: md5
-      md5: 7fd7a99bf7104aacae75478309a854f9
-      size: 19843
+      md5: ebfb38cf06394ec95c01a9b971915137
+      size: 22709
     outs:
     - path: artifacts/models/current.pkl
       hash: md5
-      md5: 90591a8d150dd6de065445d791767d1f
-      size: 15298713
+      md5: 60a4c5f77bf39da8b5d7a171474a7c82
+      size: 712682
     - path: artifacts/models/current_metadata.json
       hash: md5
-      md5: f2bb4125b79008f268634a6b87fe5242
-      size: 763
+      md5: f832cfc7d122961b120127ac12981dca
+      size: 989
   export_feature_store:
     cmd: python -m src.feast_ops.export
     deps:
@@ -165,16 +165,16 @@ stages:
     deps:
     - path: artifacts/models/feature_pipeline.joblib
       hash: md5
-      md5: 1031bbd4e8d4df4abc6f5cb82e969cd0
+      md5: 08417ea33d6661f844daa13d9bc40695
       size: 5541
     - path: configs/pipeline_global_config.yaml
       hash: md5
-      md5: 87f07c7b750a630c249dc9a3802ab022
-      size: 1810
+      md5: f8ee4f12c98f6a2eb82f4b599c6f94bb
+      size: 1921
     - path: data/raw/Customer-Churn-Records.csv
       hash: md5
-      md5: e37acb179fefe4cac8a33e280a12f62c
-      size: 837415
+      md5: 40a6721631237eb84808eeaf812be4a5
+      size: 835032
     - path: src/common/config_loader.py
       hash: md5
       md5: 66a5c71777fd2abae531dc0ff4f08f68
@@ -206,11 +206,11 @@ stages:
     outs:
     - path: data/feature_store/customer_features.parquet
       hash: md5
-      md5: 026520cbdf50c8ea432a4f126c1d17df
+      md5: 875df45d04825c0abe6967933171bb57
       size: 640953
     - path: data/feature_store/export_metadata.json
       hash: md5
-      md5: 40b8e41b45ddf4de1f6d9c8010f89927
+      md5: 8a517122ed357757983b5b47576c177f
       size: 415
   materialize_fs_online:
     cmd: "sh -c ' until docker exec tc-fiap-redis redis-cli ping | grep -q PONG; do
@@ -220,48 +220,48 @@ stages:
     deps:
     - path: data/feature_store/customer_features.parquet
       hash: md5
-      md5: 026520cbdf50c8ea432a4f126c1d17df
+      md5: 875df45d04825c0abe6967933171bb57
       size: 640953
     - path: data/feature_store/export_metadata.json
       hash: md5
-      md5: 40b8e41b45ddf4de1f6d9c8010f89927
+      md5: 8a517122ed357757983b5b47576c177f
       size: 415
     - path: feature_store
       hash: md5
-      md5: 40a786e946b38aeaae9684c680d6cb7a.dir
-      size: 7377
-      nfiles: 4
+      md5: de8941924eba7d53af50a37aaa1a2fe6.dir
+      size: 14718
+      nfiles: 5
   build_rag_cache:
     cmd: python -m src.agent.rag_pipeline --force-rebuild
     deps:
     - path: README.md
       hash: md5
-      md5: 4bb1492f1bc1b1191dea2c903ed28c1d
-      size: 34458
+      md5: 03936af81172533f739f354ef6d7f224
+      size: 19091
     - path: artifacts/models/current_metadata.json
       hash: md5
-      md5: f2bb4125b79008f268634a6b87fe5242
-      size: 763
+      md5: f832cfc7d122961b120127ac12981dca
+      size: 989
     - path: configs
       hash: md5
-      md5: 4990dc6d35173db7a69c72a611596448.dir
-      size: 44219
-      nfiles: 16
+      md5: f0c55e44ed5dc8aa1458ce636b536092.dir
+      size: 48024
+      nfiles: 19
     - path: docs
       hash: md5
-      md5: ef8ff59681b0981bd9a4aa9c00bb53a0.dir
-      size: 793151
-      nfiles: 18
+      md5: 5bd2ddb88ac8063db71d0ab0b6bf215d.dir
+      size: 854487
+      nfiles: 33
     - path: src/agent
       hash: md5
-      md5: 39b9563f41b65ab94f7aaf4c5dcc1e7d.dir
-      size: 158984
+      md5: e7b3500639872c380deaaa22053a6533.dir
+      size: 166829
       nfiles: 22
     outs:
     - path: artifacts/rag
       hash: md5
-      md5: 7131bf4378c11ff085e9464230e5c1dd.dir
-      size: 504734698
+      md5: c6d9d77b971677846cd45b362dc8a1c3.dir
+      size: 504856753
       nfiles: 16
   run_mlflow_experiments:
     cmd: sh -c ' python -m src.model_lifecycle.train && python -m 
@@ -280,13 +280,13 @@ stages:
     deps:
     - path: artifacts/models/current.pkl
       hash: md5
-      md5: 90591a8d150dd6de065445d791767d1f
-      size: 15298713
+      md5: 60a4c5f77bf39da8b5d7a171474a7c82
+      size: 712682
     - path: configs/model_lifecycle
       hash: md5
-      md5: dce0ced35a47b9df3b1c67a357ad4391.dir
-      size: 7522
-      nfiles: 7
+      md5: 7ed3db98c6f38adbb4c3e74d38f68f98.dir
+      size: 10992
+      nfiles: 10
     - path: configs/scenario_experiments
       hash: md5
       md5: 2f5a2a51b45291aced195b753b6a0da9.dir
@@ -294,17 +294,17 @@ stages:
       nfiles: 1
     - path: data/processed/test.parquet
       hash: md5
-      md5: 7f1a2bbcf281161a66843145231c3c24
-      size: 93065
+      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
+      size: 92842
     - path: data/processed/train.parquet
       hash: md5
-      md5: 1a15939f1d7c262d568cad4be64f1380
-      size: 322297
+      md5: a3a5e1a3656ed445478bda742a397f01
+      size: 323094
     - path: src/model_lifecycle
       hash: md5
-      md5: 7751d8959703c7aa363fe02d8f709649.dir
-      size: 83896
-      nfiles: 10
+      md5: e2a12a6425997761ea6daf079d62920a.dir
+      size: 116778
+      nfiles: 22
     - path: src/scenario_experiments
       hash: md5
       md5: 4212b89437b532ede6e0c2ca987a903c.dir
@@ -315,17 +315,17 @@ stages:
     deps:
     - path: artifacts/models/current.pkl
       hash: md5
-      md5: 90591a8d150dd6de065445d791767d1f
-      size: 15298713
+      md5: 60a4c5f77bf39da8b5d7a171474a7c82
+      size: 712682
     - path: artifacts/rag
       hash: md5
-      md5: 7131bf4378c11ff085e9464230e5c1dd.dir
-      size: 504734698
+      md5: 6d3742518e4c42415ea8b319ff84c2bc.dir
+      size: 504857389
       nfiles: 16
     - path: data/processed/test.parquet
       hash: md5
-      md5: 7f1a2bbcf281161a66843145231c3c24
-      size: 93065
+      md5: 76b3eacddfbdcdd09e18b9c59ad90c78
+      size: 92842
     - path: src/evaluation/model/drift
       hash: md5
       md5: 5de25d27a01f435f13b210aee922c04f.dir
@@ -334,6 +334,6 @@ stages:
     outs:
     - path: artifacts/evaluation/model/scenario_experiments/drift
       hash: md5
-      md5: a53797bfda03076c0ef8261917c1199f.dir
-      size: 22254847
+      md5: af70dece7887720c8df2eae5f5b858ed.dir
+      size: 22244150
       nfiles: 15
