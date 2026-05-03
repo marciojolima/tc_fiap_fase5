@@ -132,9 +132,9 @@ docker compose down
 
 Identificar clientes com alta probabilidade de evasão (churn) para permitir ações de retenção proativas pelo banco.
 
-## Métrica de negócio  
-**≥ 70%** dos clientes que realmente evadem devem estar entre os 25% com maior risco previsto (recall@top25% ≥ 0.70).
-Dentro dos 20% de clientes com maior risco previsto, ao menos 45% devem ser clientes que realmente evadiram (precision@top20% ≥ 0.45).
+## Métricas de negócio
+1. **≥ 70%** dos clientes que realmente evadem devem estar entre os 25% com maior risco previsto (recall@top25% ≥ 0.70).
+2. Dentro dos 20% de clientes com maior risco previsto, ao menos 45% devem ser clientes que realmente evadiram (precision@top20% ≥ 0.45).
 
 
 ## Estratégia de seleção de modelo  
