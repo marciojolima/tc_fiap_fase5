@@ -6,10 +6,12 @@ import pandas as pd
 
 from model_lifecycle.catalog import build_model
 from model_lifecycle.train import (
+    BusinessMetricsConfig,
     DatasetSplits,
     ExperimentTrainingConfig,
     ModelSpec,
     RetrainingMlflowContext,
+    build_business_metrics_evaluator,
     build_experiment_training_config,
     build_mlflow_experiment_artifact_location,
     build_model_spec,
@@ -95,6 +97,12 @@ def build_training_config_fixture(model_path: Path) -> ExperimentTrainingConfig:
         git_nearest_tag="v0.2.0",
         risk_level="high",
         fairness_checked=False,
+        business_metrics=BusinessMetricsConfig(
+            recall_top_k=EXPECTED_BUSINESS_TOP_K,
+            recall_target=EXPECTED_BUSINESS_TARGET_RECALL,
+            precision_top_k=EXPECTED_BUSINESS_TOP_K,
+            precision_target=EXPECTED_BUSINESS_TARGET_PRECISION,
+        ),
         mlflow_cfg={
             "tracking_uri": "sqlite:///mlruns/mlflow.db",
             "experiment_name": "candidate-exp",
@@ -120,6 +128,12 @@ def return_global_training_config() -> dict:
             "owner": "team",
             "phase": "dev",
             "dataset_name": "dataset",
+        },
+        "business_metrics": {
+            "recall_top_k": EXPECTED_BUSINESS_TOP_K,
+            "recall_target": EXPECTED_BUSINESS_TARGET_RECALL,
+            "precision_top_k": EXPECTED_BUSINESS_TOP_K,
+            "precision_target": EXPECTED_BUSINESS_TARGET_PRECISION,
         },
     }
 
@@ -225,6 +239,10 @@ EXPECTED_NEG_POS_RATIO = 3.0
 EXPECTED_N_ESTIMATORS = 300
 EXPECTED_HIGH_THRESHOLD_ACCURACY = 0.75
 EXPECTED_HIGH_THRESHOLD_RECALL = 0.5
+EXPECTED_BUSINESS_TOP_K = 0.2
+EXPECTED_BUSINESS_TARGET_RECALL = 0.7
+EXPECTED_BUSINESS_TARGET_PRECISION = 0.35
+EXPECTED_EVAL_TOP_K = 0.5
 
 
 def return_data_hash() -> str:
@@ -295,13 +313,28 @@ def test_evaluate_model_returns_expected_metrics() -> None:
     X_test = pd.DataFrame({"f1": [1, 2, 3, 4]})
     y_test = pd.Series([0, 1, 0, 1])
 
-    metrics = evaluate_model(model, X_test, y_test, threshold=0.5)
+    metrics = evaluate_model(
+        model,
+        X_test,
+        y_test,
+        threshold=0.5,
+        business_metrics_evaluator=build_business_metrics_evaluator(
+            BusinessMetricsConfig(
+                recall_top_k=EXPECTED_EVAL_TOP_K,
+                recall_target=EXPECTED_BUSINESS_TARGET_RECALL,
+                precision_top_k=EXPECTED_EVAL_TOP_K,
+                precision_target=EXPECTED_BUSINESS_TARGET_PRECISION,
+            )
+        ),
+    )
 
     assert metrics["accuracy"] == 1.0
     assert metrics["precision"] == 1.0
     assert metrics["recall"] == 1.0
     assert metrics["f1"] == 1.0
     assert 0.0 <= metrics["auc"] <= 1.0
+    assert metrics["churn_recall_top"] == 1.0
+    assert metrics["churn_precision_top"] == 1.0
 
 
 def test_evaluate_model_respects_configured_threshold() -> None:
@@ -364,6 +397,13 @@ def test_load_experiment_training_config_merges_global_and_experiment(
     assert cfg.mlflow_cfg["experiment_name"] == "candidate-exp"
     assert cfg.mlflow_cfg["tags"]["owner"] == "team"
     assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
+    assert cfg.business_metrics.recall_top_k == EXPECTED_BUSINESS_TOP_K
+    assert cfg.business_metrics.recall_target == EXPECTED_BUSINESS_TARGET_RECALL
+    assert cfg.business_metrics.precision_top_k == EXPECTED_BUSINESS_TOP_K
+    assert (
+        cfg.business_metrics.precision_target
+        == EXPECTED_BUSINESS_TARGET_PRECISION
+    )
 
 
 def test_build_experiment_training_config_supports_in_memory_contract(
@@ -396,6 +436,7 @@ def test_build_experiment_training_config_supports_in_memory_contract(
     assert cfg.experiment_name == "random_forest_candidate"
     assert cfg.model_path == Path("artifacts/models/model.pkl")
     assert cfg.mlflow_cfg["tags"]["candidate_type"] == "current"
+    assert cfg.business_metrics.precision_target == EXPECTED_BUSINESS_TARGET_PRECISION
 
 
 def test_resolve_git_sha_returns_string() -> None:
@@ -586,6 +627,10 @@ def test_log_run_metadata_registers_required_metadata(monkeypatch) -> None:
 
     assert ("fairness_checked", False) in _PARAM_LOG
     assert ("feature_service_name", "customer_churn_rf_v2") in _PARAM_LOG
+    assert ("recall_top_k", EXPECTED_BUSINESS_TOP_K) in _PARAM_LOG
+    assert ("recall_target", EXPECTED_BUSINESS_TARGET_RECALL) in _PARAM_LOG
+    assert ("precision_top_k", EXPECTED_BUSINESS_TOP_K) in _PARAM_LOG
+    assert ("precision_target", EXPECTED_BUSINESS_TARGET_PRECISION) in _PARAM_LOG
     assert ("model_name", "random_forest_candidate") in _TAG_LOG
     assert ("model_version", "0.2.0") in _TAG_LOG
     assert ("feature_service_name", "customer_churn_rf_v2") in _TAG_LOG

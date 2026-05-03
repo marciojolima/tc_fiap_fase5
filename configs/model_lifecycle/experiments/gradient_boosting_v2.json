@@ -1,7 +1,7 @@
 {
   "experiment": {
-    "name": "current",
-    "run_name": "current_gb_v4",
+    "name": "gradient_boosting_v2_more_trees",
+    "run_name": "gradient_boosting_v2_more_trees",
     "version": "0.3.1",
     "algorithm": "gradient_boosting",
     "flavor": "sklearn"
@@ -12,10 +12,10 @@
   },
   "training": {
     "params": {
-      "n_estimators": 300,
-      "learning_rate": 0.04,
-      "max_depth": 4,
-      "min_samples_leaf": 8,
+      "n_estimators": 400,
+      "learning_rate": 0.03,
+      "max_depth": 3,
+      "min_samples_leaf": 10,
       "subsample": 0.9,
       "random_state": 42
     }
@@ -24,10 +24,10 @@
     "threshold": 0.5
   },
   "feast": {
-    "feature_service_name": "customer_churn_gb_v4"
+    "feature_service_name": "customer_churn_gb_v2"
   },
   "artifacts": {
-    "model_path": "artifacts/models/current.pkl"
+    "model_path": "artifacts/models/gradient_boosting_v2.pkl"
   },
   "mlflow": {
     "experiment_name": "datathon-churn-baseline",

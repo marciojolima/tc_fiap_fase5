@@ -11,7 +11,7 @@ from model_lifecycle.retraining import (
     load_retraining_request,
     run_retraining_request,
 )
-from model_lifecycle.train import ExperimentTrainingConfig
+from model_lifecycle.train import BusinessMetricsConfig, ExperimentTrainingConfig
 
 EXPECTED_RETRAIN_AUC = 0.91
 EXPECTED_REFERENCE_ROW_COUNT = 8000
@@ -76,6 +76,12 @@ def build_experiment_training_config(model_path: Path) -> ExperimentTrainingConf
         git_nearest_tag="v0.2.0",
         risk_level="high",
         fairness_checked=False,
+        business_metrics=BusinessMetricsConfig(
+            recall_top_k=0.2,
+            recall_target=0.7,
+            precision_top_k=0.2,
+            precision_target=0.35,
+        ),
         mlflow_cfg={
             "tracking_uri": "sqlite:///mlruns/mlflow.db",
             "experiment_name": "datathon-churn-baseline",

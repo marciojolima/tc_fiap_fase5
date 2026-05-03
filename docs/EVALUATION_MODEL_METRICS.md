@@ -21,6 +21,12 @@ com a métrica de negócio estão registradas em
 [ADRs/ADR-004.md](ADRs/ADR-004.md) e [ADRs/ADR-008.md](ADRs/ADR-008.md). Aqui o
 foco fica nos resultados e na interpretação técnica.
 
+No pipeline de treino atual, alem das metricas classicas, o projeto registra em
+MLflow as metricas de negocio orientadas a ranking:
+
+- `churn_recall_top`
+- `churn_precision_top`
+
 Ordenadas da mais importante para a menos importante no contexto de churn bancário,
 onde **perder um cliente sem perceber** custa mais do que acionar um cliente fiel por engano.
 
@@ -48,6 +54,11 @@ o cliente errado tem custo real.
 
 > No projeto com `class_weight=balanced`, o modelo compensa o desequilíbrio das classes
 > e dá mais peso ao recall — que é a escolha certa para churn bancário.
+
+As metas operacionais declaradas para os recortes operacionais sao:
+
+- `recall@top25% >= 0.70`
+- `precision@top20% >= 0.45`
 
 ## Análise de Modelos de Classificação — Churn Bancário
 

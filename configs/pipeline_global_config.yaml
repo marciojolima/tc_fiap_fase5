@@ -45,6 +45,12 @@ mlflow:
   phase: datathon-fase05
   dataset_name: bank-customer-churn
 
+business_metrics:
+  recall_top_k: 0.25
+  recall_target: 0.70
+  precision_top_k: 0.20
+  precision_target: 0.45
+
 llm:
   active_provider: claude
   timeout_seconds: 60
